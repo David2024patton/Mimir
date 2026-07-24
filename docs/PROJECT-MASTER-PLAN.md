@@ -45,6 +45,23 @@ mythology maps directly onto the architecture and gives every major subsystem a 
   **engrams** (durable memories) - the brain's cells, held in the Well, connected by
   the Tree.
 
+### Agent personas (Norse)
+Mímir's agent modes and subagents take Norse names. (The BMAD planning personas -
+Mary/John/Winston/Sally/Amelia - stay separate: those are the *process*, these are
+the *product*.)
+
+| Norse figure | Mímir role |
+|---|---|
+| **Odin** | Orchestrator / planner - the All-Father; makes the game plan, sees the whole board |
+| **Thor** | Builder - the workhorse; writes code, runs tools, executes |
+| **Loki** | Debugger / tester - cunning; hunts bugs and edge cases |
+| **Heimdall** | Reviewer / watchman - sees everything; code review + the policy gate |
+| **Bragi** | Skald - documentation, comments, clean output |
+| **Huginn & Muninn** | Scout subagents - "Thought" & "Memory"; explore / research |
+| **Ratatoskr** | Messenger - inter-agent communication (runs up and down Yggdrasil) |
+| **The Norns** (Urd/Verdandi/Skuld) | Spec / planning - past / present / future |
+| **Forseti** | Arbiter - permission/policy decisions, conflict resolution |
+
 > The story writes itself: Mímir drinks from the Well (Mímisbrunnr) through the
 > Gjallarhorn, grows its Yggdrasil of connected neurons, lays down engrams, and - like
 > Mímir's preserved head - keeps giving counsel long after each session ends.
@@ -775,6 +792,19 @@ Designed so models **<=30B** can code smoothly without getting lost or sidetrack
 - F32.5 Local-first: telemetry is the only outbound call besides the chosen LLM provider;
   fully disable-able for air-gapped use.
 
+### F33. Norse Agent Personas [Differentiator - identity]
+The agent modes and subagents are named Norse figures, giving Mímir a coherent mythic
+identity and clear, memorable role names.
+- F33.1 Built-in personas: Odin (orchestrator/planner), Thor (builder), Loki
+  (debugger/tester), Heimdall (reviewer/watchman), Bragi (skald/docs).
+- F33.2 Subagent personas: Huginn & Muninn (scout/research - "thought" & "memory"),
+  Ratatoskr (messenger / inter-agent comms).
+- F33.3 Planning personas: the Norns (Urd/Verdandi/Skuld - spec past/present/future);
+  Forseti (arbiter for permission/policy decisions).
+- F33.4 Each persona bundles a prompt + tool allowlist + default model (custom modes,
+  F16); users can add their own Norse (or any) personas.
+- F33.5 Persona names surface in the GUI/TUI (agent switcher, chat, subagent cards).
+
 ---
 
 ## 7. Epics Roadmap
@@ -831,7 +861,7 @@ memory, skills, plan mode, subagents, and hooks.)
 
 ### Tier 4 - Knowledge, Platform & Monetization
 These turn Mímir into a sustainable, differentiated product (see Section 11).
-The knowledge/learning/sandbox/governance/research/small-model epics (E31, E38, E40, E41, E43-E49)
+The knowledge/learning/sandbox/governance/research/small-model epics (E31, E38, E40, E41, E43-E50)
 are product differentiators (schedule alongside Tier 2); E32-E37 and E42 are the hosted
 platform/backend that earns.
 | Epic | Title | Maps to | Depends | Size |
@@ -855,6 +885,7 @@ platform/backend that earns.
 | E47 | Task & Build Engine (declarative task graph, parallel topo execution, content-addressed caching) | F30 | E45 | M |
 | E48 | Small-Model Mode & Structured Task Workflow (game plan -> to-do list -> one-task-at-a-time, lean tools, verification, anti-derailment) | F31 | E2, E3, E6 | L |
 | E49 | Telemetry & Privacy (on by default, anonymized, opt-out in privacy settings) | F32 | E1 | M |
+| E50 | Norse Agent Personas (Odin/Thor/Loki/Heimdall/Bragi modes, Huginn & Muninn scouts, Ratatoskr, Norns/Forseti) | F33 | E9, E16 | M |
 
 ---
 
@@ -872,7 +903,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E49 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E50 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |

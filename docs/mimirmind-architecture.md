@@ -334,6 +334,13 @@ keeps them on track with a forced structure (ADR-011):
 - **Model-tier awareness:** detect small models (size/family) and auto-enable this mode
   + lean tools; large models get the full toolset (and may fast-path the plan).
 
+### Agent personas (Norse)
+Agent modes/subagents are named Norse figures (F33): **Odin** (orchestrator/planner),
+**Thor** (builder), **Loki** (debugger/tester), **Heimdall** (reviewer + policy gate),
+**Bragi** (docs/skald); subagents **Huginn & Muninn** (scouts - thought & memory) and
+**Ratatoskr** (messenger); planning **Norns** (Urd/Verdandi/Skuld) + **Forseti**
+(arbiter). Each persona bundles a prompt + tool allowlist + default model.
+
 ---
 
 ## 7. Plugin SDK Contract (Go)
