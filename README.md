@@ -80,6 +80,9 @@ deterministic safety.
   (Mary, Analyst).
 - [`mimirmind-prd.md`](mimirmind-prd.md) - the BMAD PRD (John, PM): user stories + EARS
   acceptance criteria for the Core epics E1-E14.
+- [`mimirmind-architecture.md`](mimirmind-architecture.md) - the BMAD Architecture
+  (Winston): ADRs, Go module layout, SurrealDB Cortex schema, agent-loop state machine,
+  plugin-SDK contract, GUI<->daemon protocol, sandbox + security architecture.
 
 ## Development method
 
