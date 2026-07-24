@@ -406,6 +406,10 @@ mimirmind/
   Office / images, F29).
 - **Agent / workflow:** `todo` (todowrite/todoread), `question` (F45), `task` (spawn
   subagent), `cortex_search` / `cortex_add` (RAG knowledge).
+- **Computer use / OS automation (F48):** `screen_read` (UI tree), `ui_click` /
+  `ui_type` (click/type UI elements), `screenshot`, `input_inject`, `os_query`
+  (WMI/sysctl/D-Bus), `app_action` (App Intents / App Actions) - across Windows, macOS,
+  Linux, Android, iOS.
 
 ### F4. MCP Integration [Core, optional extensibility only]
 NOTE: Core system access (F3) is native and does NOT use MCP. MCP here is purely
@@ -1023,6 +1027,48 @@ The chat input bar has everything the user needs to direct the agent:
 - F47.4 **Thinking level selector**: low / medium / high (ties to F46.2).
 - F47.5 **Send button** to send the message.
 
+### F48. Computer Use & OS Automation (cross-platform) [Differentiator]
+Tools that let the agent read screens, click UI, inject input, manage the OS, and
+trigger app actions across Windows, macOS, Linux, Android, and iOS. This powers
+Heimdall's visual auditing (F43.12) and gives the agent real control of the computer
+and phone.
+- F48.1 **UI automation (screen reading + clicking)** - read the UI tree, click/tap:
+  - Windows: UI Automation (UIA).
+  - macOS: Accessibility API (AXUIElement: AXUIElementCreateApplication,
+    AXUIElementCopyActionNames).
+  - Linux: AT-SPI2 (over the D-Bus API, accessible widget trees).
+  - Android: AccessibilityService (AccessibilityNodeInfo + dispatchGesture for
+    taps/swipes).
+  - iOS: UIAccessibility protocol / XCUITest.
+- F48.2 **Low-level event hooks (input injection / interception)**:
+  - Windows: SetWindowsHookEx (Win32 hooks).
+  - macOS: Quartz Event Taps (CGEventTapCreate).
+  - Linux: uinput + libevdev (write /dev/uinput, read raw hardware input).
+  - Android: restricted without root (AccessibilityService for high-level events;
+    /dev/input/eventX needs root).
+  - iOS: blocked by the sandbox (jailbreak + MobileSubstrate/SpringBoard only) - flagged
+    as not feasible on stock devices.
+- F48.3 **System instrumentation (background OS management)**:
+  - Windows: WMI & COM.
+  - macOS: sysctl (kernel/hardware state) + OSA (AppleScript/JXA).
+  - Linux: D-Bus (systemd services) + /sys + /proc virtual filesystems.
+  - Android: system services (ConnectivityManager/BatteryManager), DevicePolicyManager
+    (Device Owner), adb shell.
+  - iOS: restricted, permission-gated frameworks (CoreMotion), MDM payloads for system
+    changes.
+- F48.4 **Modern AI app actions (agent runtimes)**:
+  - Windows: Windows App Actions / Copilot+ actions.
+  - macOS: App Intents (AppIntent protocol + perform()).
+  - Linux: standard D-Bus interfaces.
+  - Android: App Actions + App Functions API (XML-defined; Gemini Nano / Assistant).
+  - iOS: App Intents (AppIntent + AppEntity for Foundation Models / Siri).
+- F48.5 **Feasibility tiers + permission handling**: desktop (Windows/macOS/Linux) is
+  fully feasible; Android needs the accessibility permission (root for low-level); iOS is
+  sandbox-restricted (XCUITest for testing, MDM for system, jailbreak for low-level). The
+  agent reports what's possible per platform and asks the user for the needed permission.
+- F48.6 **Screenshot + vision loop** (ties to Heimdall F43.12): capture the screen, feed
+  it to a vision model to understand the UI, then act via the UI automation tools.
+
 ---
 
 ## 7. Epics Roadmap
@@ -1118,6 +1164,7 @@ platform/backend that earns.
 | E62 | Question Tool (structured multiple-choice questions with options, like opencode; used in Discovery + clarifications) | F45 | E2, E12 | S |
 | E63 | Thinking Mode (light-gray collapsible thinking blocks, low/medium/high levels, off switch) | F46 | E2, E12 | S |
 | E64 | Chat Composer (+ attachments, Build/Plan toggle, model picker, thinking level, send button) | F47 | E12 | M |
+| E65 | Computer Use & OS Automation (UI automation, input hooks, system instrumentation, app actions across Windows/macOS/Linux/Android/iOS; desktop first, mobile gated by permissions) | F48 | E3, E28 | L |
 
 ---
 
@@ -1135,7 +1182,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E64 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E65 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |

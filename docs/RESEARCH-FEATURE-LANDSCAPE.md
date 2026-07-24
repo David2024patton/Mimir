@@ -398,6 +398,24 @@ Grouped by theme. Each notes the originator(s) and why it matters.
 - **Verify each step**: run tests after each item; debug before advancing.
 - WHY: makes <=30B local models productive - central to the local-first/sovereign mission.
 
+### B32. Cross-platform computer use / OS automation
+- The agent controls the computer and phone: read the UI tree, click/type, inject input,
+  query the OS, trigger app actions. Per-platform APIs:
+- **UI automation**: Windows UIA; macOS Accessibility (AXUIElement); Linux AT-SPI2
+  (D-Bus); Android AccessibilityService (AccessibilityNodeInfo + dispatchGesture); iOS
+  UIAccessibility / XCUITest.
+- **Low-level input hooks**: Windows SetWindowsHookEx; macOS Quartz Event Taps
+  (CGEventTapCreate); Linux uinput/libevdev; Android restricted (needs root); iOS blocked
+  (jailbreak only).
+- **System instrumentation**: Windows WMI/COM; macOS sysctl + OSA (AppleScript/JXA);
+  Linux D-Bus + /sys + /proc; Android system services / DevicePolicyManager / adb; iOS MDM.
+- **AI app actions**: Windows App Actions; macOS App Intents (AppIntent/perform());
+  Linux D-Bus; Android App Actions / App Functions API; iOS App Intents (AppIntent/AppEntity).
+- Feasibility: desktop fully feasible; Android needs the accessibility permission (root
+  for low-level); iOS is sandbox-restricted. This is what powers the visual auditor.
+- WHY: full computer use across all platforms is a huge differentiator; most agents are
+  desktop-only or cloud-only.
+
 ---
 
 ## C. Per-Tool Cheat Sheet (one-liner differentiators)
