@@ -78,6 +78,8 @@ deterministic safety.
   Open Notebook, Vercel, Microsoft AGT, and more).
 - [`mimirmind-product-brief.md`](mimirmind-product-brief.md) - the BMAD Product Brief
   (Mary, Analyst).
+- [`mimirmind-prd.md`](mimirmind-prd.md) - the BMAD PRD (John, PM): user stories + EARS
+  acceptance criteria for the Core epics E1-E14.
 
 ## Development method
 
