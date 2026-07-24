@@ -68,21 +68,64 @@ deterministic safety.
 | Mímir's preserved head | Persistent memory / engrams across sessions |
 | Runes | Skills (reusable procedural knowledge) |
 
-## Documentation (planning phase)
+## Documentation (planning phase, in `docs/`)
 
-- [`PROJECT-MASTER-PLAN.md`](PROJECT-MASTER-PLAN.md) - the full plan: vision,
-  competitive research, architecture, feature requirements (F1-F30), 47 epics,
+- [`PROJECT-MASTER-PLAN.md`](docs/PROJECT-MASTER-PLAN.md) - the full plan: vision,
+  competitive research, architecture, feature requirements (F1-F32), 49 epics,
   commercialization strategy, and the mythology/identity.
-- [`RESEARCH-FEATURE-LANDSCAPE.md`](RESEARCH-FEATURE-LANDSCAPE.md) - research across
+- [`RESEARCH-FEATURE-LANDSCAPE.md`](docs/RESEARCH-FEATURE-LANDSCAPE.md) - research across
   20+ tools (opencode, Claude Code, Cursor, Kiro, Antigravity, Devin, Agent Zero,
   Open Notebook, Vercel, Microsoft AGT, and more).
-- [`mimirmind-product-brief.md`](mimirmind-product-brief.md) - the BMAD Product Brief
-  (Mary, Analyst).
-- [`mimirmind-prd.md`](mimirmind-prd.md) - the BMAD PRD (John, PM): user stories + EARS
+- [`mimirmind-product-brief.md`](docs/mimirmind-product-brief.md) - BMAD Product Brief (Mary).
+- [`mimirmind-prd.md`](docs/mimirmind-prd.md) - BMAD PRD (John): user stories + EARS
   acceptance criteria for the Core epics E1-E14.
-- [`mimirmind-architecture.md`](mimirmind-architecture.md) - the BMAD Architecture
+- [`mimirmind-architecture.md`](docs/mimirmind-architecture.md) - BMAD Architecture
   (Winston): ADRs, Go module layout, SurrealDB Cortex schema, agent-loop state machine,
   plugin-SDK contract, GUI<->daemon protocol, sandbox + security architecture.
+- [`mimirmind-readiness-review.md`](docs/mimirmind-readiness-review.md) - Implementation
+  Readiness Review (Winston): PASS with conditions.
+- [`mimirmind-ux-spec.md`](docs/mimirmind-ux-spec.md) - UX spec (Sally): 5-region GUI
+  layout, screens, TUI, mobile, design system.
+- [`mimirmind-core-stories.md`](docs/mimirmind-core-stories.md) - Core epics E1-E14 broken
+  into stories (John).
+- [`mimirmind-sprint-1.md`](docs/mimirmind-sprint-1.md) - Sprint 1 plan (Amelia): the
+  walking skeleton.
+
+## Building
+
+Requires [Go](https://go.dev) 1.26+.
+
+```bash
+# build the single binary
+go build -o mimir ./cmd/mimir
+
+# run the daemon + GUI (default http://localhost:8420)
+./mimir
+
+# other commands
+./mimir version
+./mimir auth        # provider key management (E1.3)
+```
+
+Configuration: copy [`.env.example`](.env.example) to `.env` and/or create a
+`mimir.json` (opencode-compatible). Provider keys can use `{env:VAR}` / `{file:path}`.
+
+## Project structure
+
+```
+cmd/mimir/          # entrypoint (daemon + CLI)
+internal/
+  config/           # mimir.json loader + {env}/{file} interpolation
+  llm/              # provider abstraction + OpenAI & Anthropic dialects + registry
+  tools/            # tool registry + to-do tool (+ shell/fs/code-exec next)
+  agent/            # agent-loop state machine
+  cortex/           # the brain: neuron/synapse/engram store (SurrealDB next)
+  plugins/          # plugin SDK contract + registry
+  policy/           # fail-closed policy gate
+  server/           # HTTP + WebSocket daemon + GUI
+gui/                # Solid web frontend (next)
+docs/               # BMAD planning artifacts
+```
 
 ## Development method
 
