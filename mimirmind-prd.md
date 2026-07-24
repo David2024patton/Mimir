@@ -2,7 +2,7 @@
 
 **BMAD Artifact - Phase 3 (John, Product Manager)**
 Date: 2026-07-23 | Status: Draft for review | Feeds: Architecture (Winston)
-Source: `mimirmind-product-brief.md`, `PROJECT-MASTER-PLAN.md` (F1-F30, epics E1-E47)
+Source: `mimirmind-product-brief.md`, `PROJECT-MASTER-PLAN.md` (F1-F32, epics E1-E49)
 Scope of this PRD: **Core (Tier 1) epics E1-E14.** Tier 2/3 are summarized in section 9.
 
 ---

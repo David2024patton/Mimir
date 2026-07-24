@@ -324,14 +324,19 @@ mimirmind/
 
 ### F1. Provider & Model Access [Core]
 - F1.1 Configure providers via JSON (opencode-compatible schema).
-- F1.2 Support all major providers via the OpenAI-compatible API (OpenAI, Anthropic,
-  Google, OpenRouter, xAI, Mistral, Groq, Cerebras, DeepInfra, Together,
-  Alibaba/DashScope, Bedrock, Azure, Perplexity, Cohere, Ollama/local, etc.).
+- F1.2 Support all major providers via native API dialects: **OpenAI-compatible**
+  (`/v1/chat/completions` - OpenAI, OpenRouter, xAI, Mistral, Groq, Cerebras, DeepInfra,
+  Together, Alibaba/DashScope, Bedrock, Azure, Perplexity, Cohere, Ollama/local, etc.)
+  AND **Anthropic-native** (`/v1/messages`). Extensible to other dialects (e.g. Gemini)
+  via plugins.
 - F1.3 Custom OpenAI-compatible endpoints (baseURL + apiKey) for self-hosted/local
   (Ollama, llama.cpp, vLLM) and token-plan endpoints.
 - F1.4 Per-provider credential store (`auth.json`), `auth login`-style flow.
 - F1.5 Model metadata: context/output limits, modalities, reasoning/tool-call flags.
 - F1.6 `{env:VAR}` and `{file:path}` secret interpolation (empty-string fallback fixed).
+- F1.8 Pluggable API dialects/encoders: the provider abstraction supports multiple
+  request/response formats (OpenAI-compatible + Anthropic-native built in; more via
+  plugins), so both OpenAI and Anthropic endpoints work natively.
 - F1.7 Model routing [Differentiator]: auto-select by complexity/latency/cost; per-role
   model assignment (cheap for workers, strong for planning/validation); manual override.
 
@@ -735,6 +740,41 @@ Built-in tools/skills (NOT external apps) for bringing outside knowledge into th
   agent-driven rebuilds.
 - F30.4 Filtered/scoped runs: rebuild only a target + its dependents.
 
+### F31. Small-Model Mode & Structured Task Workflow [Differentiator - core to the local-first mission]
+Designed so models **<=30B** can code smoothly without getting lost or sidetracked.
+- F31.1 Mandatory game-plan-first: before writing code, the agent produces a game plan
+  (spec: requirements -> design -> tasks). The framework enforces plan-before-code.
+- F31.2 Game plan -> to-do list: the plan is converted into an ordered, concrete to-do
+  list (each item small and independently verifiable).
+- F31.3 Robust to-do list tool: persistent task tracker (id, content, status
+  pending/in_progress/completed/blocked, subtasks, dependencies, tags); stored in
+  SurrealDB; survives sessions; `task_search` (cross-session) + `todo_carry` (forward).
+- F31.4 One-task-at-a-time execution: the agent works a single to-do item -> implement
+  -> debug -> test -> mark done -> next. Prevents drift/sidetracking.
+- F31.5 Verification at each step: after each item, run tests/checks; if failing, debug
+  before advancing.
+- F31.6 Lean tool surface for small models: expose a focused tool set (read/write/edit/
+  bash/todowrite) instead of all tools - reduces tool-selection confusion.
+- F31.7 Focused context: load only what the current task needs; re-inject the plan +
+  to-do list each step so the model stays oriented.
+- F31.8 Anti-derailment: doom-loop detection (F4.3), step budgets, "re-read the plan"
+  re-orientation prompts.
+- F31.9 Model-tier awareness: detect small models (by size/family) and auto-enable
+  small-model mode + lean tools; larger models get the full toolset.
+- F31.10 Target: smooth coding on <=30B models (Qwen3.6-35B-A3B, Qwen3.5-9B, small
+  Codex/Gemma/Llama), local or API.
+
+### F32. Telemetry & Privacy [Core]
+- F32.1 Telemetry **ON by default**: collect anonymized usage metrics + tool success/
+  failure rates + errors + latency, to improve the system.
+- F32.2 Privacy settings: users turn telemetry OFF (opt-out) in settings; respected
+  immediately and persisted.
+- F32.3 What's collected: usage counts, model/tool used, success/error rates, latency.
+  NOT code/content/prompts by default (that needs a separate explicit opt-in).
+- F32.4 Transparent: documented what is collected; no hidden collection.
+- F32.5 Local-first: telemetry is the only outbound call besides the chosen LLM provider;
+  fully disable-able for air-gapped use.
+
 ---
 
 ## 7. Epics Roadmap
@@ -791,7 +831,7 @@ memory, skills, plan mode, subagents, and hooks.)
 
 ### Tier 4 - Knowledge, Platform & Monetization
 These turn Mímir into a sustainable, differentiated product (see Section 11).
-The knowledge/learning/sandbox/governance/research epics (E31, E38, E40, E41, E43-E47)
+The knowledge/learning/sandbox/governance/research/small-model epics (E31, E38, E40, E41, E43-E49)
 are product differentiators (schedule alongside Tier 2); E32-E37 and E42 are the hosted
 platform/backend that earns.
 | Epic | Title | Maps to | Depends | Size |
@@ -813,6 +853,8 @@ platform/backend that earns.
 | E45 | Native Sandbox Runtime (Firecracker/gVisor/containers, in-guest agent, exec+streaming, fs API, port routing, snapshot/fork, per-user isolation, warm pool) | F28 | E3, E23 | L |
 | E46 | Research & Ingestion Tools (SearXNG-style metasearch, YouTube transcripts, web scraping -> Cortex) | F29 | E38 | M |
 | E47 | Task & Build Engine (declarative task graph, parallel topo execution, content-addressed caching) | F30 | E45 | M |
+| E48 | Small-Model Mode & Structured Task Workflow (game plan -> to-do list -> one-task-at-a-time, lean tools, verification, anti-derailment) | F31 | E2, E3, E6 | L |
+| E49 | Telemetry & Privacy (on by default, anonymized, opt-out in privacy settings) | F32 | E1 | M |
 
 ---
 
@@ -830,7 +872,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E47 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E49 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |

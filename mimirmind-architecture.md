@@ -53,7 +53,7 @@ many well-separated packages, with SurrealDB as the only external companion.
 | Q1 | SurrealDB embedded vs sidecar | **Managed sidecar** (daemon auto-starts a local SurrealDB; Docker or bundled binary) | SurrealDB's Go support is client/server; a managed sidecar keeps the brain durable and upgradable. Embedded revisited later. |
 | Q2 | GUI framework | **Solid** (SolidJS) | Fast, fine-grained reactivity, small bundles; matches the user's prior SolidJS experience (agence). React is an acceptable fallback. |
 | Q3 | Default zero-config model | **Ollama** if detected locally; else prompt for a provider key | Ollama is the most common local runtime; gives a true "runs with no key" path. |
-| Q4 | Telemetry | **Off by default**; opt-in anonymous only | Local-first, privacy-first brand promise. |
+| Q4 | Telemetry | **On by default**; opt-out in privacy settings | Collect anonymized metrics to improve the system; users can disable any time. |
 
 ---
 
@@ -81,11 +81,14 @@ many well-separated packages, with SurrealDB as the only external companion.
 - **Consequences:** (+) durable, upgradeable brain; consistent with Open Notebook. (-)
   one more process; the daemon must health-check/restart it.
 
-### ADR-004: OpenAI-compatible HTTP for providers (no SDK lock-in)
-- **Decision:** A single provider abstraction calls OpenAI-compatible `/chat/completions`
-  (streaming) over HTTP; per-provider adapters only adjust base URL, auth, and quirks.
-- **Consequences:** (+) any provider or local model via one code path; no vendor SDK
-  dependency. (-) we own retry/streaming/usage parsing (small, well-understood).
+### ADR-004: Multi-dialect provider abstraction (OpenAI + Anthropic native; no SDK lock-in)
+- **Decision:** A provider abstraction with pluggable API **dialects/encoders**. Built
+  in: **OpenAI-compatible** (`/v1/chat/completions`, streaming) and **Anthropic-native**
+  (`/v1/messages`). Per-provider adapters set base URL, auth, dialect, and quirks. More
+  dialects (e.g. Gemini) via plugins.
+- **Consequences:** (+) both OpenAI and Anthropic endpoints work natively; any provider
+  or local model via one code path; no vendor SDK dependency. (-) we own per-dialect
+  request/response mapping + streaming/usage parsing (small, well-understood).
 
 ### ADR-005: Modular packages + typed plugin SDK + central registry
 - **Decision:** Clean Go package boundaries; plugins register capabilities via a typed
@@ -119,9 +122,21 @@ many well-separated packages, with SurrealDB as the only external companion.
 - **Consequences:** (+) misbehavior is structurally impossible, not prompt-discouraged.
   (-) policy authoring overhead (ship sensible defaults).
 
-### ADR-010: Ollama as the default local model; telemetry off
-- **Decision:** Zero-config path uses Ollama if present; telemetry defaults off.
-- **Consequences:** (+) true "no key, no cloud" first run; privacy promise kept.
+### ADR-010: Ollama default local model; telemetry on by default (opt-out)
+- **Decision:** Zero-config path uses Ollama if present. Telemetry is **on by default**
+  (anonymized usage metrics) with an opt-out in privacy settings.
+- **Consequences:** (+) true "no key, no cloud" first run; we collect data to improve the
+  system. (-) must be transparent, easy opt-out, and never collect code/content by default.
+
+### ADR-011: Small-model-first structured workflow
+- **Context:** A core goal is smooth coding on <=30B local models, which derail easily
+  (too many tools, open-ended tasks, weak planning, poor self-verification).
+- **Decision:** Enforce a structured protocol: mandatory game plan -> convert to an
+  ordered to-do list -> work one item at a time (implement -> debug -> test -> done) ->
+  verify each step. For small models, expose a lean tool set and focused context.
+- **Consequences:** (+) small models stay on track and produce working code; the to-do
+  list is the agent's working memory. (-) adds a planning step (worth it; large models
+  can fast-path it).
 
 ---
 
@@ -255,9 +270,23 @@ DEFINE FIELD name ON skill TYPE string;
 DEFINE FIELD content ON skill TYPE string;
 DEFINE FIELD source ON skill TYPE string ASSERT $value IN ["reflected","quality_gate","manual"];
 DEFINE TABLE task SCHEMAFULL;
-DEFINE FIELD goal ON task TYPE string;
-DEFINE FIELD status ON task TYPE string DEFAULT "pending";
-DEFINE FIELD plan ON task FLEXIBLE TYPE option<object>;
+DEFINE FIELD goal      ON task TYPE string;
+DEFINE FIELD status    ON task TYPE string DEFAULT "pending"
+  ASSERT $value IN ["pending","in_progress","completed","blocked"];
+DEFINE FIELD plan      ON task FLEXIBLE TYPE option<object>;   -- the game plan
+DEFINE FIELD session   ON task TYPE option<record<session>>;
+DEFINE FIELD created_at ON task TYPE datetime DEFAULT time::now();
+-- To-do items: the game plan broken into ordered, verifiable steps (small-model memory)
+DEFINE TABLE todo SCHEMAFULL;
+DEFINE FIELD task     ON todo TYPE record<task>;
+DEFINE FIELD ord      ON todo TYPE int;                        -- order
+DEFINE FIELD content  ON todo TYPE string;
+DEFINE FIELD status   ON todo TYPE string DEFAULT "pending"
+  ASSERT $value IN ["pending","in_progress","completed","blocked"];
+DEFINE FIELD parent   ON todo TYPE option<record<todo>>;       -- subtasks
+DEFINE FIELD depends  ON todo FLEXIBLE TYPE option<array<record<todo>>>;  -- dependencies
+DEFINE FIELD tags     ON todo FLEXIBLE TYPE option<array<string>>;
+DEFINE FIELD verified ON todo TYPE bool DEFAULT false;         -- debug/test passed
 DEFINE TABLE sandbox SCHEMAFULL;
 DEFINE FIELD backend ON sandbox TYPE string ASSERT $value IN ["container","microvm"];
 DEFINE FIELD status ON sandbox TYPE string DEFAULT "creating";
@@ -286,6 +315,24 @@ run(sessionKey, prompt):
   own goroutines with isolated context, returning only a summary.
 - The policy gate (ADR-009) wraps every ACT step; a `require_approval` transitions to
   `awaiting_approval` and pauses until the user responds (GUI/TUI/mobile).
+
+### Small-Model Mode (<=30B) - structured workflow
+Small models derail easily (too many tools, open-ended tasks, weak planning). Mímir
+keeps them on track with a forced structure (ADR-011):
+1. **Game plan first** - before any code, produce a spec (requirements -> design ->
+   tasks). Plan-before-code is enforced.
+2. **Plan -> to-do list** - convert the plan into an ordered `todo` list (each item
+   small + independently verifiable), persisted in SurrealDB.
+3. **One item at a time** - work a single todo: implement -> debug -> test -> mark
+   `completed` -> next. The to-do list is the model's working memory, re-injected each
+   step so it stays oriented.
+4. **Verify each step** - run tests/checks after each item; debug before advancing.
+5. **Lean tools** - for small models, expose a focused set (read/write/edit/bash/
+   todowrite) instead of all tools; focused context (only the current task).
+6. **Anti-derailment** - doom-loop detection (F4.3), step budgets, "re-read the plan"
+   re-orientation prompts.
+- **Model-tier awareness:** detect small models (size/family) and auto-enable this mode
+  + lean tools; large models get the full toolset (and may fast-path the plan).
 
 ---
 
@@ -322,12 +369,21 @@ type Plugin interface {
 ```go
 type Provider interface {
     ID() string
+    Dialect() Dialect                            // openai_compat | anthropic | ...
     Generate(ctx, req GenerateRequest) (GenerateResponse, error)
-    Stream(ctx, req GenerateRequest) (<-chan StreamEvent, error)  // SSE deltas + usage
+    Stream(ctx, req GenerateRequest) (<-chan StreamEvent, error)  // deltas + usage
+}
+
+// Dialect encodes/decodes one API wire format.
+type Dialect interface {
+    EncodeRequest(req GenerateRequest) (httpRequest, error)
+    DecodeStream(chunk []byte) (StreamEvent, error)
 }
 ```
-- One `openaiCompatProvider` covers all OpenAI-compatible endpoints (cloud + local).
-- Provider registry routes by model string (`anthropic/claude-...`, `ollama/...`).
+- Built-in dialects: `openaiCompatDialect` (`/v1/chat/completions`) and
+  `anthropicDialect` (`/v1/messages`). More via plugins (e.g. Gemini).
+- Provider registry routes by model string (`anthropic/claude-...`, `openai/...`,
+  `ollama/...`) and selects the matching dialect.
 - Base URL + API key from `mimir.json` / env / `auth.json` (encrypted).
 - Default local: Ollama at `http://localhost:11434` (ADR-010).
 
@@ -370,6 +426,10 @@ type Provider interface {
 - **Secrets:** API keys encrypted at rest (MIMIR_ENCRYPTION_KEY); `.env` gitignored.
 - **Sandboxing:** untrusted code runs in containers/microVMs (ADR-007).
 - **MCP security gateway** (Tier 2): tool-poisoning/drift/hidden-instruction scanning.
+- **Telemetry (on by default, opt-out):** anonymized usage metrics (counts, model/tool,
+  success/error rates, latency) to improve the system. No code/content/prompts by
+  default (separate explicit opt-in). Disabled in privacy settings; the only outbound
+  call besides the chosen LLM provider; fully disable-able for air-gapped use.
 
 ---
 

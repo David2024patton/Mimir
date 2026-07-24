@@ -384,6 +384,20 @@ Grouped by theme. Each notes the originator(s) and why it matters.
 - WHY: the supporting cast - fast builds, a responsive GUI, accessible components, and
   validated structured output.
 
+### B31. Small-model-friendly structured workflow (<=30B)
+- Small models derail in agent loops (too many tools, open-ended tasks, weak planning).
+  Patterns that keep them on track:
+- **Plan-first + to-do list**: force a game plan, convert to an ordered to-do list, work
+  one item at a time (implement -> debug -> test -> done). The to-do list is working
+  memory. (Claude Code TodoWrite; agence's extended todo with subtasks/dependencies/carry;
+  Kiro tasks.)
+- **Lean tool surface**: restrict to read/write/edit/bash/todowrite for small models
+  (chimera "shrew" tunes Qwen3.6-35B-A3B this way; smaller step budgets).
+- **Focused context + re-orientation**: load only the current task; re-inject the plan;
+  doom-loop detection; step budgets.
+- **Verify each step**: run tests after each item; debug before advancing.
+- WHY: makes <=30B local models productive - central to the local-first/sovereign mission.
+
 ---
 
 ## C. Per-Tool Cheat Sheet (one-liner differentiators)
