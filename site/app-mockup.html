@@ -168,8 +168,9 @@
         <div class="nav-section">Agents</div>
         <div class="nav-item"><span class="persona-dot" style="background:var(--teal)"></span><span class="lbl">Odin · plan</span></div>
         <div class="nav-item"><span class="persona-dot" style="background:var(--ember)"></span><span class="lbl">Thor · build</span></div>
-        <div class="nav-item"><span class="persona-dot" style="background:var(--purple)"></span><span class="lbl">Loki · test</span></div>
-        <div class="nav-item"><span class="persona-dot" style="background:var(--blue)"></span><span class="lbl">Heimdall · audit</span></div>
+        <div class="nav-item"><span class="persona-dot" style="background:var(--purple)"></span><span class="lbl">Loki · test/debug</span></div>
+        <div class="nav-item"><span class="persona-dot" style="background:var(--blue)"></span><span class="lbl">Heimdall · visual audit</span></div>
+        <div class="nav-item"><span class="persona-dot" style="background:var(--red)"></span><span class="lbl">Forseti · code audit</span></div>
         <div class="nav-item"><span class="persona-dot" style="background:var(--yellow)"></span><span class="lbl">Bragi · docs</span></div>
         <div class="nav-section">Extend</div>
         <div class="nav-item"><span class="ic">⚡</span><span class="lbl">Skills</span></div>
@@ -289,15 +290,16 @@
           <div class="sub">One section at a time. Each is tested by Loki and audited by Heimdall before the next.</div>
           <div class="phase">
             <div class="phase-h">Prep (must finish before build)</div>
-            <div class="taskrow done"><span class="tcheck">✓</span><span class="tlabel">Discovery — agree the plan with the user</span><span class="twho">Odin</span></div>
+            <div class="taskrow done"><span class="tcheck">✓</span><span class="tlabel">Discovery — interview + brainstorm + docs</span><span class="twho">Odin</span></div>
             <div class="taskrow active"><span class="tcheck">2</span><span class="tlabel">Design — UI mock approved by user</span><span class="twho">Odin</span></div>
             <div class="taskrow"><span class="tcheck"></span><span class="tlabel">Research — gather context into the Cortex</span><span class="twho" style="color:var(--teal)">Huginn&Muninn</span></div>
           </div>
           <div class="phase">
-            <div class="phase-h">Build (one section at a time)</div>
+            <div class="phase-h">Build — one section at a time, each verified before the next</div>
             <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S1 — Layout + header</span><span class="twho thor">Thor</span></div>
-            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S1 — test</span><span class="twho loki">Loki</span></div>
-            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S1 — audit gate</span><span class="twho heimdall">Heimdall</span></div>
+            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S1 — end-to-end test + debug</span><span class="twho loki">Loki</span></div>
+            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S1 — code audit</span><span class="twho" style="color:var(--red)">Forseti</span></div>
+            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S1 — visual audit (screenshot + vision)</span><span class="twho heimdall">Heimdall</span></div>
             <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S2 — Add-task form</span><span class="twho thor">Thor</span></div>
             <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S3 — Task list + toggle</span><span class="twho thor">Thor</span></div>
             <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S4 — Filters + persistence</span><span class="twho thor">Thor</span></div>
@@ -314,9 +316,22 @@
         <div class="chat-h">💬 Session <span style="color:var(--dim);font-weight:400;font-size:12.5px">· task-tracker · guided build</span></div>
         <div class="chat-body" id="chatBody">
           <div class="msg">
+            <div class="who"><span class="pd" style="background:var(--teal)">O</span><b>Odin</b><span class="role">orchestrator · Discovery</span></div>
+            <div class="bubble">Before we build, let's get this perfect. A few questions:<br>
+              <span class="muted">• What kind of app — web, mobile, desktop, or SaaS?<br>
+              • What UI style are you after?<br>
+              • If SaaS — logins? subscriptions/payments? user roles?<br>
+              • Any database, API, or integrations?</span></div>
+          </div>
+          <div class="msg">
+            <div class="who"><span class="pd" style="background:var(--panel3);color:var(--text)">Y</span><b>You</b></div>
+            <div class="bubble user">Simple web task-tracker — clean minimal UI, no logins, no backend. Save to localStorage.</div>
+          </div>
+          <div class="msg">
             <div class="who"><span class="pd" style="background:var(--teal)">O</span><b>Odin</b><span class="role">orchestrator</span></div>
-            <div class="bubble">I've finished <b>Discovery</b>. Here's what we agreed: a static task-tracker (add, toggle, filter, persist). I broke it into 4 sections. <span class="muted">Before any code, I mocked the UI for your approval →</span></div>
-            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>todo.write</code> · 8 tasks · 4 sections</div></div>
+            <div class="bubble">Locked. Docs are done (PRD + design + tech spec) and I broke it into 4 sections. <span class="muted">Before any code, I mocked the UI for your approval →</span></div>
+            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>discovery.interview</code> · 4 questions · concept locked</div></div>
+            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>docs.write</code> · PRD + design + tech spec</div></div>
             <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>mock.generate</code> · wireframe → Design tab</div></div>
           </div>
 
@@ -333,9 +348,11 @@
           <!-- building message (hidden until approved) -->
           <div class="msg" id="buildMsg" style="display:none">
             <div class="who"><span class="pd" style="background:var(--ember)">T</span><b>Thor</b><span class="role">builder</span></div>
-            <div class="bubble">Design approved. Building <b>Section S1: Layout + header</b> — then I'll stop for Loki's test and Heimdall's audit before S2. <span class="muted">One section at a time.</span></div>
+            <div class="bubble">Design approved. Building <b>Section S1: Layout + header</b>. Then: Loki tests end-to-end → Forseti audits the code → Heimdall screenshots &amp; verifies the UI — before S2. <span class="muted">One section at a time, verified at each step.</span></div>
             <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>write_file</code> · index.html (S1)</div></div>
             <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>bash</code> · sandbox · <code>npm run build</code> → ok</div></div>
+            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>loki.test</code> · end-to-end → pass &nbsp;·&nbsp; <code>forseti.audit</code> · code → clean</div></div>
+            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>heimdall.screenshot</code> · vision-verify UI vs mock → matches</div></div>
           </div>
 
           <!-- to-do widget -->

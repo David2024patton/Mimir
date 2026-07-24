@@ -821,12 +821,19 @@ Designed so models **<=30B** can code smoothly without getting lost or sidetrack
 ### F33. Norse Agent Personas [Differentiator - identity]
 The agent modes and subagents are named Norse figures, giving Mímir a coherent mythic
 identity and clear, memorable role names.
-- F33.1 Built-in personas: Odin (orchestrator/planner), Thor (builder), Loki
-  (debugger/tester), Heimdall (reviewer/watchman), Bragi (skald/docs).
-- F33.2 Subagent personas: Huginn & Muninn (scout/research - "thought" & "memory"),
-  Ratatoskr (messenger / inter-agent comms).
-- F33.3 Planning personas: the Norns (Urd/Verdandi/Skuld - spec past/present/future);
-  Forseti (arbiter for permission/policy decisions).
+- F33.1 Built-in specialist personas (the build team):
+  - **Odin** - orchestrator/planner: runs Discovery, asks the questions, brainstorms,
+    makes the plan, and hands off to the specialists.
+  - **Thor** - builder: writes the code, one section at a time.
+  - **Loki** - tester & debugger: end-to-end tests + debugging (the trickster who breaks
+    things to find the bugs).
+  - **Forseti** - code auditor: reviews code quality, correctness, security (the judge).
+  - **Heimdall** - visual auditor: screenshots the running app + vision-verifies the UI
+    matches the approved mock (the all-seeing watchman).
+  - **Bragi** - skald: docs, README, marketing copy.
+- F33.2 Scout personas: Huginn & Muninn (research - "thought" & "memory"), Ratatoskr
+  (messenger / inter-agent comms).
+- F33.3 Planning personas: the Norns (Urd/Verdandi/Skuld - spec past/present/future).
 - F33.4 Each persona bundles a prompt + tool allowlist + default model (custom modes,
   F16); users can add their own Norse (or any) personas.
 - F33.5 Persona names surface in the GUI/TUI (agent switcher, chat, subagent cards).
@@ -918,26 +925,44 @@ disciplined for all). This is the BMAD method baked into Mímir as the default b
 protocol. Lots of prep FIRST, then build.
 
 Phases (each ends with a user checkpoint gate):
-- F43.1 **Discovery (Odin)**: work out the plan WITH the user - requirements, scope,
-  success criteria. Interactive Q&A before anything is built.
+- F43.1 **Discovery (Odin) - deep requirements interview**: before anything is built,
+  Odin interviews the user with a structured, adaptive questionnaire AND brainstorms
+  until the concept is airtight: What kind of app (web/mobile/desktop/SaaS/CLI)? What
+  UI style/look? If SaaS: logins/auth? subscriptions/payments? multi-tenant? roles?
+  Database? API? integrations? Then it produces complete docs (PRD + design + tech
+  spec) and gets them PERFECT before any build starts.
 - F43.2 **Design - mock first**: generate a UI mock/wireframe for the user to review and
   APPROVE before any code. Visual sign-off gate.
 - F43.3 **Research (Huginn & Muninn)**: research the domain/tech via the Cortex +
   metasearch; gather and ground context.
 - F43.4 **Plan**: convert the approved design into an ordered to-do list of sections
   (game plan -> to-do list, F31).
-- F43.5 **Build (Thor) - one section at a time**: build ONE section, then STOP for an
-  auditor gate before the next. Implement -> test (Loki) -> audit (Heimdall) -> user
-  checkpoint -> next section.
+- F43.5 **Build + specialist handoff - one section at a time**: Odin hands each section
+  to the specialists in sequence and does NOT advance until all pass:
+  Thor (build) -> Loki (end-to-end test + debug) -> Forseti (code audit) -> Heimdall
+  (visual audit: screenshot + vision-verify the UI) -> user checkpoint -> next section.
 - F43.6 **Polish (Bragi)**: docs, comments, README, marketing copy.
 - F43.7 **Checkpoint gates**: each phase ends with a user sign-off; the framework does
   NOT proceed until the user checks it off. Configurable auto-advance for trusted users.
-- F43.8 **Auditor roles**: Heimdall reviews each section (code-review gate); Loki tests;
-  the user is the final approver.
+- F43.8 **Three verification roles** per section:
+  - **Loki** = tester & debugger: runs end-to-end tests, reproduces + fixes bugs.
+  - **Forseti** = code auditor: reviews code quality, correctness, security.
+  - **Heimdall** = visual auditor: screenshots the running app and uses a vision model
+    to verify the UI matches the approved mock and looks right (no visual bugs).
 - F43.9 **Prep-first enforcement**: the framework refuses to write app code until
   Discovery + Design (mock approved) + Research + Plan are complete.
 - F43.10 Mock generator: produce UI mockups (wireframe -> high-fidelity) the user can
   annotate (F24) and approve; the approved mock drives the build.
+- F43.11 **Adaptive questionnaire**: the Discovery interview adapts to the project type
+  (SaaS triggers auth/payment/tenant questions; a static site triggers design/content
+  questions); brainstorm mode until the user is satisfied.
+- F43.12 **Visual verification**: capture screenshots of the running app (from the
+  sandbox/browser preview) and compare against the approved mock via a vision model;
+  flag visual regressions.
+- F43.13 **Debugging built in**: debug logging, error capture, and Loki's debugging
+  tools are first-class throughout the whole build (not bolted on).
+- F43.14 **Document-first gate**: the build cannot start until the Discovery docs (PRD +
+  design + tech spec) are complete and user-approved.
 
 ---
 
