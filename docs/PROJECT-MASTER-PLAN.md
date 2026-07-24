@@ -904,6 +904,12 @@ aggregating existing registries plus a Mímir-curated registry.
   security gateway); "will install" permission preview.
 - F42.6 Mímir-curated registry + featured listings (monetization: featured/verified slots).
 - F42.7 Publish flow: authors publish MCP/Skills/Personas to the Mímir registry.
+- F42.8 Paid listings: creators set a price (one-time or subscription) for skills/hooks/
+  MCP/personas/scrapers/workflows (the Apify-Actor-Store model for agent components).
+- F42.9 Revenue share + payouts: e.g. 80/20 (creator/Mímir); creator dashboard with
+  sales analytics + payouts (Stripe Connect).
+- F42.10 Creator tooling: versioning, listing pages, reviews/ratings, "sell your
+  scraper/hook" storefronts; verified-publisher badges.
 
 ---
 
@@ -1097,26 +1103,39 @@ upsells. The CLI is free; the hosted services make money.
 6. **Enterprise / self-hosted**. Air-gapped gateway, compliance, on-prem, support
    (Factory/IBM Bob/Kiro model).
 
-### Suggested pricing tiers
-Two axes: the **model gateway** (compute) and **knowledge/notebooks** (storage +
-embeddings). The killer angle: self-hosted is UNLIMITED (your hardware), and the cloud
-tiers **double NotebookLM** (Gemini Notebook) at a lower price.
+### Pricing - two product lines + a creator marketplace
 
-NotebookLM 2026 reference: Free = 50 sources/notebook; Pro ($19.99) = 300;
-Ultra ($199.99) = 600; per-source cap 500k words / 200MB.
+Mímir monetizes two things: **coding** (model access, like opencode's Zen/Go) and
+**knowledge** (notebooks/Cortex, vs NotebookLM). Plus a **creator marketplace** with
+revenue share. Self-hosted is always free and unlimited.
 
-| Tier | Price | Notebooks | Sources/notebook | Includes |
+#### A. Coding plans (model access - like opencode Zen/Go)
+| Plan | Price | What you get |
+|---|---|---|
+| **Gateway (pay-as-you-go)** | per-token at cost + small fee | Curated/benchmarked models, one key, unified billing, works with any agent (like Zen) |
+| **Mímir Coder** | $10/mo | Cheap subscription for curated open coding models with $-denominated usage limits (~6x value, like Go) |
+
+#### B. Knowledge plans (notebooks - vs NotebookLM: cheaper AND double)
+NotebookLM 2026: Free = 50 sources/notebook; Pro ($19.99) = 300; Ultra ($199.99) = 600.
+| Plan | Price | Notebooks | Sources/notebook | What you get |
 |---|---|---|---|---|
-| **Self-hosted (free)** | $0 | Unlimited | Unlimited | Full framework, BYOK or local, private, no telemetry required |
-| **Gateway (pay-as-you-go)** | credit + small fee | - | - | Curated models, per-token at cost, works with any agent |
-| **Cloud Sync** | ~$9/mo | 200 | 200 | Sync Cortex across devices + mobile + hosted embeddings |
-| **Cloud Pro** | ~$19/mo | 1,000 | **600 (2x NotebookLM Pro)** | Hosted embeddings, cloud agents, advanced orchestration |
-| **Cloud Ultra** | ~$49/mo | Unlimited | **1,200 (2x NotebookLM Ultra)** | Hosted, priority, watermark-free outputs |
-| **Team / Enterprise** | custom / ~$25+ seat | custom | custom | Shared Cortex, SSO/RBAC, spend limits, self-host option, support |
+| **Self-hosted (free)** | $0 | Unlimited | Unlimited | Full framework, BYOK or local, private, local embeddings |
+| **Cloud Sync** | $9/mo | 200 | 200 | Sync Cortex across devices + mobile + hosted embeddings |
+| **Cloud Pro** | **$15/mo** | 1,000 | **600 (2x NotebookLM Pro, $5 cheaper)** | Hosted embeddings, cloud agents, advanced orchestration |
+| **Cloud Ultra** | $39/mo | Unlimited | **1,200 (2x NotebookLM Ultra, $160 cheaper)** | Hosted, priority, watermark-free outputs |
+| **Team / Enterprise** | custom / ~$25+ seat | custom | custom | Shared Cortex, SSO/RBAC, spend limits, self-host, support |
 
-**The headline:** "NotebookLM caps you at 300 sources for $20/mo and 600 for $200/mo.
-Mímir is unlimited for free on your own machine - and syncs everywhere, with double the
-sources, for less." Embeddings run locally (free) or hosted (paid); the user chooses.
+#### C. Creator Marketplace (revenue share)
+Creators publish and **sell** skills, hooks, MCP servers, personas, scrapers, and
+workflows. Free + paid listings; revenue share (e.g. 80/20 creator/Mímir); creator
+payouts + dashboard; featured/verified listings. Security scanning gates every listing
+(the Apify-Actor-Store model, but for agent components).
+
+**The headlines:**
+- Coding: "Curated coding models for $10/mo - or pay only for what you use."
+- Knowledge: "NotebookLM charges $20/mo for 300 sources. Mímir is unlimited free on your
+  machine, or $15/mo synced everywhere with double the sources."
+- Creators: "Build skills, hooks, and scrapers. Sell them. Keep 80%."
 
 ### What to build (the platform backend - separate from the open-source CLI)
 - **Gateway service**: OpenAI-compatible proxy that authenticates API keys, routes
