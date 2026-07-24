@@ -911,6 +911,34 @@ aggregating existing registries plus a Mímir-curated registry.
 - F42.10 Creator tooling: versioning, listing pages, reviews/ratings, "sell your
   scraper/hook" storefronts; verified-publisher badges.
 
+### F43. Guided Development Protocol [Core differentiator - "hold the LLM's hand"]
+A mandatory, gated, phase-based workflow that holds the model's hand so it builds
+software ONE section at a time without getting lost (critical for small models,
+disciplined for all). This is the BMAD method baked into Mímir as the default build
+protocol. Lots of prep FIRST, then build.
+
+Phases (each ends with a user checkpoint gate):
+- F43.1 **Discovery (Odin)**: work out the plan WITH the user - requirements, scope,
+  success criteria. Interactive Q&A before anything is built.
+- F43.2 **Design - mock first**: generate a UI mock/wireframe for the user to review and
+  APPROVE before any code. Visual sign-off gate.
+- F43.3 **Research (Huginn & Muninn)**: research the domain/tech via the Cortex +
+  metasearch; gather and ground context.
+- F43.4 **Plan**: convert the approved design into an ordered to-do list of sections
+  (game plan -> to-do list, F31).
+- F43.5 **Build (Thor) - one section at a time**: build ONE section, then STOP for an
+  auditor gate before the next. Implement -> test (Loki) -> audit (Heimdall) -> user
+  checkpoint -> next section.
+- F43.6 **Polish (Bragi)**: docs, comments, README, marketing copy.
+- F43.7 **Checkpoint gates**: each phase ends with a user sign-off; the framework does
+  NOT proceed until the user checks it off. Configurable auto-advance for trusted users.
+- F43.8 **Auditor roles**: Heimdall reviews each section (code-review gate); Loki tests;
+  the user is the final approver.
+- F43.9 **Prep-first enforcement**: the framework refuses to write app code until
+  Discovery + Design (mock approved) + Research + Plan are complete.
+- F43.10 Mock generator: produce UI mockups (wireframe -> high-fidelity) the user can
+  annotate (F24) and approve; the approved mock drives the build.
+
 ---
 
 ## 7. Epics Roadmap
@@ -1001,6 +1029,7 @@ platform/backend that earns.
 | E57 | Sharing & Collaboration (session share links, published artifacts, team sessions) | F40 | E12 | M |
 | E58 | Embedding Strategy (bundled local ONNX model + Ollama + provider + cloud embeddings) | F41 | E6 | M |
 | E59 | Marketplace (one-click install of MCP + Skills + Personas; registry aggregation; security scanning) | F42 | E11, E12 | L |
+| E60 | Guided Development Protocol (Discovery -> Design mock -> Research -> Plan -> build one section at a time with auditor gates + checkpoints) | F43 | E2, E8, E9 | L |
 
 ---
 
@@ -1018,7 +1047,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E59 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E60 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |

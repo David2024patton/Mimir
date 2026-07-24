@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mímir — App UI Mockup</title>
+  <style>
+    :root {
+      --bg:#0a0e14; --bg2:#0e141d; --panel:#131b26; --panel2:#182231; --panel3:#1d2938;
+      --border:#23303f; --border2:#2d3d4f; --text:#e6edf3; --muted:#8b98a5; --dim:#5f6b78;
+      --teal:#2dd4bf; --teal-d:#14b8a6; --ember:#fb923c; --green:#4ade80; --blue:#60a5fa;
+      --purple:#a78bfa; --red:#f87171; --yellow:#fbbf24;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+    .app{display:grid;grid-template-rows:52px 1fr;height:100vh}
+    button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+    /* TOP BAR */
+    .topbar{display:flex;align-items:center;gap:14px;padding:0 16px;background:var(--bg2);border-bottom:1px solid var(--border)}
+    .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:16px}
+    .mark{width:22px;height:22px;border-radius:6px;background:radial-gradient(circle at 30% 30%,var(--teal),var(--teal-d));box-shadow:0 0 12px rgba(45,212,191,.3)}
+    .switcher{display:flex;align-items:center;gap:6px;padding:5px 11px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px}
+    .switcher b{color:var(--text);font-weight:600}
+    .switcher.agent b{color:var(--teal)}
+    .topsearch{flex:1;max-width:340px;display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--dim);font-size:13px}
+    .spacer{flex:1}
+    .status{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+    .iconbtn{width:32px;height:32px;display:grid;place-items:center;border-radius:8px;color:var(--muted)}
+    .iconbtn:hover{background:var(--panel);color:var(--text)}
+
+    /* BODY */
+    .body{display:grid;grid-template-columns:212px 1fr 372px 52px;overflow:hidden}
+    .body.nav-collapsed{grid-template-columns:56px 1fr 372px 52px}
+
+    /* LEFT NAV */
+    .nav{background:var(--bg2);border-right:1px solid var(--border);padding:12px 10px;overflow-y:auto}
+    .nav-section{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding:10px 10px 6px;font-weight:700}
+    .nav-item{display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer;font-size:13.5px;white-space:nowrap}
+    .nav-item:hover{background:var(--panel);color:var(--text)}
+    .nav-item.active{background:var(--panel2);color:var(--text)}
+    .nav-item .ic{width:18px;text-align:center;flex:0 0 18px}
+    .nav-item .badge{margin-left:auto;font-size:11px;background:var(--panel3);padding:1px 7px;border-radius:99px;color:var(--muted)}
+    .nav-collapsed .nav-section,.nav-collapsed .nav-item span.lbl,.nav-collapsed .nav-item .badge{display:none}
+    .persona-dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+
+    /* CENTER */
+    .center{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+    .flowbar{display:flex;align-items:center;gap:6px;padding:10px 18px;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto}
+    .flow-step{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);white-space:nowrap}
+    .flow-step .fdot{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;border:1.5px solid var(--border2);color:var(--dim)}
+    .flow-step.done{color:var(--muted)} .flow-step.done .fdot{background:var(--green);border-color:var(--green);color:#04220f}
+    .flow-step.current{color:var(--text)} .flow-step.current .fdot{background:var(--teal);border-color:var(--teal);color:#04201c;box-shadow:0 0 10px rgba(45,212,191,.4)}
+    .flow-arrow{color:var(--dim);font-size:12px}
+    .tabs{display:flex;gap:2px;padding:0 14px;background:var(--bg2);border-bottom:1px solid var(--border)}
+    .tab{padding:11px 15px;font-size:13.5px;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer}
+    .tab:hover{color:var(--text)}
+    .tab.active{color:var(--text);border-bottom-color:var(--teal)}
+    .pane{flex:1;overflow-y:auto;padding:24px 28px;display:none}
+    .pane.active{display:block}
+    .pane h2{font-size:18px;margin:0 0 4px}
+    .pane .sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px}
+    .card h3{font-size:14.5px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+    .req{display:flex;gap:10px;padding:7px 0;font-size:13.5px;color:var(--muted);border-bottom:1px solid var(--border)}
+    .req:last-child{border-bottom:none}
+    .req .n{color:var(--teal);font-weight:700;flex:0 0 26px}
+
+    /* wireframe mock */
+    .wire{background:#0d1117;border:1px dashed var(--border2);border-radius:12px;padding:18px;max-width:560px}
+    .wire .wbar{height:34px;border:1.5px dashed var(--border2);border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 12px;margin-bottom:14px;color:var(--dim);font-size:12px}
+    .wire .wadd{display:flex;gap:8px;margin-bottom:14px}
+    .wire .winput{flex:1;height:36px;border:1.5px dashed var(--border2);border-radius:8px;display:flex;align-items:center;padding:0 12px;color:var(--dim);font-size:12px}
+    .wire .wbtn{width:74px;height:36px;border:1.5px dashed var(--teal-d);border-radius:8px;display:grid;place-items:center;color:var(--teal);font-size:12px}
+    .wire .wtask{height:38px;border:1.5px dashed var(--border2);border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 12px;margin-bottom:8px;color:var(--dim);font-size:12px}
+    .wire .wcheck{width:16px;height:16px;border:1.5px dashed var(--border2);border-radius:5px}
+    .wire .wline{flex:1;height:8px;border-radius:4px;background:var(--panel3)}
+    .mock-note{margin-top:14px;font-size:12.5px;color:var(--muted);display:flex;gap:8px;align-items:center}
+
+    /* code */
+    .code{background:#0d1117;border:1px solid var(--border);border-radius:12px;font:12.5px/1.7 ui-monospace,"Cascadia Code",Consolas,monospace;overflow:auto}
+    .code .ch{padding:9px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:12px;display:flex;gap:8px}
+    .code pre{margin:0;padding:14px 16px;color:#c9d1d9}
+    .tk{color:#ff7b72}.ts{color:#a5d6ff}.tf{color:#d2a8ff}.tc{color:#8b949e}.tn{color:#79c0ff}
+
+    /* tasks board */
+    .phase{margin-bottom:18px}
+    .phase-h{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-weight:700;margin-bottom:8px}
+    .taskrow{display:flex;align-items:center;gap:11px;padding:9px 12px;background:var(--panel);border:1px solid var(--border);border-radius:9px;margin-bottom:7px;font-size:13.5px}
+    .tcheck{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--border2);flex:0 0 18px;display:grid;place-items:center;font-size:11px}
+    .taskrow.done .tcheck{background:var(--green);border-color:var(--green);color:#04220f}
+    .taskrow.done .tlabel{color:var(--dim);text-decoration:line-through}
+    .taskrow.active{border-color:var(--teal-d)}
+    .taskrow.active .tcheck{background:var(--teal);border-color:var(--teal);color:#04201c}
+    .tlabel{flex:1}
+    .twho{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--panel3);color:var(--muted)}
+    .twho.thor{color:var(--ember)}.twho.loki{color:var(--purple)}.twho.heimdall{color:var(--blue)}.twho.bragi{color:var(--yellow)}
+
+    /* RIGHT CHAT */
+    .chat{background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+    .chat-h{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;font-weight:600}
+    .chat-body{flex:1;overflow-y:auto;padding:16px}
+    .msg{margin-bottom:16px}
+    .msg .who{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-bottom:6px}
+    .msg .who .pd{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:11px;font-weight:800;color:#04201c}
+    .msg .who b{font-weight:600}.msg .who .role{color:var(--dim);font-size:11.5px}
+    .bubble{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:11px 13px;font-size:13.5px;color:var(--text)}
+    .bubble.user{background:var(--panel2);border-color:var(--border2)}
+    .bubble .muted{color:var(--muted)}
+    .toolcall{background:#0d1117;border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-top:8px;font-size:12.5px}
+    .toolcall .th{display:flex;align-items:center;gap:7px;color:var(--muted)}
+    .toolcall .th .ok{color:var(--green)}
+    .toolcall code{color:var(--teal);font-family:ui-monospace,monospace;font-size:12px}
+    /* checkpoint gate */
+    .gate{background:linear-gradient(180deg,rgba(45,212,191,.08),var(--panel));border:1px solid var(--teal-d);border-radius:12px;padding:14px;margin:8px 0}
+    .gate .gt{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13.5px;margin-bottom:6px}
+    .gate .gt .badge{font-size:10.5px;background:var(--teal);color:#04201c;padding:2px 8px;border-radius:99px;font-weight:700}
+    .gate p{margin:0 0 12px;font-size:13px;color:var(--muted)}
+    .gate .btns{display:flex;gap:8px}
+    .gbtn{padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600}
+    .gbtn.approve{background:var(--teal);color:#04201c}
+    .gbtn.approve:hover{background:var(--teal-d)}
+    .gbtn.changes{background:var(--panel2);border:1px solid var(--border2);color:var(--text)}
+    /* todo widget in chat */
+    .todowidget{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-top:8px}
+    .todowidget .tw-h{font-size:11.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px}
+    .tw-row{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0;color:var(--muted)}
+    .tw-row .b{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--border2);flex:0 0 14px;display:grid;place-items:center;font-size:9px}
+    .tw-row.done{color:var(--dim)} .tw-row.done .b{background:var(--green);border-color:var(--green);color:#04220f}
+    .tw-row.active{color:var(--text)} .tw-row.active .b{background:var(--teal);border-color:var(--teal);color:#04201c}
+    .chat-input{padding:12px 14px;border-top:1px solid var(--border)}
+    .chat-input .box{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--dim);font-size:13px}
+
+    /* RAIL */
+    .rail{background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0}
+    .rail button{width:36px;height:36px;display:grid;place-items:center;border-radius:9px;color:var(--muted);font-size:16px}
+    .rail button:hover{background:var(--panel);color:var(--teal)}
+    .rail .sep{width:24px;height:1px;background:var(--border);margin:4px 0}
+
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel2);border:1px solid var(--teal-d);border-radius:11px;padding:13px 20px;font-size:13.5px;opacity:0;transition:.3s;box-shadow:0 12px 40px rgba(0,0,0,.5);z-index:99}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .toast b{color:var(--teal)}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <button class="iconbtn" id="navToggle" title="Toggle nav">☰</button>
+      <div class="brand"><span class="mark"></span> Mímir</div>
+      <div class="switcher">📁 <b>task-tracker</b> ▾</div>
+      <div class="switcher agent">⚡ <b>Odin</b> <span style="color:var(--dim)">· orchestrator</span> ▾</div>
+      <div class="topsearch">🔍 <span>Search sessions, cortex, skills…</span></div>
+      <div class="spacer"></div>
+      <div class="status"><span class="dot"></span> daemon · ollama/qwen3.6-35b · sandbox ready</div>
+      <button class="iconbtn" title="Settings">⚙</button>
+    </div>
+
+    <!-- BODY -->
+    <div class="body" id="body">
+      <!-- LEFT NAV -->
+      <nav class="nav">
+        <div class="nav-section">Workspace</div>
+        <div class="nav-item active"><span class="ic">📁</span><span class="lbl">Projects</span><span class="badge">3</span></div>
+        <div class="nav-item"><span class="ic">🧠</span><span class="lbl">Cortex</span><span class="badge">128</span></div>
+        <div class="nav-item"><span class="ic">💬</span><span class="lbl">Sessions</span></div>
+        <div class="nav-section">Agents</div>
+        <div class="nav-item"><span class="persona-dot" style="background:var(--teal)"></span><span class="lbl">Odin · plan</span></div>
+        <div class="nav-item"><span class="persona-dot" style="background:var(--ember)"></span><span class="lbl">Thor · build</span></div>
+        <div class="nav-item"><span class="persona-dot" style="background:var(--purple)"></span><span class="lbl">Loki · test</span></div>
+        <div class="nav-item"><span class="persona-dot" style="background:var(--blue)"></span><span class="lbl">Heimdall · audit</span></div>
+        <div class="nav-item"><span class="persona-dot" style="background:var(--yellow)"></span><span class="lbl">Bragi · docs</span></div>
+        <div class="nav-section">Extend</div>
+        <div class="nav-item"><span class="ic">⚡</span><span class="lbl">Skills</span></div>
+        <div class="nav-item"><span class="ic">🧩</span><span class="lbl">Marketplace</span></div>
+        <div class="nav-item"><span class="ic">⚙</span><span class="lbl">Settings</span></div>
+      </nav>
+
+      <!-- CENTER -->
+      <div class="center">
+        <!-- guided workflow progress -->
+        <div class="flowbar">
+          <div class="flow-step done"><span class="fdot">✓</span> Discovery</div><span class="flow-arrow">→</span>
+          <div class="flow-step current" id="flowDesign"><span class="fdot">2</span> Design mock</div><span class="flow-arrow">→</span>
+          <div class="flow-step" id="flowResearch"><span class="fdot">3</span> Research</div><span class="flow-arrow">→</span>
+          <div class="flow-step" id="flowPlan"><span class="fdot">4</span> Plan</div><span class="flow-arrow">→</span>
+          <div class="flow-step" id="flowBuild"><span class="fdot">5</span> Build (1 section at a time)</div><span class="flow-arrow">→</span>
+          <div class="flow-step" id="flowPolish"><span class="fdot">6</span> Polish</div>
+        </div>
+        <!-- tabs -->
+        <div class="tabs">
+          <div class="tab" data-tab="plan">Plan</div>
+          <div class="tab active" data-tab="design">Design</div>
+          <div class="tab" data-tab="code">Code</div>
+          <div class="tab" data-tab="preview">Preview</div>
+          <div class="tab" data-tab="tasks">Tasks</div>
+        </div>
+
+        <!-- PLAN PANE -->
+        <div class="pane" data-pane="plan">
+          <h2>Discovery — agreed with you</h2>
+          <div class="sub">Odin worked this out with you before writing any code. Nothing builds until you sign off.</div>
+          <div class="card">
+            <h3>🎯 Goal</h3>
+            <p style="margin:0;color:var(--muted);font-size:13.5px">A simple task-tracker web app: add tasks, mark done, filter by status. Static, no backend.</p>
+          </div>
+          <div class="card">
+            <h3>✅ Requirements</h3>
+            <div class="req"><span class="n">1.1</span> User can add a task via an input + button.</div>
+            <div class="req"><span class="n">1.2</span> User can toggle a task complete/incomplete.</div>
+            <div class="req"><span class="n">1.3</span> User can filter: All / Active / Done.</div>
+            <div class="req"><span class="n">1.4</span> Tasks persist in localStorage.</div>
+          </div>
+          <div class="card">
+            <h3>📐 Sections (build order)</h3>
+            <div class="req"><span class="n">S1</span> Layout + header</div>
+            <div class="req"><span class="n">S2</span> Add-task form</div>
+            <div class="req"><span class="n">S3</span> Task list + toggle</div>
+            <div class="req"><span class="n">S4</span> Filters + persistence</div>
+          </div>
+        </div>
+
+        <!-- DESIGN PANE (the mock for approval) -->
+        <div class="pane active" data-pane="design">
+          <h2>UI Mock — needs your approval</h2>
+          <div class="sub">Mímir designed this wireframe before writing code. Approve it (or annotate &amp; request changes) to unlock the build.</div>
+          <div class="card">
+            <h3>🖼️ Task Tracker — wireframe</h3>
+            <div class="wire">
+              <div class="wbar">☰ &nbsp; Task Tracker <span style="margin-left:auto">All · Active · Done</span></div>
+              <div class="wadd"><div class="winput">Add a task…</div><div class="wbtn">+ Add</div></div>
+              <div class="wtask"><div class="wcheck"></div><div class="wline" style="max-width:70%"></div></div>
+              <div class="wtask"><div class="wcheck" style="border-color:var(--teal-d)"></div><div class="wline" style="max-width:50%;opacity:.5"></div></div>
+              <div class="wtask"><div class="wcheck"></div><div class="wline" style="max-width:82%"></div></div>
+            </div>
+            <div class="mock-note">✏️ Tip: click <b>Annotate</b> in the chat to draw on this mock and send feedback to Odin.</div>
+          </div>
+        </div>
+
+        <!-- CODE PANE -->
+        <div class="pane" data-pane="code">
+          <h2>Build — Section S1: Layout + header</h2>
+          <div class="sub">Thor builds one section, then stops for Heimdall's audit before the next.</div>
+          <div class="code">
+            <div class="ch">📄 index.html <span style="margin-left:auto;color:var(--green)">● saved</span></div>
+            <pre><span class="tc">&lt;!-- S1: Layout + header (built by Thor) --&gt;</span>
+<span class="tk">&lt;body&gt;</span>
+  <span class="tk">&lt;header</span> <span class="tf">class</span>=<span class="ts">"topbar"</span><span class="tk">&gt;</span>
+    <span class="tk">&lt;h1&gt;</span>Task Tracker<span class="tk">&lt;/h1&gt;</span>
+    <span class="tk">&lt;nav</span> <span class="tf">id</span>=<span class="ts">"filters"</span><span class="tk">&gt;</span>
+      <span class="tk">&lt;button</span> <span class="tf">data-filter</span>=<span class="ts">"all"</span> <span class="tf">class</span>=<span class="ts">"active"</span><span class="tk">&gt;</span>All<span class="tk">&lt;/button&gt;</span>
+      <span class="tk">&lt;button</span> <span class="tf">data-filter</span>=<span class="ts">"active"</span><span class="tk">&gt;</span>Active<span class="tk">&lt;/button&gt;</span>
+      <span class="tk">&lt;button</span> <span class="tf">data-filter</span>=<span class="ts">"done"</span><span class="tk">&gt;</span>Done<span class="tk">&lt;/button&gt;</span>
+    <span class="tk">&lt;/nav&gt;</span>
+  <span class="tk">&lt;/header&gt;</span>
+  <span class="tk">&lt;main</span> <span class="tf">id</span>=<span class="ts">"app"</span><span class="tk">&gt;&lt;/main&gt;</span>
+<span class="tk">&lt;/body&gt;</span></pre>
+          </div>
+        </div>
+
+        <!-- PREVIEW PANE -->
+        <div class="pane" data-pane="preview">
+          <h2>Live Preview</h2>
+          <div class="sub">Served from the sandbox at localhost:8080. Annotate it and send feedback to the agent.</div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <div style="background:#111827;padding:14px 18px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border)">
+              <b>Task Tracker</b>
+              <span style="margin-left:auto;display:flex;gap:6px">
+                <span style="background:var(--teal);color:#04201c;padding:3px 11px;border-radius:7px;font-size:12px;font-weight:600">All</span>
+                <span style="background:var(--panel3);padding:3px 11px;border-radius:7px;font-size:12px;color:var(--muted)">Active</span>
+                <span style="background:var(--panel3);padding:3px 11px;border-radius:7px;font-size:12px;color:var(--muted)">Done</span>
+              </span>
+            </div>
+            <div style="padding:18px">
+              <div style="display:flex;gap:8px;margin-bottom:16px">
+                <div style="flex:1;background:var(--panel2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--dim)">Add a task…</div>
+                <div style="background:var(--teal);color:#04201c;border-radius:8px;padding:9px 16px;font-weight:600">+ Add</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px;margin-bottom:8px"><span style="width:16px;height:16px;border:1.5px solid var(--border2);border-radius:5px"></span> Review the wireframe</div>
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px"><span style="width:16px;height:16px;border:1.5px solid var(--green);background:var(--green);border-radius:5px;color:#04220f;display:grid;place-items:center;font-size:10px">✓</span><span style="color:var(--dim);text-decoration:line-through">Set up the project</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TASKS PANE -->
+        <div class="pane" data-pane="tasks">
+          <h2>Tasks — the game plan, sectioned</h2>
+          <div class="sub">One section at a time. Each is tested by Loki and audited by Heimdall before the next.</div>
+          <div class="phase">
+            <div class="phase-h">Prep (must finish before build)</div>
+            <div class="taskrow done"><span class="tcheck">✓</span><span class="tlabel">Discovery — agree the plan with the user</span><span class="twho">Odin</span></div>
+            <div class="taskrow active"><span class="tcheck">2</span><span class="tlabel">Design — UI mock approved by user</span><span class="twho">Odin</span></div>
+            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">Research — gather context into the Cortex</span><span class="twho" style="color:var(--teal)">Huginn&Muninn</span></div>
+          </div>
+          <div class="phase">
+            <div class="phase-h">Build (one section at a time)</div>
+            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S1 — Layout + header</span><span class="twho thor">Thor</span></div>
+            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S1 — test</span><span class="twho loki">Loki</span></div>
+            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S1 — audit gate</span><span class="twho heimdall">Heimdall</span></div>
+            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S2 — Add-task form</span><span class="twho thor">Thor</span></div>
+            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S3 — Task list + toggle</span><span class="twho thor">Thor</span></div>
+            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S4 — Filters + persistence</span><span class="twho thor">Thor</span></div>
+          </div>
+          <div class="phase">
+            <div class="phase-h">Polish</div>
+            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">Docs + README + marketing copy</span><span class="twho bragi">Bragi</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT CHAT -->
+      <div class="chat">
+        <div class="chat-h">💬 Session <span style="color:var(--dim);font-weight:400;font-size:12.5px">· task-tracker · guided build</span></div>
+        <div class="chat-body" id="chatBody">
+          <div class="msg">
+            <div class="who"><span class="pd" style="background:var(--teal)">O</span><b>Odin</b><span class="role">orchestrator</span></div>
+            <div class="bubble">I've finished <b>Discovery</b>. Here's what we agreed: a static task-tracker (add, toggle, filter, persist). I broke it into 4 sections. <span class="muted">Before any code, I mocked the UI for your approval →</span></div>
+            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>todo.write</code> · 8 tasks · 4 sections</div></div>
+            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>mock.generate</code> · wireframe → Design tab</div></div>
+          </div>
+
+          <!-- CHECKPOINT GATE -->
+          <div class="gate" id="gate">
+            <div class="gt">⏸ Checkpoint <span class="badge">NEEDS YOU</span></div>
+            <p>The UI mock is ready in the <b>Design</b> tab. Mímir won't write code until you approve it. (Prep-first: Design ✓ → Research → Plan → Build.)</p>
+            <div class="btns">
+              <button class="gbtn approve" id="approveBtn">✓ Approve &amp; start build</button>
+              <button class="gbtn changes">✏️ Annotate / changes</button>
+            </div>
+          </div>
+
+          <!-- building message (hidden until approved) -->
+          <div class="msg" id="buildMsg" style="display:none">
+            <div class="who"><span class="pd" style="background:var(--ember)">T</span><b>Thor</b><span class="role">builder</span></div>
+            <div class="bubble">Design approved. Building <b>Section S1: Layout + header</b> — then I'll stop for Loki's test and Heimdall's audit before S2. <span class="muted">One section at a time.</span></div>
+            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>write_file</code> · index.html (S1)</div></div>
+            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>bash</code> · sandbox · <code>npm run build</code> → ok</div></div>
+          </div>
+
+          <!-- to-do widget -->
+          <div class="todowidget">
+            <div class="tw-h">To-do · game plan</div>
+            <div class="tw-row done"><span class="b">✓</span> Discovery (plan with user)</div>
+            <div class="tw-row active" id="twDesign"><span class="b">2</span> Design mock — awaiting approval</div>
+            <div class="tw-row" id="twResearch"><span class="b"></span> Research (Cortex)</div>
+            <div class="tw-row" id="twS1"><span class="b"></span> S1 — Layout + header</div>
+            <div class="tw-row"><span class="b"></span> S2 — Add-task form</div>
+            <div class="tw-row"><span class="b"></span> S3 — Task list + toggle</div>
+            <div class="tw-row"><span class="b"></span> S4 — Filters + persistence</div>
+          </div>
+        </div>
+        <div class="chat-input"><div class="box">Message Mímir… <span style="margin-left:auto">⏎</span></div></div>
+      </div>
+
+      <!-- RAIL -->
+      <div class="rail">
+        <button title="Terminal">⌘</button>
+        <button title="Browser">🌐</button>
+        <button title="Files">📄</button>
+        <button title="Cortex">🧠</button>
+        <div class="sep"></div>
+        <button title="Run goal">🎯</button>
+        <button title="Marketplace">🧩</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // tab switching
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.querySelector('.pane[data-pane="'+t.dataset.tab+'"]').classList.add('active');
+    }));
+    // nav collapse
+    document.getElementById('navToggle').addEventListener('click', () => {
+      document.getElementById('body').classList.toggle('nav-collapsed');
+    });
+    // approve checkpoint -> advance the guided workflow
+    function toast(html){ const el=document.getElementById('toast'); el.innerHTML=html; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),3800); }
+    document.getElementById('approveBtn').addEventListener('click', () => {
+      document.getElementById('gate').innerHTML = '<div class="gt" style="color:var(--green)">✓ Checkpoint cleared</div><p style="margin:0">Design approved. Prep continues → Research → Plan → Build.</p>';
+      document.getElementById('buildMsg').style.display='block';
+      // update flow bar
+      document.getElementById('flowDesign').className='flow-step done'; document.getElementById('flowDesign').querySelector('.fdot').textContent='✓';
+      document.getElementById('flowBuild').className='flow-step current'; document.getElementById('flowBuild').querySelector('.fdot').textContent='5';
+      // update todo widget
+      const d=document.getElementById('twDesign'); d.className='tw-row done'; d.querySelector('.b').textContent='✓'; d.lastChild.textContent=' Design mock — approved';
+      const s=document.getElementById('twS1'); s.className='tw-row active'; s.querySelector('.b').textContent='▶';
+      // switch to code tab
+      document.querySelector('.tab[data-tab="code"]').click();
+      document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
+      toast('<b>Thor</b> is building Section S1 — one section at a time, with audit gates.');
+    });
+  </script>
+</body>
+</html>
