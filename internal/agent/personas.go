@@ -1,5 +1,7 @@
 package agent
 
+import "strings"
+
 // Persona is a named agent role (Norse figures; F33).
 type Persona struct {
 	Name   string   // Norse name (id)
@@ -7,6 +9,23 @@ type Persona struct {
 	Prompt string   // system-prompt fragment
 	Tools  []string // tool allowlist (empty = all)
 	Model  string   // default model (empty = inherit)
+}
+
+// DefaultVoice is Mímir's default communication style, prepended to every persona's
+// prompt (F44). It defines the framework's voice.
+const DefaultVoice = "Voice: talk like a 10th-grade high school student. Simple, casual, relatable, like explaining to a friend. Keep it clear and chill, not stiff or corporate. NEVER use em dashes; use hyphens (-) or colons (:) instead."
+
+// FullPrompt returns the persona's prompt with the default voice prepended.
+func (p Persona) FullPrompt() string {
+	return DefaultVoice + "\n\n" + p.Prompt
+}
+
+// StripEmDashes replaces em dashes and en dashes with hyphens. This is the post-output
+// filter that enforces the no-em-dash rule (F44.5).
+func StripEmDashes(s string) string {
+	s = strings.ReplaceAll(s, "\u2014", "-") // em dash
+	s = strings.ReplaceAll(s, "\u2013", "-") // en dash
+	return s
 }
 
 // BuiltinPersonas are Mímir's Norse agent personas (F33). The BMAD planning personas

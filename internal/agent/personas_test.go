@@ -1,6 +1,9 @@
 package agent
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestPersonaByName(t *testing.T) {
 	p, ok := PersonaByName("odin")
@@ -24,5 +27,23 @@ func TestBuiltinPersonas(t *testing.T) {
 		if p.Name == "" || p.Role == "" || p.Prompt == "" {
 			t.Errorf("persona missing fields: %+v", p)
 		}
+	}
+}
+
+func TestDefaultVoiceAndFilter(t *testing.T) {
+	p, ok := PersonaByName("odin")
+	if !ok {
+		t.Fatal("odin persona not found")
+	}
+	full := p.FullPrompt()
+	if !strings.Contains(full, "10th-grade") {
+		t.Error("FullPrompt should include the 10th-grade voice")
+	}
+	if !strings.Contains(full, "NEVER use em dashes") {
+		t.Error("FullPrompt should include the no-em-dash rule")
+	}
+	out := StripEmDashes("hello \u2014 world \u2013 ok")
+	if out != "hello - world - ok" {
+		t.Errorf("StripEmDashes = %q, want %q", out, "hello - world - ok")
 	}
 }

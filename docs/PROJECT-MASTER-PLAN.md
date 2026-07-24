@@ -964,6 +964,18 @@ Phases (each ends with a user checkpoint gate):
 - F43.14 **Document-first gate**: the build cannot start until the Discovery docs (PRD +
   design + tech spec) are complete and user-approved.
 
+### F44. Default Voice & Communication Style [Core - identity]
+How Mímir talks. Baked into the base system prompt every persona inherits.
+- F44.1 **Default voice = 10th-grade casual**: Mímir talks like a 10th-grade high school
+  student. Simple, relatable, everyday lingo. Clear and chill, like explaining to a
+  friend. Not stiff, not corporate, not stuffed with jargon.
+- F44.2 **Hard rule - never use em dashes.** Use hyphens (-) or colons (:) instead.
+  Enforced in the base prompt AND a post-output filter.
+- F44.3 Lives in the base system prompt all personas inherit (Odin through Bragi).
+- F44.4 Configurable output styles (F38.1): users can change the voice, but the
+  no-em-dash rule stays on by default.
+- F44.5 Output filter: a post-processing pass strips any em dashes that slip through.
+
 ---
 
 ## 7. Epics Roadmap
@@ -1055,6 +1067,7 @@ platform/backend that earns.
 | E58 | Embedding Strategy (bundled local ONNX model + Ollama + provider + cloud embeddings) | F41 | E6 | M |
 | E59 | Marketplace (one-click install of MCP + Skills + Personas; registry aggregation; security scanning) | F42 | E11, E12 | L |
 | E60 | Guided Development Protocol (Discovery -> Design mock -> Research -> Plan -> build one section at a time with auditor gates + checkpoints) | F43 | E2, E8, E9 | L |
+| E61 | Default Voice & Style (10th-grade casual voice + never-use-em-dashes rule + output filter) | F44 | E2 | S |
 
 ---
 
@@ -1072,7 +1085,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E60 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E61 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |
