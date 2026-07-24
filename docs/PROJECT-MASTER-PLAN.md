@@ -392,6 +392,21 @@ mimirmind/
 - F3.6 Optional rich formats: Excel/PDF/DOCX read (defer if heavy).
 - F3.7 Web tools: `web_search` + `web_fetch`.
 
+#### Built-in tool inventory (the full set - Desktop Commander parity and beyond)
+- **Terminal / process:** `bash`, `start_process`, `interact_with_process`,
+  `read_process_output`, `force_terminate`, `list_sessions`, `list_processes`,
+  `kill_process`.
+- **Files:** `read_file`, `write_file`, `read_multiple_files`, `create_directory`,
+  `list_directory`, `move_file`, `start_search` / `get_more_search_results` /
+  `stop_search`, `get_file_info`, `edit_block`.
+- **Code:** `code_exec` (Python/Node/R in-memory), `sandbox_create` / `sandbox_exec` /
+  `sandbox_destroy` (F28 - sandbox any kind of code).
+- **Web / research:** `web_search` (metasearch), `web_fetch` (scrape),
+  `youtube_transcript`, plus the Gjallarhorn ingestion pipeline (PDF / audio / video /
+  Office / images, F29).
+- **Agent / workflow:** `todo` (todowrite/todoread), `question` (F45), `task` (spawn
+  subagent), `cortex_search` / `cortex_add` (RAG knowledge).
+
 ### F4. MCP Integration [Core, optional extensibility only]
 NOTE: Core system access (F3) is native and does NOT use MCP. MCP here is purely
 for adding OTHER third-party tool servers.
@@ -790,8 +805,11 @@ Designed so models **<=30B** can code smoothly without getting lost or sidetrack
 - F31.2 Game plan -> to-do list: the plan is converted into an ordered, concrete to-do
   list (each item small and independently verifiable).
 - F31.3 Robust to-do list tool: persistent task tracker (id, content, status
-  pending/in_progress/completed/blocked, subtasks, dependencies, tags); stored in
+  pending/in_progress/completed/blocked), subtasks, dependencies, tags; stored in
   SurrealDB; survives sessions; `task_search` (cross-session) + `todo_carry` (forward).
+  MANDATORY: every persona always uses it for any non-trivial task (plan the steps
+  first, work through them one at a time, update status as it goes); the base prompt
+  instructs the model to always use it.
 - F31.4 One-task-at-a-time execution: the agent works a single to-do item -> implement
   -> debug -> test -> mark done -> next. Prevents drift/sidetracking.
 - F31.5 Verification at each step: after each item, run tests/checks; if failing, debug
@@ -976,6 +994,35 @@ How Mímir talks. Baked into the base system prompt every persona inherits.
   no-em-dash rule stays on by default.
 - F44.5 Output filter: a post-processing pass strips any em dashes that slip through.
 
+### F45. Question Tool [Core - like opencode's question]
+A structured question tool so the agent asks the user clear, clickable questions (like
+opencode's `question` tool).
+- F45.1 The agent poses questions with multiple-choice options (label + description);
+  the GUI/chat renders them as clickable choices.
+- F45.2 Single or multiple selection; a "type your own answer" option is always added.
+- F45.3 Used heavily in Discovery (F43.11) for the requirements interview, and whenever
+  the agent needs a decision, preference, or clarification.
+- F45.4 The agent gets the selected answer(s) back and proceeds.
+- F45.5 Group multiple questions in one call.
+
+### F46. Thinking Mode [Core - visible reasoning]
+- F46.1 The agent's reasoning/thinking shows in the chat as a separate, light-gray,
+  collapsible block - readable but visually de-emphasized (not the focus).
+- F46.2 Thinking levels: low / medium / high (default medium), controlling how much
+  reasoning the model does and shows.
+- F46.3 Off switch: thinking can be turned off entirely in the options.
+- F46.4 The thinking block is clearly distinct from the agent's spoken reply.
+
+### F47. Chat Composer (input bar) [Core]
+The chat input bar has everything the user needs to direct the agent:
+- F47.1 **+ attach button**: add documents, images, files, and other context to the
+  message (fed into the Cortex + the model).
+- F47.2 **Build / Plan toggle**: switch between Build mode (agent writes code) and Plan
+  mode (agent only plans, no building) - so the user can have it just plan.
+- F47.3 **Model picker**: choose which model handles the message.
+- F47.4 **Thinking level selector**: low / medium / high (ties to F46.2).
+- F47.5 **Send button** to send the message.
+
 ---
 
 ## 7. Epics Roadmap
@@ -1068,6 +1115,9 @@ platform/backend that earns.
 | E59 | Marketplace (one-click install of MCP + Skills + Personas; registry aggregation; security scanning) | F42 | E11, E12 | L |
 | E60 | Guided Development Protocol (Discovery -> Design mock -> Research -> Plan -> build one section at a time with auditor gates + checkpoints) | F43 | E2, E8, E9 | L |
 | E61 | Default Voice & Style (10th-grade casual voice + never-use-em-dashes rule + output filter) | F44 | E2 | S |
+| E62 | Question Tool (structured multiple-choice questions with options, like opencode; used in Discovery + clarifications) | F45 | E2, E12 | S |
+| E63 | Thinking Mode (light-gray collapsible thinking blocks, low/medium/high levels, off switch) | F46 | E2, E12 | S |
+| E64 | Chat Composer (+ attachments, Build/Plan toggle, model picker, thinking level, send button) | F47 | E12 | M |
 
 ---
 
@@ -1085,7 +1135,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E61 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E64 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |

@@ -42,6 +42,12 @@ func TestDefaultVoiceAndFilter(t *testing.T) {
 	if !strings.Contains(full, "NEVER use em dashes") {
 		t.Error("FullPrompt should include the no-em-dash rule")
 	}
+	if !strings.Contains(full, "Always use the to-do list") {
+		t.Error("FullPrompt should include the always-use-todo rule")
+	}
+	if !strings.Contains(full, "question tool") {
+		t.Error("FullPrompt should mention the question tool")
+	}
 	out := StripEmDashes("hello \u2014 world \u2013 ok")
 	if out != "hello - world - ok" {
 		t.Errorf("StripEmDashes = %q, want %q", out, "hello - world - ok")

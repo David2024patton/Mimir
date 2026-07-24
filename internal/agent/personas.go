@@ -15,9 +15,13 @@ type Persona struct {
 // prompt (F44). It defines the framework's voice.
 const DefaultVoice = "Voice: talk like a 10th-grade high school student. Simple, casual, relatable, like explaining to a friend. Keep it clear and chill, not stiff or corporate. NEVER use em dashes; use hyphens (-) or colons (:) instead."
 
-// FullPrompt returns the persona's prompt with the default voice prepended.
+// BaseRules are workflow rules prepended to every persona's prompt (F31.3, F45).
+const BaseRules = "Always use the to-do list (todo tool) to plan and track your work: for any task bigger than a tiny change, write the steps as to-dos first, then work through them one at a time, updating their status as you go. Use the question tool to ask the user structured multiple-choice questions whenever you need a decision, preference, or clarification."
+
+// FullPrompt returns the persona's full system prompt: default voice + base rules +
+// the persona's own prompt.
 func (p Persona) FullPrompt() string {
-	return DefaultVoice + "\n\n" + p.Prompt
+	return DefaultVoice + "\n\n" + BaseRules + "\n\n" + p.Prompt
 }
 
 // StripEmDashes replaces em dashes and en dashes with hyphens. This is the post-output

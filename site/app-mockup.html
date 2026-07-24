@@ -129,8 +129,55 @@
     .tw-row .b{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--border2);flex:0 0 14px;display:grid;place-items:center;font-size:9px}
     .tw-row.done{color:var(--dim)} .tw-row.done .b{background:var(--green);border-color:var(--green);color:#04220f}
     .tw-row.active{color:var(--text)} .tw-row.active .b{background:var(--teal);border-color:var(--teal);color:#04201c}
-    .chat-input{padding:12px 14px;border-top:1px solid var(--border)}
-    .chat-input .box{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--dim);font-size:13px}
+    /* question tool card */
+    .qcard{background:#0d1117;border:1px solid var(--border);border-radius:11px;padding:13px;margin-top:9px}
+    .qcard .qq{font-size:13.5px;font-weight:600;margin-bottom:10px}
+    .qopts{display:flex;flex-wrap:wrap;gap:8px}
+    .qopt{padding:7px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--panel);font-size:13px;color:var(--muted);cursor:pointer;transition:.15s}
+    .qopt:hover{border-color:var(--teal-d);color:var(--text);transform:translateY(-1px)}
+    .qopt.sel{background:var(--teal);border-color:var(--teal);color:#04201c;font-weight:600}
+    .qopt .d{display:block;font-size:11px;opacity:.75;font-weight:400}
+
+    /* agent message - neon glow on the bubble edges + talking indicator */
+    .msg.agent .bubble{border-color:rgba(45,212,191,.4);box-shadow:0 0 0 1px rgba(45,212,191,.18),0 0 20px rgba(45,212,191,.14),inset 0 0 14px rgba(45,212,191,.05)}
+    .msg .who .talking{color:var(--teal);font-size:11px;display:inline-flex;align-items:center;gap:5px;margin-left:2px}
+    .msg .who .talking .pulse{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 1.4s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 6px var(--teal)}50%{opacity:.35;box-shadow:0 0 2px var(--teal)}}
+    .avatar-glow{filter:drop-shadow(0 0 8px rgba(45,212,191,.55))}
+
+    /* thinking block - light gray, readable but de-emphasized, collapsible */
+    .thinking{border:1px solid var(--border);border-radius:9px;margin-bottom:8px;overflow:hidden;background:rgba(255,255,255,.02)}
+    .think-h{padding:7px 11px;font-size:12px;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:7px;user-select:none}
+    .think-h:hover{color:var(--muted)}
+    .think-h .chev{transition:transform .2s;font-size:10px}
+    .thinking.collapsed .think-b{display:none}
+    .thinking.collapsed .chev{transform:rotate(-90deg)}
+    .think-b{padding:2px 11px 9px;font-size:12.5px;color:#8a94a0;line-height:1.55}
+
+    /* typing indicator */
+    .typing{display:inline-flex;gap:4px;padding:10px 13px}
+    .typing .td{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:bounce 1.2s infinite}
+    .typing .td:nth-child(2){animation-delay:.15s}.typing .td:nth-child(3){animation-delay:.3s}
+    @keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-5px);opacity:1}}
+
+    /* composer (chat input bar) */
+    .composer{border-top:1px solid var(--border);padding:10px 14px 14px;background:var(--bg2)}
+    .comp-row{display:flex;align-items:center;gap:8px}
+    .comp-row.top{margin-bottom:9px}
+    .cbtn{width:32px;height:32px;border-radius:9px;border:1px solid var(--border2);background:var(--panel);color:var(--muted);display:grid;place-items:center;font-size:16px;cursor:pointer;transition:.15s;flex:0 0 32px}
+    .cbtn:hover{border-color:var(--teal-d);color:var(--teal);transform:translateY(-1px)}
+    .mode-tog{display:flex;background:var(--panel);border:1px solid var(--border);border-radius:9px;overflow:hidden}
+    .mt{padding:6px 13px;font-size:12.5px;color:var(--muted);cursor:pointer;transition:.15s;border:none;background:none}
+    .mt.active{background:var(--teal);color:#04201c;font-weight:600}
+    .mt:not(.active):hover{color:var(--text)}
+    .comp-spacer{flex:1}
+    .picker{display:flex;align-items:center;gap:6px;padding:6px 11px;background:var(--panel);border:1px solid var(--border);border-radius:9px;font-size:12.5px;color:var(--muted);cursor:pointer;transition:.15s}
+    .picker:hover{border-color:var(--border2);color:var(--text)}
+    .picker b{color:var(--text);font-weight:600}
+    .input-wrap{flex:1;display:flex;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:9px 13px;color:var(--dim);font-size:13px;transition:.2s}
+    .input-wrap:focus-within{border-color:var(--teal-d);box-shadow:0 0 0 1px rgba(45,212,191,.2),0 0 14px rgba(45,212,191,.1)}
+    .send{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--teal),var(--teal-d));color:#04201c;display:grid;place-items:center;font-size:16px;cursor:pointer;transition:.15s;flex:0 0 38px;box-shadow:0 4px 16px rgba(45,212,191,.25)}
+    .send:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(45,212,191,.4)}
 
     /* RAIL */
     .rail{background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0}
@@ -315,20 +362,29 @@
       <div class="chat">
         <div class="chat-h">💬 Session <span style="color:var(--dim);font-weight:400;font-size:12.5px">· task-tracker · guided build</span></div>
         <div class="chat-body" id="chatBody">
-          <div class="msg">
-            <div class="who"><span class="pd" style="background:var(--teal)">O</span><b>Odin</b><span class="role">orchestrator · Discovery</span></div>
-            <div class="bubble">Hey, before we build anything, lemme make sure I got this right. Quick questions:<br>
-              <span class="muted">• What kind of app is this, like web, mobile, desktop, or a SaaS?<br>
-              • What vibe do you want for the UI?<br>
-              • If it's a SaaS, you need logins? Payments or subscriptions? User roles?<br>
-              • Any database, API, or other stuff it should connect to?</span></div>
+          <div class="msg agent">
+            <div class="who"><span class="pd avatar-glow" style="background:var(--teal)">O</span><b>Odin</b><span class="role">orchestrator · Discovery</span><span class="talking"><span class="pulse"></span> talking to you</span></div>
+            <div class="thinking">
+              <div class="think-h" onclick="toggleThink(this)">💭 thinking <span class="chev">▾</span></div>
+              <div class="think-b">Alright, before we build anything I gotta figure out what this actually is. Let me ask what platform it is, what vibe they want, and if they need logins or payments. Then I can plan it right.</div>
+            </div>
+            <div class="bubble">Hey, before we build anything, lemme make sure I got this right. Quick questions:</div>
+            <div class="qcard">
+              <div class="qq">What kind of app is this?</div>
+              <div class="qopts">
+                <div class="qopt sel">Web<span class="d">browser app</span></div>
+                <div class="qopt">Mobile<span class="d">iOS / Android</span></div>
+                <div class="qopt">Desktop<span class="d">native app</span></div>
+                <div class="qopt">SaaS<span class="d">logins + billing</span></div>
+              </div>
+            </div>
           </div>
           <div class="msg">
             <div class="who"><span class="pd" style="background:var(--panel3);color:var(--text)">Y</span><b>You</b></div>
             <div class="bubble user">Just a simple web task-tracker, clean minimal look, no logins, no backend. Save it to localStorage.</div>
           </div>
-          <div class="msg">
-            <div class="who"><span class="pd" style="background:var(--teal)">O</span><b>Odin</b><span class="role">orchestrator</span></div>
+          <div class="msg agent">
+            <div class="who"><span class="pd avatar-glow" style="background:var(--teal)">O</span><b>Odin</b><span class="role">orchestrator</span></div>
             <div class="bubble">Bet. Docs are done (PRD + design + tech spec) and I split it into 4 sections. <span class="muted">Before any code, I mocked up the UI so you can check it out first →</span></div>
             <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>discovery.interview</code> · 4 questions · concept locked</div></div>
             <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>docs.write</code> · PRD + design + tech spec</div></div>
@@ -346,7 +402,7 @@
           </div>
 
           <!-- building message (hidden until approved) -->
-          <div class="msg" id="buildMsg" style="display:none">
+          <div class="msg agent" id="buildMsg" style="display:none">
             <div class="who"><span class="pd" style="background:var(--ember)">T</span><b>Thor</b><span class="role">builder</span></div>
             <div class="bubble">Design's approved. Building <b>Section S1: Layout + header</b> now. After this, Loki runs the end-to-end tests, Forseti checks the code, and Heimdall screenshots it to make sure the UI looks right, then we move to S2. <span class="muted">One section at a time, and we check each one before moving on.</span></div>
             <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>write_file</code> · index.html (S1)</div></div>
@@ -367,7 +423,22 @@
             <div class="tw-row"><span class="b"></span> S4 - Filters + persistence</div>
           </div>
         </div>
-        <div class="chat-input"><div class="box">Message Mímir… <span style="margin-left:auto">⏎</span></div></div>
+        <div class="composer">
+          <div class="comp-row top">
+            <button class="cbtn" title="Attach documents, images, files">＋</button>
+            <div class="mode-tog">
+              <button class="mt active" onclick="setMode(this)">🔨 Build</button>
+              <button class="mt" onclick="setMode(this)">📋 Plan</button>
+            </div>
+            <div class="comp-spacer"></div>
+            <div class="picker" title="Pick the model">⚡ <b>qwen3.6-35b</b> ▾</div>
+            <div class="picker" title="Thinking level" onclick="cycleThink(this)">💭 <b>med</b> ▾</div>
+          </div>
+          <div class="comp-row">
+            <div class="input-wrap" contenteditable="true">Message Mímir…</div>
+            <button class="send" title="Send">➤</button>
+          </div>
+        </div>
       </div>
 
       <!-- RAIL -->
@@ -386,6 +457,13 @@
   <div class="toast" id="toast"></div>
 
   <script>
+    // thinking block collapse
+    function toggleThink(el){ el.parentElement.classList.toggle('collapsed'); }
+    // Build/Plan mode toggle
+    function setMode(el){ document.querySelectorAll('.mt').forEach(x=>x.classList.remove('active')); el.classList.add('active'); toast(el.textContent.includes('Plan') ? '<b>Plan mode</b>: Mímir will only plan, not build.' : '<b>Build mode</b>: Mímir will write code.'); }
+    // thinking level cycle (low/med/high)
+    const thinkLevels=['low','med','high'];
+    function cycleThink(el){ const b=el.querySelector('b'); const i=(thinkLevels.indexOf(b.textContent)+1)%thinkLevels.length; b.textContent=thinkLevels[i]; }
     // tab switching
     document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));

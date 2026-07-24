@@ -9,5 +9,6 @@ func Default(workDir string) *Registry {
 	r.Register(&WriteFileTool{})
 	r.Register(&ListDirectoryTool{})
 	r.Register(&TodoTool{Store: NewTodoStore()})
+	r.Register(&QuestionTool{})
 	return r
 }
