@@ -749,18 +749,29 @@ builds the control plane + runtime natively in the Go daemon (concrete impl of F
 - F28.9 Warm pool: pre-booted microVMs (Firecracker boots ~125ms) for sub-second
   on-the-fly provisioning; auto-reap on timeout.
 
-### F29. Research & Ingestion Tools (built-in) [Core/Differentiator]
-Built-in tools/skills (NOT external apps) for bringing outside knowledge into the Cortex.
-- F29.1 Metasearch (SearXNG-style, built in): fire one query to MULTIPLE search engines
-  in parallel (Google, Bing, DuckDuckGo, Brave, etc.) and aggregate/dedupe/rank results
-  - no single-engine lock-in, privacy-respecting. Native `metasearch` tool.
-- F29.2 YouTube transcript tool: fetch transcripts/subtitles from a YouTube URL
-  (yt-dlp style), chunk, and ingest into the Cortex as neurons.
-- F29.3 Web scraping tool: fetch + extract clean content (markdown) from websites;
-  ingest into the Cortex (extends web_fetch, F3.7).
-- F29.4 All three auto-ingest results into the Cortex (F22) as neurons with provenance,
-  available to RAG.
-- F29.5 Implemented as native tools + skills (F11); respect robots.txt + rate limits.
+### F29. Universal Ingestion & Research (Gjallarhorn) [Core/Differentiator]
+The Gjallarhorn: ingest ANY content, convert it, and store it as neurons in the Cortex.
+This is the Open Notebook / NotebookLM capability set, built in natively (not a separate
+app).
+- F29.1 Universal file ingestion - drop any file; Mímir detects the type, converts to
+  text, chunks, embeds, and stores as neurons with provenance:
+  - Web pages / URLs -> clean markdown
+  - PDF -> text extraction (pdftotext / pdfplumber-equivalent)
+  - YouTube videos -> transcripts/subtitles (yt-dlp style)
+  - Audio / video -> transcription (local Whisper or provider STT)
+  - Office docs (DOCX/XLSX/PPTX) -> text/structured extraction
+  - Images -> OCR + vision description
+  - Text / markdown / code / CSV / JSON -> direct
+- F29.2 Conversion pipeline: detect -> extract -> clean -> chunk (header/size-based) ->
+  embed (F41) -> store as neurons (idempotent via content hash for re-ingest).
+- F29.3 Metasearch (SearXNG-style, built in): fire one query to MULTIPLE engines in
+  parallel (Google, Bing, DuckDuckGo, Brave, etc.), aggregate/dedupe/rank - no
+  single-engine lock-in, privacy-respecting. Native `metasearch` tool.
+- F29.4 Web scraping tool: fetch + extract clean markdown from sites (extends F3.7).
+- F29.5 Notebooks: a notebook is a scoped collection of sources (neurons) around a
+  topic/project - the user-facing unit; the Cortex is the underlying brain. Multi-notebook.
+- F29.6 All ingestion auto-stores into the Cortex (F22) with provenance, available to RAG.
+- F29.7 Implemented as native tools + skills (F11); respect robots.txt + rate limits.
 
 ### F30. Task & Build Engine (from turborepo) [Differentiator]
 - F30.1 Declarative task graph: tasks + `dependsOn` + inputs/outputs per project, in
@@ -866,6 +877,34 @@ Language-server integration so the agent understands code, not just text.
 - F40.2 Published artifacts: share the agent's deliverables (plans, diffs, previews).
 - F40.3 Team sessions / multiplayer (later): shared workspace, shared Cortex.
 
+### F41. Embedding Strategy [Core - powers RAG]
+How content becomes searchable vectors. Hybrid: local-first (free/private) + optional cloud.
+- F41.1 Bundled local embedding model (default, zero-config): a small ONNX model
+  (e.g. all-MiniLM-L6-v2, ~22M params, ~80MB) runs on CPU via ONNX Runtime - private,
+  free, no key. Ships with the installer.
+- F41.2 Ollama embeddings: use a local Ollama embedding model (nomic-embed-text,
+  mxbai-embed-large) if Ollama is present (preferred when available).
+- F41.3 Provider embeddings: OpenAI text-embedding-3-small, etc. (requires a key).
+- F41.4 Cloud embeddings (paid tier): hosted, higher-quality embeddings without local
+  compute - part of the Cloud plan (monetization).
+- F41.5 Pluggable embedder interface; configurable per notebook; dimension stored in schema.
+
+### F42. Marketplace: MCP + Skills + Personas (one-click install) [Differentiator + monetization]
+A built-in marketplace browser (GUI + CLI) to discover and one-click install extensions,
+aggregating existing registries plus a Mímir-curated registry.
+- F42.1 One-click install of **MCP servers** (Smithery/MCPfinder-style): generate config +
+  install + auth handling; aggregate Official MCP Registry, Smithery, Glama, mcpmarket.
+- F42.2 One-click install of **Skills** (skills.sh / LobeHub-style): download SKILL.md +
+  resources into the skills dir.
+- F42.3 One-click install of **Personas** (LobeHub open-persona-style): download a persona
+  (prompt + tool allowlist + model) into the personas config.
+- F42.4 Discovery: search/browse by category/keyword across registries; ratings, install
+  counts, verified publishers.
+- F42.5 Security: trust scoring + security scanning before install (ties to F27.6 MCP
+  security gateway); "will install" permission preview.
+- F42.6 Mímir-curated registry + featured listings (monetization: featured/verified slots).
+- F42.7 Publish flow: authors publish MCP/Skills/Personas to the Mímir registry.
+
 ---
 
 ## 7. Epics Roadmap
@@ -922,7 +961,7 @@ memory, skills, plan mode, subagents, and hooks.)
 
 ### Tier 4 - Knowledge, Platform & Monetization
 These turn Mímir into a sustainable, differentiated product (see Section 11).
-The knowledge/learning/sandbox/governance/research/small-model epics (E31, E38, E40, E41, E43-E57)
+The knowledge/learning/sandbox/governance/research/small-model epics (E31, E38, E40, E41, E43-E59)
 are product differentiators (schedule alongside Tier 2); E32-E37 and E42 are the hosted
 platform/backend that earns.
 | Epic | Title | Maps to | Depends | Size |
@@ -942,7 +981,7 @@ platform/backend that earns.
 | E43 | Self-Learning Memory Engine (3-tier memory, 5 layers, forgetting curve, auto-capture, consolidation, concept graph, reflect/quality_gate, heartbeat) | F26 | E38 | L |
 | E44 | Governance & Deterministic Safety (fail-closed policy gate, privilege rings, tamper-evident audit, agent SRE, MCP security gateway) | F27 | E4, E11 | L |
 | E45 | Native Sandbox Runtime (Firecracker/gVisor/containers, in-guest agent, exec+streaming, fs API, port routing, snapshot/fork, per-user isolation, warm pool) | F28 | E3, E23 | L |
-| E46 | Research & Ingestion Tools (SearXNG-style metasearch, YouTube transcripts, web scraping -> Cortex) | F29 | E38 | M |
+| E46 | Universal Ingestion & Research / Gjallarhorn (any file -> convert -> Cortex; metasearch, YouTube, scraping, audio/video transcription) | F29 | E38, E41 | L |
 | E47 | Task & Build Engine (declarative task graph, parallel topo execution, content-addressed caching) | F30 | E45 | M |
 | E48 | Small-Model Mode & Structured Task Workflow (game plan -> to-do list -> one-task-at-a-time, lean tools, verification, anti-derailment) | F31 | E2, E3, E6 | L |
 | E49 | Telemetry & Privacy (on by default, anonymized, opt-out in privacy settings) | F32 | E1 | M |
@@ -954,6 +993,8 @@ platform/backend that earns.
 | E55 | Context Mastery (output styles, steering files, flow awareness, prompt caching, /context) | F38 | E2, E6 | L |
 | E56 | Inline Tab Completion (next-edit prediction; IDE extension or built-in editor) | F39 | E12 | L |
 | E57 | Sharing & Collaboration (session share links, published artifacts, team sessions) | F40 | E12 | M |
+| E58 | Embedding Strategy (bundled local ONNX model + Ollama + provider + cloud embeddings) | F41 | E6 | M |
+| E59 | Marketplace (one-click install of MCP + Skills + Personas; registry aggregation; security scanning) | F42 | E11, E12 | L |
 
 ---
 
@@ -971,7 +1012,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E57 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E59 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |
@@ -1051,19 +1092,31 @@ upsells. The CLI is free; the hosted services make money.
 4. **Hosted Knowledge Bases** (ties to F21). Free = public gitmcp passthrough;
    Paid = indexed/cached/private repo knowledge, curated knowledge packs,
    team-shared knowledge.
-5. **Marketplace cut**. Curated plugins/skills marketplace with revenue share (E25).
+5. **Marketplace cut**. Curated MCP/Skills/Personas marketplace with one-click install
+   + revenue share + featured/verified listings (F42/E59).
 6. **Enterprise / self-hosted**. Air-gapped gateway, compliance, on-prem, support
    (Factory/IBM Bob/Kiro model).
 
 ### Suggested pricing tiers
-| Tier | Price | Includes |
-|---|---|---|
-| Free | $0 | CLI/TUI, BYOK, local tools, public gitmcp knowledge passthrough |
-| Gateway (pay-as-you-go) | credit + small fee | Per-token at cost, curated models, any agent |
-| Subscription (Go-like) | ~$10/mo | Curated models, generous $-denominated limits |
-| Pro | ~$20/mo | Cloud agents, hosted knowledge, advanced orchestration |
-| Team | ~$25+/seat | Workspaces, SSO/RBAC, spend limits, analytics |
-| Enterprise | custom | Self-hosted gateway, compliance, support |
+Two axes: the **model gateway** (compute) and **knowledge/notebooks** (storage +
+embeddings). The killer angle: self-hosted is UNLIMITED (your hardware), and the cloud
+tiers **double NotebookLM** (Gemini Notebook) at a lower price.
+
+NotebookLM 2026 reference: Free = 50 sources/notebook; Pro ($19.99) = 300;
+Ultra ($199.99) = 600; per-source cap 500k words / 200MB.
+
+| Tier | Price | Notebooks | Sources/notebook | Includes |
+|---|---|---|---|---|
+| **Self-hosted (free)** | $0 | Unlimited | Unlimited | Full framework, BYOK or local, private, no telemetry required |
+| **Gateway (pay-as-you-go)** | credit + small fee | - | - | Curated models, per-token at cost, works with any agent |
+| **Cloud Sync** | ~$9/mo | 200 | 200 | Sync Cortex across devices + mobile + hosted embeddings |
+| **Cloud Pro** | ~$19/mo | 1,000 | **600 (2x NotebookLM Pro)** | Hosted embeddings, cloud agents, advanced orchestration |
+| **Cloud Ultra** | ~$49/mo | Unlimited | **1,200 (2x NotebookLM Ultra)** | Hosted, priority, watermark-free outputs |
+| **Team / Enterprise** | custom / ~$25+ seat | custom | custom | Shared Cortex, SSO/RBAC, spend limits, self-host option, support |
+
+**The headline:** "NotebookLM caps you at 300 sources for $20/mo and 600 for $200/mo.
+Mímir is unlimited for free on your own machine - and syncs everywhere, with double the
+sources, for less." Embeddings run locally (free) or hosted (paid); the user chooses.
 
 ### What to build (the platform backend - separate from the open-source CLI)
 - **Gateway service**: OpenAI-compatible proxy that authenticates API keys, routes
