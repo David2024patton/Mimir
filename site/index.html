@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mímir — The agent that remembers</title>
+  <meta name="description" content="Mímir is a local-first, self-learning AI coding agent with a neural knowledge brain. Bring your own model or run local. It plans, builds, and never forgets." />
+  <meta property="og:title" content="Mímir — The agent that remembers" />
+  <meta property="og:description" content="A sovereign, self-learning AI coding agent. Bring your own model or run local. It plans, builds, and never forgets." />
+  <meta name="theme-color" content="#0a0e14" />
+  <style>
+    :root {
+      --bg: #0a0e14;
+      --bg-2: #0e141d;
+      --panel: #131b26;
+      --panel-2: #182231;
+      --border: #23303f;
+      --text: #e6edf3;
+      --muted: #93a4b3;
+      --teal: #2dd4bf;
+      --teal-dim: #14b8a6;
+      --ember: #fb923c;
+      --glow: rgba(45, 212, 191, 0.15);
+      --radius: 14px;
+      --maxw: 1120px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+    section { padding: 88px 0; }
+    h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 16px; }
+    h2 { font-size: clamp(28px, 4vw, 40px); }
+    h3 { font-size: 20px; }
+    p { margin: 0 0 16px; }
+    .muted { color: var(--muted); }
+    .eyebrow {
+      display: inline-block; font-size: 13px; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--teal); margin-bottom: 14px;
+    }
+    .center { text-align: center; }
+    .lead { font-size: 19px; color: var(--muted); max-width: 680px; margin: 0 auto; }
+
+    /* Nav */
+    header.nav {
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(12px);
+      background: rgba(10, 14, 20, 0.75);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner { display: flex; align-items: center; gap: 28px; height: 64px; }
+    .brand { font-weight: 800; font-size: 20px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; }
+    .brand .mark {
+      width: 26px; height: 26px; border-radius: 7px;
+      background: radial-gradient(circle at 30% 30%, var(--teal), var(--teal-dim));
+      box-shadow: 0 0 18px var(--glow);
+    }
+    .nav-links { display: flex; gap: 24px; margin-left: auto; }
+    .nav-links a { color: var(--muted); font-size: 15px; transition: color .15s; }
+    .nav-links a:hover { color: var(--text); }
+    @media (max-width: 720px) { .nav-links { display: none; } }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: 15px;
+      border: 1px solid transparent; cursor: pointer; transition: transform .12s, box-shadow .2s, background .2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--teal), var(--teal-dim));
+      color: #04201c; box-shadow: 0 6px 24px var(--glow);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 32px var(--glow); }
+    .btn-ghost { border-color: var(--border); color: var(--text); background: var(--panel); }
+    .btn-ghost:hover { border-color: var(--teal-dim); }
+    .btn-row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 32px; }
+
+    /* Hero */
+    .hero {
+      padding: 120px 0 96px; text-align: center; position: relative; overflow: hidden;
+      background:
+        radial-gradient(700px 380px at 50% -10%, var(--glow), transparent 70%),
+        linear-gradient(180deg, var(--bg-2), var(--bg));
+    }
+    .hero h1 { font-size: clamp(40px, 7vw, 72px); font-weight: 800; margin-bottom: 20px; }
+    .hero h1 .grad {
+      background: linear-gradient(120deg, var(--teal), #7dd3fc 55%, var(--ember));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .hero .sub { font-size: clamp(18px, 2.4vw, 22px); color: var(--muted); max-width: 720px; margin: 0 auto 8px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px;
+      border: 1px solid var(--border); border-radius: 999px; font-size: 13px;
+      color: var(--muted); background: var(--panel); margin-bottom: 28px;
+    }
+    .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 10px var(--teal); }
+
+    /* Cards / grids */
+    .grid { display: grid; gap: 18px; }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    @media (max-width: 900px) { .grid-3 { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px) { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+    .card {
+      background: linear-gradient(180deg, var(--panel), var(--bg-2));
+      border: 1px solid var(--border); border-radius: var(--radius); padding: 24px;
+      transition: transform .15s, border-color .2s, box-shadow .2s;
+    }
+    .card:hover { transform: translateY(-3px); border-color: var(--teal-dim); box-shadow: 0 12px 32px rgba(0,0,0,.35); }
+    .card .icon { font-size: 24px; margin-bottom: 12px; }
+    .card h3 { margin-bottom: 8px; }
+    .card p { color: var(--muted); font-size: 15px; margin: 0; }
+
+    /* Myth band */
+    .myth {
+      background: linear-gradient(180deg, var(--bg), var(--bg-2));
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    }
+    .myth blockquote {
+      margin: 0 auto; max-width: 760px; font-size: clamp(20px, 3vw, 28px);
+      font-weight: 500; text-align: center; line-height: 1.5; letter-spacing: -0.01em;
+    }
+    .myth blockquote .grad { color: var(--teal); }
+    .myth cite { display: block; margin-top: 18px; font-size: 15px; color: var(--muted); font-style: normal; }
+
+    /* Steps */
+    .steps { counter-reset: step; }
+    .step { position: relative; padding-left: 56px; }
+    .step::before {
+      counter-increment: step; content: counter(step);
+      position: absolute; left: 0; top: 0; width: 38px; height: 38px;
+      display: grid; place-items: center; border-radius: 10px; font-weight: 700;
+      background: var(--panel-2); border: 1px solid var(--border); color: var(--teal);
+    }
+
+    /* Personas */
+    .persona { display: flex; gap: 14px; align-items: flex-start; }
+    .persona .rune {
+      flex: 0 0 44px; height: 44px; border-radius: 11px; display: grid; place-items: center;
+      font-weight: 800; font-size: 18px; color: #04201c;
+      background: linear-gradient(135deg, var(--teal), var(--teal-dim));
+    }
+    .persona.ember .rune { background: linear-gradient(135deg, var(--ember), #f97316); color: #2a1403; }
+    .persona h3 { margin-bottom: 2px; font-size: 17px; }
+    .persona .role { font-size: 13px; color: var(--teal); font-weight: 600; margin-bottom: 6px; }
+    .persona p { font-size: 14px; }
+
+    /* Pricing */
+    .price-card { display: flex; flex-direction: column; }
+    .price-card .amt { font-size: 34px; font-weight: 800; margin: 8px 0 2px; }
+    .price-card .amt span { font-size: 15px; color: var(--muted); font-weight: 500; }
+    .price-card ul { list-style: none; padding: 0; margin: 18px 0; color: var(--muted); font-size: 15px; }
+    .price-card li { padding: 6px 0 6px 26px; position: relative; }
+    .price-card li::before { content: "✓"; position: absolute; left: 0; color: var(--teal); font-weight: 700; }
+    .price-card.featured { border-color: var(--teal-dim); box-shadow: 0 0 0 1px var(--teal-dim), 0 16px 40px var(--glow); }
+    .tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--glow); color: var(--teal); margin-bottom: 8px; }
+
+    /* CTA */
+    .cta {
+      text-align: center; border-radius: 20px; padding: 64px 32px;
+      background:
+        radial-gradient(600px 300px at 50% 0%, var(--glow), transparent 70%),
+        linear-gradient(180deg, var(--panel), var(--bg-2));
+      border: 1px solid var(--border);
+    }
+
+    footer { border-top: 1px solid var(--border); padding: 40px 0; color: var(--muted); font-size: 14px; }
+    .foot-inner { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; align-items: center; }
+    code {
+      background: var(--panel-2); border: 1px solid var(--border); padding: 2px 7px;
+      border-radius: 6px; font-size: 13px; color: var(--teal);
+    }
+    .kbd-line { margin-top: 22px; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top"><span class="mark"></span> Mímir</a>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#personas">Personas</a>
+        <a href="#pricing">Pricing</a>
+        <a href="https://github.com/David2024patton/Mimir">GitHub</a>
+      </nav>
+      <a class="btn btn-primary" href="#pricing" style="margin-left:12px">Get started</a>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap">
+        <span class="pill"><span class="dot"></span> Open source · Local-first · Bring your own model</span>
+        <h1>The agent that <span class="grad">remembers</span>.</h1>
+        <p class="sub">Mímir is a sovereign, self-learning AI coding agent with a neural
+          knowledge brain. Plug in any model — or run fully local. It plans, builds,
+          tests, and never forgets what it learns.</p>
+        <div class="btn-row">
+          <a class="btn btn-primary" href="#pricing">Start building free</a>
+          <a class="btn btn-ghost" href="https://github.com/David2024patton/Mimir">★ Star on GitHub</a>
+        </div>
+        <p class="kbd-line muted" style="font-size:14px">
+          <code>go install ./cmd/mimir</code> &nbsp; then &nbsp; <code>mimir</code>
+        </p>
+      </div>
+    </section>
+
+    <!-- MYTH -->
+    <section class="myth">
+      <div class="wrap">
+        <blockquote>
+          In Norse myth, <span class="grad">Mímir</span> guards the Well of Wisdom beneath
+          the World Tree. Odin sacrificed an eye for a single draught. After Mímir was
+          slain, his head kept giving counsel — <span class="grad">wisdom that outlives its keeper</span>.
+          <cite>That's the agent we built. It drinks from the well, and it never forgets.</cite>
+        </blockquote>
+      </div>
+    </section>
+
+    <!-- PROBLEM -->
+    <section>
+      <div class="wrap center">
+        <span class="eyebrow">The problem</span>
+        <h2>Today's AI coding tools have amnesia — and own you.</h2>
+        <p class="lead">Every session starts from zero. Your corrections, preferences, and
+          hard-won lessons vanish. And the good ones lock you into their models, their
+          cloud, their pricing. Mímir is the answer: an agent that remembers everything
+          and answers only to you.</p>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features" style="padding-top:0">
+      <div class="wrap">
+        <div class="center" style="margin-bottom:48px">
+          <span class="eyebrow">Features</span>
+          <h2>A complete agentic coding framework</h2>
+        </div>
+        <div class="grid grid-3">
+          <div class="card"><div class="icon">🧠</div><h3>The Cortex</h3>
+            <p>A neural knowledge brain (neurons, synapses, engrams) on SurrealDB.
+               Multi-modal knowledge + a self-learning memory with a forgetting curve
+               and skill synthesis.</p></div>
+          <div class="card"><div class="icon">🔒</div><h3>Sovereign & local-first</h3>
+            <p>Bring any provider key or run 100% local (Ollama, llama.cpp, vLLM).
+               Your keys, your data, your hardware. No vendor lock-in.</p></div>
+          <div class="card"><div class="icon">🛠️</div><h3>Built-in deep tools</h3>
+            <p>Terminal, filesystem, process control, in-memory code execution, and
+               surgical edits — reimplemented natively, not bolted on.</p></div>
+          <div class="card"><div class="icon">🎯</div><h3>Goal-driven autonomy</h3>
+            <p>State the goal. Mímir makes a game plan, converts it to a to-do list,
+               and works item-by-item — debug and test as it goes — until it's done.</p></div>
+          <div class="card"><div class="icon">🐢</div><h3>Small-model friendly</h3>
+            <p>Engineered so models ≤30B code smoothly: lean tools, focused context,
+               step-by-step verification, and anti-derailment guardrails.</p></div>
+          <div class="card"><div class="icon">🛡️</div><h3>Deterministic governance</h3>
+            <p>A fail-closed policy gate, privilege rings, tamper-evident audit, and
+               on-the-fly sandboxing. Misbehavior is structurally impossible.</p></div>
+          <div class="card"><div class="icon">📡</div><h3>Research tools (Gjallarhorn)</h3>
+            <p>Built-in metasearch across many engines, YouTube transcripts, and web
+               scraping — all ingested straight into the Cortex.</p></div>
+          <div class="card"><div class="icon">🖥️</div><h3>Works everywhere</h3>
+            <p>Desktop GUI, terminal, mobile over a secure tunnel, and chat channels
+               (Discord, Slack, Telegram) — all against one home daemon.</p></div>
+          <div class="card"><div class="icon">🧩</div><h3>Fully extensible</h3>
+            <p>A typed plugin SDK, pluggable model runtimes, MCP support, and reusable
+               skills. Extend Mímir without forking it.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section id="how" class="myth">
+      <div class="wrap">
+        <div class="center" style="margin-bottom:48px">
+          <span class="eyebrow">How it works</span>
+          <h2>From "build me this" to done.</h2>
+        </div>
+        <div class="grid grid-3 steps">
+          <div class="step"><h3>Bring your brain</h3>
+            <p class="muted">Plug in any model API key, or point Mímir at a local model.
+               One binary, any OS, no cloud required.</p></div>
+          <div class="step"><h3>It plans, then builds</h3>
+            <p class="muted">Mímir drafts a game plan, breaks it into a to-do list, and
+               executes step-by-step — writing code, running the terminal, testing as it goes.</p></div>
+          <div class="step"><h3>It remembers</h3>
+            <p class="muted">Every correction, preference, and lesson becomes a memory.
+               Next session — next project — it already knows.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PERSONAS -->
+    <section id="personas">
+      <div class="wrap">
+        <div class="center" style="margin-bottom:48px">
+          <span class="eyebrow">The pantheon</span>
+          <h2>Agents named for the gods</h2>
+          <p class="lead">Mímir's agent modes and subagents are Norse figures — each a
+            specialist with its own tools and model.</p>
+        </div>
+        <div class="grid grid-2">
+          <div class="card persona"><div class="rune">O</div><div>
+            <h3>Odin</h3><div class="role">Orchestrator / planner</div>
+            <p class="muted">The All-Father. Sees the whole board, makes the game plan, delegates and coordinates.</p></div></div>
+          <div class="card persona ember"><div class="rune">T</div><div>
+            <h3>Thor</h3><div class="role">Builder</div>
+            <p class="muted">The workhorse. Writes code, runs tools, and executes decisively.</p></div></div>
+          <div class="card persona ember"><div class="rune">L</div><div>
+            <h3>Loki</h3><div class="role">Debugger / tester</div>
+            <p class="muted">Cunning and sideways. Hunts bugs, probes edge cases, breaks things to make them stronger.</p></div></div>
+          <div class="card persona"><div class="rune">H</div><div>
+            <h3>Heimdall</h3><div class="role">Reviewer / watchman</div>
+            <p class="muted">Sees everything. Reviews code, guards the policy gate, lets nothing flawed pass.</p></div></div>
+          <div class="card persona"><div class="rune">ᚺ</div><div>
+            <h3>Huginn &amp; Muninn</h3><div class="role">Scout subagents</div>
+            <p class="muted">Odin's ravens of Thought and Memory. They fly out, explore, and bring back what they learn.</p></div></div>
+          <div class="card persona"><div class="rune">B</div><div>
+            <h3>Bragi</h3><div class="role">Skald</div>
+            <p class="muted">The poet. Writes clear documentation, comments, and eloquent output.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRICING -->
+    <section id="pricing" class="myth">
+      <div class="wrap">
+        <div class="center" style="margin-bottom:48px">
+          <span class="eyebrow">Pricing</span>
+          <h2>Free and open. Pay only for convenience.</h2>
+          <p class="lead">The core is open source and fully functional on your own hardware.
+            The hosted layer is optional — never a cage.</p>
+        </div>
+        <div class="grid grid-3">
+          <div class="card price-card">
+            <span class="tag">Open source</span>
+            <h3>Self-hosted</h3>
+            <div class="amt">$0<span> forever</span></div>
+            <ul>
+              <li>The full Mímir framework</li>
+              <li>Bring your own model keys</li>
+              <li>Run 100% local (Ollama &amp; more)</li>
+              <li>The Cortex, tools, governance, sandbox</li>
+              <li>No telemetry required</li>
+            </ul>
+            <a class="btn btn-ghost" href="https://github.com/David2024patton/Mimir">Get the code</a>
+          </div>
+          <div class="card price-card featured">
+            <span class="tag">Most popular</span>
+            <h3>Gateway</h3>
+            <div class="amt">$10<span> /mo + usage</span></div>
+            <ul>
+              <li>Curated, benchmarked models</li>
+              <li>One key, unified billing</li>
+              <li>Pay-as-you-go credits</li>
+              <li>Works with Mímir or any agent</li>
+              <li>Monthly spend limits</li>
+            </ul>
+            <a class="btn btn-primary" href="#top">Start free</a>
+          </div>
+          <div class="card price-card">
+            <span class="tag">Teams</span>
+            <h3>Team &amp; Enterprise</h3>
+            <div class="amt">Custom</div>
+            <ul>
+              <li>Shared workspaces &amp; Cortex</li>
+              <li>SSO / RBAC &amp; spend controls</li>
+              <li>Hosted knowledge bases</li>
+              <li>Self-hosted / air-gapped option</li>
+              <li>Support &amp; compliance</li>
+            </ul>
+            <a class="btn btn-ghost" href="#top">Contact us</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section style="padding-top:0">
+      <div class="wrap">
+        <div class="cta">
+          <h2>Give your code a memory.</h2>
+          <p class="lead" style="margin-bottom:28px">Build software with an agent that
+            plans, executes, and never forgets — on your terms.</p>
+          <div class="btn-row" style="margin-top:0">
+            <a class="btn btn-primary" href="https://github.com/David2024patton/Mimir">Get Mímir free</a>
+            <a class="btn btn-ghost" href="#features">Explore features</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap foot-inner">
+      <div class="brand" style="font-size:17px"><span class="mark"></span> Mímir</div>
+      <div>The agent that remembers. Open source · Local-first · mimirmind.com</div>
+      <div>© 2026 Mímir. Built by a veteran, for builders.</div>
+    </div>
+  </footer>
+</body>
+</html>

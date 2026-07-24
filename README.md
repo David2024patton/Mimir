@@ -124,6 +124,7 @@ internal/
   policy/           # fail-closed policy gate
   server/           # HTTP + WebSocket daemon + GUI
 gui/                # Solid web frontend (next)
+site/               # marketing landing page (mimirmind.com)
 docs/               # BMAD planning artifacts
 ```
 

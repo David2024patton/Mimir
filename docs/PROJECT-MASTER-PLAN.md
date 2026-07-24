@@ -116,6 +116,21 @@ system access is first-class native code, not an external dependency. This deliv
 > Factory) is in `RESEARCH-FEATURE-LANDSCAPE.md`. **OpenClaw is the primary
 > architectural model** for the modular design in Section 5.
 
+### Competitive parity & edge (gap analysis)
+Beyond the differentiators (self-learning memory, sovereignty, small-model mode,
+governance), Mímir must match the table-stakes features users expect from Cursor /
+Claude Code / Copilot / Kiro / Windsurf. The gap analysis added F34-F40:
+- **Code Intelligence / LSP** (F34) - a coding agent that can't see compile errors is
+  blind; every competitor has this.
+- **Git & PR Automation** (F35) - the "assign an issue, get a PR" autonomous-developer
+  story (Copilot agent / Devin / BugBot) is a headline selling point.
+- **Deep Codebase Indexing** (F36) - AST-aware understanding beats naive text RAG.
+- **Usage & Cost Tracking** (F37) - builds trust and demonstrates the gateway's value.
+- **Context Mastery** (F38) - output styles, steering files, flow awareness, prompt
+  caching, /context visualization: the context-engineering edge.
+- **Inline Tab Completion** (F39) - Cursor's moat; an adoption driver (needs an editor).
+- **Sharing & Collaboration** (F40) - share links + team sessions for growth.
+
 **Key decision:** Desktop Commander's tool set is the proven design we mirror, but
 we REIMPLEMENT it natively rather than depending on the external MCP server. The
 tools (terminal, filesystem, process, code-exec, edit_block) are first-class code in
@@ -805,6 +820,52 @@ identity and clear, memorable role names.
   F16); users can add their own Norse (or any) personas.
 - F33.5 Persona names surface in the GUI/TUI (agent switcher, chat, subagent cards).
 
+### F34. Code Intelligence (LSP) [Differentiator - table stakes for a coding agent]
+Language-server integration so the agent understands code, not just text.
+- F34.1 Diagnostics (compile/lint errors) fed to the model so it fixes REAL errors.
+- F34.2 Go-to-definition, find-references, hover, document/workspace symbols.
+- F34.3 Auto-start the right language server per file type; expose as tools.
+- F34.4 (opencode/Cursor/Copilot all have this; a coding agent without it is blind.)
+
+### F35. Git & PR Automation [Differentiator - the "autonomous developer" story]
+- F35.1 Git workflow tools: status, diff, commit, branch, stash, log.
+- F35.2 Create pull requests with generated descriptions; push branches.
+- F35.3 Issue -> PR: assign an issue, the agent plans + implements + opens a draft PR
+  (Copilot agent / Devin style).
+- F35.4 Automated PR review (BugBot-style): review a diff, leave comments, flag risks.
+- F35.5 Auto-fix CI failures on the agent's own PRs.
+
+### F36. Deep Codebase Indexing [Differentiator]
+- F36.1 AST-aware code indexing (tree-sitter) + symbol graph - not just naive text RAG.
+- F36.2 Hybrid retrieval: semantic (embeddings) + keyword (FTS) + structural (symbols).
+- F36.3 Repo-map / codebase tour so the agent orients in large / multi-repo projects.
+- F36.4 Incremental re-index on file change.
+
+### F37. Usage & Cost Tracking [Core - trust + monetization]
+- F37.1 Track tokens + cost per session/model/provider (from streaming usage events).
+- F37.2 Usage dashboard in the GUI; budget alerts/limits per session/workspace.
+- F37.3 Per-model cost config; show estimated cost before expensive actions.
+- F37.4 Feeds the business model: demonstrates the value of the hosted gateway pricing.
+
+### F38. Context Mastery [Differentiator - the "context engineering" edge]
+- F38.1 Output styles: customize the agent's tone/format (concise, explanatory, learning).
+- F38.2 Steering files (Kiro-style): product/tech/structure context, global vs workspace.
+- F38.3 Flow awareness (Windsurf-style): passively fold the user's recent edits/terminal/
+  navigation into context ("fix this" already knows the failing test you just ran).
+- F38.4 Prompt caching: cache stable prompt prefixes to cut cost/latency.
+- F38.5 Context visualization (/context): show what's consuming the context window.
+
+### F39. Inline Tab Completion [Differentiator - adoption driver]
+- F39.1 Predictive inline autocomplete (next-edit prediction, not just insertion).
+- F39.2 Requires an editor surface: IDE extension (VS Code/JetBrains via ACP) or the
+  built-in editor in the GUI.
+- F39.3 Cursor's moat; pairs with our small-model focus (a fast local model for tabs).
+
+### F40. Sharing & Collaboration [Differentiator - growth + team]
+- F40.1 Session share links: publish a session as a public/read-only URL (opencode-style).
+- F40.2 Published artifacts: share the agent's deliverables (plans, diffs, previews).
+- F40.3 Team sessions / multiplayer (later): shared workspace, shared Cortex.
+
 ---
 
 ## 7. Epics Roadmap
@@ -861,7 +922,7 @@ memory, skills, plan mode, subagents, and hooks.)
 
 ### Tier 4 - Knowledge, Platform & Monetization
 These turn Mímir into a sustainable, differentiated product (see Section 11).
-The knowledge/learning/sandbox/governance/research/small-model epics (E31, E38, E40, E41, E43-E50)
+The knowledge/learning/sandbox/governance/research/small-model epics (E31, E38, E40, E41, E43-E57)
 are product differentiators (schedule alongside Tier 2); E32-E37 and E42 are the hosted
 platform/backend that earns.
 | Epic | Title | Maps to | Depends | Size |
@@ -886,6 +947,13 @@ platform/backend that earns.
 | E48 | Small-Model Mode & Structured Task Workflow (game plan -> to-do list -> one-task-at-a-time, lean tools, verification, anti-derailment) | F31 | E2, E3, E6 | L |
 | E49 | Telemetry & Privacy (on by default, anonymized, opt-out in privacy settings) | F32 | E1 | M |
 | E50 | Norse Agent Personas (Odin/Thor/Loki/Heimdall/Bragi modes, Huginn & Muninn scouts, Ratatoskr, Norns/Forseti) | F33 | E9, E16 | M |
+| E51 | Code Intelligence / LSP (diagnostics, go-to-def, find-refs, symbols) | F34 | E3 | M |
+| E52 | Git & PR Automation (commit/branch/diff, Issue->PR, PR review, CI auto-fix) | F35 | E3, E4 | L |
+| E53 | Deep Codebase Indexing (tree-sitter AST + hybrid retrieval + repo-map) | F36 | E6 | L |
+| E54 | Usage & Cost Tracking (per-session/model cost, dashboard, budget alerts) | F37 | E2 | M |
+| E55 | Context Mastery (output styles, steering files, flow awareness, prompt caching, /context) | F38 | E2, E6 | L |
+| E56 | Inline Tab Completion (next-edit prediction; IDE extension or built-in editor) | F39 | E12 | L |
+| E57 | Sharing & Collaboration (session share links, published artifacts, team sessions) | F40 | E12 | M |
 
 ---
 
@@ -903,7 +971,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E50 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E57 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |
