@@ -12,7 +12,13 @@
       --purple:#a78bfa; --red:#f87171; --yellow:#fbbf24;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+    body{margin:0;color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+      background:
+        radial-gradient(1100px 550px at 88% -8%, rgba(45,212,191,.08), transparent 62%),
+        radial-gradient(950px 500px at -8% 108%, rgba(251,146,60,.07), transparent 62%),
+        radial-gradient(750px 420px at 55% 55%, rgba(96,165,250,.05), transparent 60%),
+        var(--bg);
+      background-attachment:fixed}
     .app{display:grid;grid-template-rows:52px 1fr;height:100vh}
     button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
@@ -29,6 +35,22 @@
     .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
     .iconbtn{width:32px;height:32px;display:grid;place-items:center;border-radius:8px;color:var(--muted)}
     .iconbtn:hover{background:var(--panel);color:var(--text)}
+
+    /* status reactor - pulses with the current status color */
+    .reactor{display:flex;align-items:center;gap:8px;padding:5px 13px;border-radius:99px;background:var(--panel);border:1px solid var(--border);cursor:pointer;transition:.2s}
+    .reactor:hover{border-color:var(--border2)}
+    .reactor-core{width:10px;height:10px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal);animation:reactorPulse 1.6s ease-in-out infinite}
+    .reactor-label{font-size:12px;color:var(--muted)}
+    @keyframes reactorPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.55}}
+    /* theme swatches - live accent color change */
+    .swatches{display:flex;gap:7px;align-items:center}
+    .swatch{width:15px;height:15px;border-radius:50%;background:var(--sw);cursor:pointer;border:2px solid transparent;transition:.15s;box-shadow:0 0 7px var(--sw)}
+    .swatch:hover{transform:scale(1.25)}
+    .swatch.active{border-color:rgba(255,255,255,.85)}
+    /* rgb hardware sync chip */
+    .rgbsync{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);padding:5px 11px;border-radius:99px;border:1px solid var(--border);background:var(--panel)}
+    .rgbsync .led{width:9px;height:9px;border-radius:50%;background:linear-gradient(90deg,#f87171,#fbbf24,#4ade80,#60a5fa,#a78bfa);animation:ledShift 3s linear infinite}
+    @keyframes ledShift{0%{filter:hue-rotate(0deg)}100%{filter:hue-rotate(360deg)}}
 
     /* BODY */
     .body{display:grid;grid-template-columns:212px 1fr 372px 52px;overflow:hidden}
@@ -138,8 +160,12 @@
     .qopt.sel{background:var(--teal);border-color:var(--teal);color:#04201c;font-weight:600}
     .qopt .d{display:block;font-size:11px;opacity:.75;font-weight:400}
 
-    /* agent message - neon glow on the bubble edges + talking indicator */
-    .msg.agent .bubble{border-color:rgba(45,212,191,.4);box-shadow:0 0 0 1px rgba(45,212,191,.18),0 0 20px rgba(45,212,191,.14),inset 0 0 14px rgba(45,212,191,.05)}
+    /* agent message - animated underglow on the bubble edges (moving light) */
+    .msg.agent .bubble{border-color:color-mix(in srgb, var(--teal) 40%, transparent);animation:edgeGlow 3.2s ease-in-out infinite}
+    @keyframes edgeGlow{
+      0%,100%{box-shadow:0 0 0 1px color-mix(in srgb, var(--teal) 18%, transparent),0 0 20px color-mix(in srgb, var(--teal) 14%, transparent),inset 0 0 14px color-mix(in srgb, var(--teal) 5%, transparent)}
+      50%{box-shadow:0 0 0 1px color-mix(in srgb, var(--teal) 34%, transparent),0 0 30px color-mix(in srgb, var(--teal) 25%, transparent),inset 0 0 18px color-mix(in srgb, var(--teal) 9%, transparent)}
+    }
     .msg .who .talking{color:var(--teal);font-size:11px;display:inline-flex;align-items:center;gap:5px;margin-left:2px}
     .msg .who .talking .pulse{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 1.4s ease-in-out infinite}
     @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 6px var(--teal)}50%{opacity:.35;box-shadow:0 0 2px var(--teal)}}
@@ -200,6 +226,17 @@
       <div class="switcher agent">⚡ <b>Odin</b> <span style="color:var(--dim)">· orchestrator</span> ▾</div>
       <div class="topsearch">🔍 <span>Search sessions, cortex, skills…</span></div>
       <div class="spacer"></div>
+      <div class="swatches" title="Change accent color (settings)">
+        <span class="swatch active" style="--sw:#2dd4bf" onclick="setAccent(this,'#2dd4bf')"></span>
+        <span class="swatch" style="--sw:#fb923c" onclick="setAccent(this,'#fb923c')"></span>
+        <span class="swatch" style="--sw:#60a5fa" onclick="setAccent(this,'#60a5fa')"></span>
+        <span class="swatch" style="--sw:#a3e635" onclick="setAccent(this,'#a3e635')"></span>
+      </div>
+      <div class="reactor" onclick="cycleStatus()" title="Status reactor - click to demo status colors">
+        <span class="reactor-core" id="reactorCore"></span>
+        <span class="reactor-label" id="reactorLabel">building</span>
+      </div>
+      <div class="rgbsync" title="RGB hardware sync (Corsair iCUE / Razer Chroma / OpenRGB)"><span class="led"></span> RGB sync</div>
       <div class="status"><span class="dot"></span> daemon · ollama/qwen3.6-35b · sandbox ready</div>
       <button class="iconbtn" title="Settings">⚙</button>
     </div>
@@ -457,6 +494,12 @@
   <div class="toast" id="toast"></div>
 
   <script>
+    // live accent color (theme settings demo)
+    function setAccent(el,color){ document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active')); el.classList.add('active'); document.documentElement.style.setProperty('--teal',color); document.documentElement.style.setProperty('--teal-d',color); }
+    // status reactor - cycles status colors (UI + RGB lights react)
+    const statuses=[{l:'building',c:'#2dd4bf'},{l:'task done',c:'#f87171'},{l:'final answer',c:'#fbbf24'},{l:'error',c:'#ef4444'},{l:'waiting for you',c:'#f59e0b'}];
+    let statusIdx=0;
+    function cycleStatus(){ statusIdx=(statusIdx+1)%statuses.length; const s=statuses[statusIdx]; const core=document.getElementById('reactorCore'); core.style.background=s.c; core.style.boxShadow='0 0 10px '+s.c; document.getElementById('reactorLabel').textContent=s.l; toast('Status: <b style="color:'+s.c+'">'+s.l+'</b> · UI + RGB lights react'); }
     // thinking block collapse
     function toggleThink(el){ el.parentElement.classList.toggle('collapsed'); }
     // Build/Plan mode toggle

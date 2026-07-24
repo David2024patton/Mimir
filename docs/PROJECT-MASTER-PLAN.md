@@ -1069,6 +1069,35 @@ and phone.
 - F48.6 **Screenshot + vision loop** (ties to Heimdall F43.12): capture the screen, feed
   it to a vision model to understand the UI, then act via the UI automation tools.
 
+### F49. Futuristic Theme System (vibrant, animated, customizable) [Differentiator - identity]
+Mímir doesn't look like every other white-or-dark tool. It's futuristic, vibrant, alive.
+- F49.1 Vibrant futuristic themes: multiple built-in themes with vivid accent colors
+  (not just light/dark), on a deep rich base with layered ambient light.
+- F49.2 Animated underglow / moving edges: panels, chat bubbles, and buttons carry a
+  soft animated glow along their edges (moving light, gentle pulse).
+- F49.3 Settings to customize: accent colors, glow intensity, theme, motion on/off.
+- F49.4 Status-reactive colors: each status has a configurable color - building
+  (cyan flow), task done (red pulse), final answer (gold sweep), error (red flash),
+  waiting for input (amber breathe). The UI and LEDs react visibly.
+- F49.5 Strong typographic contrast: a distinctive display face for headers + a
+  readable body face.
+
+### F50. Status Event Engine + RGB Hardware Sync [Differentiator - the "alive" factor]
+When something happens, you see it, and your room lights up with it.
+- F50.1 Status event engine: status changes (task done, error, final answer, waiting,
+  build complete) fire events on a bus.
+- F50.2 **RGB hardware sync**: connect RGB gear (Corsair iCUE, Razer Chroma, OpenRGB,
+  SignalRGB) and the physical LEDs pulse/flash the same colors as the UI status -
+  keyboard, mouse, strips, case fans all react when a task finishes.
+- F50.3 Hardware abstraction layer: OpenRGB as the open-source default; per-zone LED
+  mapping (keyboard / mouse / strip / fans).
+- F50.4 Other trigger types: webhooks, sounds, desktop notifications, custom
+  scripts/commands - fired per status event.
+- F50.5 Configurable per status: done -> red pulse + webhook; error -> flash + sound;
+  final answer -> color sweep + notification.
+- F50.6 Extensible trigger plugins: the trigger system is a plugin surface, so anyone
+  can add new "when X happens, do Y" integrations.
+
 ---
 
 ## 7. Epics Roadmap
@@ -1165,6 +1194,8 @@ platform/backend that earns.
 | E63 | Thinking Mode (light-gray collapsible thinking blocks, low/medium/high levels, off switch) | F46 | E2, E12 | S |
 | E64 | Chat Composer (+ attachments, Build/Plan toggle, model picker, thinking level, send button) | F47 | E12 | M |
 | E65 | Computer Use & OS Automation (UI automation, input hooks, system instrumentation, app actions across Windows/macOS/Linux/Android/iOS; desktop first, mobile gated by permissions) | F48 | E3, E28 | L |
+| E66 | Futuristic Theme System (vibrant themes, animated underglow/moving edges, color settings, status-reactive colors) | F49 | E12 | M |
+| E67 | Status Event Engine + RGB Hardware Sync (status events, RGB LED sync via OpenRGB/iCUE/Chroma, webhooks/sounds/scripts, extensible triggers) | F50 | E12, E66 | L |
 
 ---
 
@@ -1182,7 +1213,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E65 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E67 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |
