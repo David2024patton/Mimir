@@ -908,11 +908,12 @@ Language-server integration so the agent understands code, not just text.
 
 ### F41. Embedding Strategy [Core - powers RAG]
 How content becomes searchable vectors. Hybrid: local-first (free/private) + optional cloud.
-- F41.1 Bundled local embedding model (default, zero-config): a small ONNX model
-  (e.g. all-MiniLM-L6-v2, ~22M params, ~80MB) runs on CPU via ONNX Runtime - private,
-  free, no key. Ships with the installer.
-- F41.2 Ollama embeddings: use a local Ollama embedding model (nomic-embed-text,
-  mxbai-embed-large) if Ollama is present (preferred when available).
+- F41.1 Bundled local embedding model (default, zero-config): **nomic-embed-text-v2-moe**
+  (multilingual MoE - strong quality per compute, only a subset of params activate per
+  embedding) runs locally via Ollama - private, free, no key. Ships with the installer
+  (auto-installs Ollama + the model if missing).
+- F41.2 Lighter fallback: qwen3-embedding:0.6b for low-resource machines;
+  mxbai-embed-large as another Ollama option.
 - F41.3 Provider embeddings: OpenAI text-embedding-3-small, etc. (requires a key).
 - F41.4 Cloud embeddings (paid tier): hosted, higher-quality embeddings without local
   compute - part of the Cloud plan (monetization).
@@ -1098,6 +1099,51 @@ When something happens, you see it, and your room lights up with it.
 - F50.6 Extensible trigger plugins: the trigger system is a plugin surface, so anyone
   can add new "when X happens, do Y" integrations.
 
+### F51. Docker-First Execution & Hosting [Core - deployment]
+Every project Mímir builds gets a Dockerfile, so it can be hosted anywhere instead of
+needing an installable app.
+- F51.1 Every project gets a generated Dockerfile (+ docker-compose) so it can be built
+  and hosted as a container, not an installed app.
+- F51.2 Structured run system: Mímir runs project services in Docker containers with a
+  clear, consistent interface (start/stop/logs/exec).
+- F51.3 Auto-install Docker: if the user's machine lacks Docker, Mímir offers to install
+  it (Docker Desktop / Docker Engine) as part of setup.
+- F51.4 Mímir itself ships as a Docker image (self-host the whole framework).
+- F51.5 Preview ports: live previews always use an unused 5-digit port (never 8080).
+
+### F52. Per-Project Dashboard (token usage) [Core - transparency]
+Each project has its own dashboard.
+- F52.1 Shows total tokens used for the project.
+- F52.2 Lists every LLM model used (cloud or local), what it is, and tokens used per
+  model.
+- F52.3 Sorted top-to-bottom from most tokens used to least.
+- F52.4 Cost estimate per model and total.
+
+### F53. Book-Spine Navigation + Flexible Panels [Core - UX]
+Maximize viewable area, like NotebookLM's book spines.
+- F53.1 Vertical book-spine tabs (not a top nav bar): each window is a spine that runs
+  vertically; clicking a spine shifts it right and opens the window.
+- F53.2 Each center panel opens/closes by clicking its spine - maximize viewable area,
+  less clutter.
+- F53.3 Two panels can be open side by side.
+- F53.4 Drag & drop: click-and-hold (tap-and-hold on mobile) a panel and drag it anywhere
+  within the center area.
+- F53.5 Layout: left nav rail | book spines | center panels | chat | right hotlink rail.
+
+### F54. Custom Hotlink Rail [Core - UX]
+- F54.1 The right rail holds hotlink buttons for fast access.
+- F54.2 Users add custom buttons: pin conversations, settings, LLM provider links, panels.
+- F54.3 Drag to reorder; right-click (or long-press) to unpin.
+
+### F55. Smart Task Tracker [Core - workflow]
+- F55.1 Auto-place checkbox: when a task is added with auto on, Mímir pauses, reviews the
+  new task against all existing tasks, places it in the right order, and offers advice or
+  follow-up questions depending on the situation.
+- F55.2 The chat shows the current task and next task as "Task X of Y" so the user always
+  knows progress without opening the task window.
+- F55.3 Debug woven into every build step: each section's flow includes a debug pass
+  (Loki) - the flow bar shows Debug as part of every step a software engineer takes.
+
 ---
 
 ## 7. Epics Roadmap
@@ -1196,6 +1242,11 @@ platform/backend that earns.
 | E65 | Computer Use & OS Automation (UI automation, input hooks, system instrumentation, app actions across Windows/macOS/Linux/Android/iOS; desktop first, mobile gated by permissions) | F48 | E3, E28 | L |
 | E66 | Futuristic Theme System (vibrant themes, animated underglow/moving edges, color settings, status-reactive colors) | F49 | E12 | M |
 | E67 | Status Event Engine + RGB Hardware Sync (status events, RGB LED sync via OpenRGB/iCUE/Chroma, webhooks/sounds/scripts, extensible triggers) | F50 | E12, E66 | L |
+| E68 | Docker-First Execution & Hosting (per-project Dockerfile, structured container runs, auto-install Docker, Mímir as image, 5-digit preview ports) | F51 | E3 | M |
+| E69 | Per-Project Dashboard (total + per-model token usage, cloud/local, sorted most-to-least, cost estimates) | F52 | E12 | M |
+| E70 | Book-Spine Navigation + Flexible Panels (vertical spines, open/close, side-by-side, drag-and-drop) | F53 | E12 | L |
+| E71 | Custom Hotlink Rail (pin conversations/settings/providers, reorder, unpin) | F54 | E12 | S |
+| E72 | Smart Task Tracker (auto-place with LLM review, "Task X of Y" in chat, debug in every step) | F55 | E12, E48 | M |
 
 ---
 
@@ -1213,7 +1264,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E67 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E72 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |

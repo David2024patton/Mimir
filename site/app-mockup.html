@@ -1,539 +1,517 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mímir - App UI Mockup</title>
-  <style>
-    :root {
-      --bg:#0a0e14; --bg2:#0e141d; --panel:#131b26; --panel2:#182231; --panel3:#1d2938;
-      --border:#23303f; --border2:#2d3d4f; --text:#e6edf3; --muted:#8b98a5; --dim:#5f6b78;
-      --teal:#2dd4bf; --teal-d:#14b8a6; --ember:#fb923c; --green:#4ade80; --blue:#60a5fa;
-      --purple:#a78bfa; --red:#f87171; --yellow:#fbbf24;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
-      background:
-        radial-gradient(1100px 550px at 88% -8%, rgba(45,212,191,.08), transparent 62%),
-        radial-gradient(950px 500px at -8% 108%, rgba(251,146,60,.07), transparent 62%),
-        radial-gradient(750px 420px at 55% 55%, rgba(96,165,250,.05), transparent 60%),
-        var(--bg);
-      background-attachment:fixed}
-    .app{display:grid;grid-template-rows:52px 1fr;height:100vh}
-    button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mímir — the agent that remembers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b1018; --bg2:#0e1520; --panel:#121b28; --panel2:#17222f; --panel3:#1c2a3a;
+  --border:#22303f; --border2:#2d4054;
+  --text:#e8eef4; --muted:#93a3b3; --dim:#5d6d7d;
+  --teal:#2dd4bf; --teal-d:#14b8a6; --ember:#fb923c; --blue:#60a5fa; --lime:#a3e635;
+  --red:#f87171; --gold:#fbbf24; --purple:#a78bfa;
+  --disp:"Space Grotesk",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--text);font:14px/1.5 var(--body);-webkit-font-smoothing:antialiased;
+  background:
+    radial-gradient(1100px 550px at 88% -8%, color-mix(in srgb,var(--teal) 8%, transparent), transparent 62%),
+    radial-gradient(950px 500px at -8% 108%, color-mix(in srgb,var(--ember) 7%, transparent), transparent 62%),
+    radial-gradient(750px 420px at 55% 55%, color-mix(in srgb,var(--blue) 5%, transparent), transparent 60%),
+    var(--bg);
+  background-attachment:fixed;overflow:hidden}
+h1,h2,h3,.disp{font-family:var(--disp)}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.app{display:grid;grid-template-rows:52px 1fr;height:100vh}
 
-    /* TOP BAR */
-    .topbar{display:flex;align-items:center;gap:14px;padding:0 16px;background:var(--bg2);border-bottom:1px solid var(--border)}
-    .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:16px}
-    .mark{width:22px;height:22px;border-radius:6px;background:radial-gradient(circle at 30% 30%,var(--teal),var(--teal-d));box-shadow:0 0 12px rgba(45,212,191,.3)}
-    .switcher{display:flex;align-items:center;gap:6px;padding:5px 11px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px}
-    .switcher b{color:var(--text);font-weight:600}
-    .switcher.agent b{color:var(--teal)}
-    .topsearch{flex:1;max-width:340px;display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--dim);font-size:13px}
-    .spacer{flex:1}
-    .status{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
-    .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
-    .iconbtn{width:32px;height:32px;display:grid;place-items:center;border-radius:8px;color:var(--muted)}
-    .iconbtn:hover{background:var(--panel);color:var(--text)}
+/* TOPBAR */
+.topbar{display:flex;align-items:center;gap:14px;padding:0 16px;background:color-mix(in srgb,var(--bg2) 85%, transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--disp);font-weight:700;font-size:17px}
+.mark{width:22px;height:22px;border-radius:6px;background:radial-gradient(circle at 30% 30%,var(--teal),var(--teal-d));box-shadow:0 0 12px color-mix(in srgb,var(--teal) 40%, transparent)}
+.switcher{display:flex;align-items:center;gap:6px;padding:5px 11px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:13px;cursor:pointer;transition:.15s}
+.switcher:hover{border-color:var(--border2)}
+.switcher b{color:var(--text);font-weight:600}
+.switcher.agent b{color:var(--teal)}
+.spacer{flex:1}
+.swatches{display:flex;gap:7px;align-items:center}
+.swatch{width:15px;height:15px;border-radius:50%;background:var(--sw);cursor:pointer;border:2px solid transparent;transition:.15s;box-shadow:0 0 7px var(--sw)}
+.swatch:hover{transform:scale(1.25)}
+.swatch.active{border-color:rgba(255,255,255,.85)}
+.reactor{display:flex;align-items:center;gap:8px;padding:5px 13px;border-radius:99px;background:var(--panel);border:1px solid var(--border);cursor:pointer;transition:.2s}
+.reactor:hover{border-color:var(--border2)}
+.reactor-core{width:10px;height:10px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal);animation:reactorPulse 1.6s ease-in-out infinite}
+.reactor-label{font-size:12px;color:var(--muted)}
+@keyframes reactorPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.55}}
+.rgbsync{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);padding:5px 11px;border-radius:99px;border:1px solid var(--border);background:var(--panel)}
+.rgbsync .led{width:9px;height:9px;border-radius:50%;background:linear-gradient(90deg,#f87171,#fbbf24,#4ade80,#60a5fa,#a78bfa);animation:ledShift 3s linear infinite}
+@keyframes ledShift{to{filter:hue-rotate(360deg)}}
+.status{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--lime);box-shadow:0 0 8px var(--lime)}
 
-    /* status reactor - pulses with the current status color */
-    .reactor{display:flex;align-items:center;gap:8px;padding:5px 13px;border-radius:99px;background:var(--panel);border:1px solid var(--border);cursor:pointer;transition:.2s}
-    .reactor:hover{border-color:var(--border2)}
-    .reactor-core{width:10px;height:10px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal);animation:reactorPulse 1.6s ease-in-out infinite}
-    .reactor-label{font-size:12px;color:var(--muted)}
-    @keyframes reactorPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.55}}
-    /* theme swatches - live accent color change */
-    .swatches{display:flex;gap:7px;align-items:center}
-    .swatch{width:15px;height:15px;border-radius:50%;background:var(--sw);cursor:pointer;border:2px solid transparent;transition:.15s;box-shadow:0 0 7px var(--sw)}
-    .swatch:hover{transform:scale(1.25)}
-    .swatch.active{border-color:rgba(255,255,255,.85)}
-    /* rgb hardware sync chip */
-    .rgbsync{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);padding:5px 11px;border-radius:99px;border:1px solid var(--border);background:var(--panel)}
-    .rgbsync .led{width:9px;height:9px;border-radius:50%;background:linear-gradient(90deg,#f87171,#fbbf24,#4ade80,#60a5fa,#a78bfa);animation:ledShift 3s linear infinite}
-    @keyframes ledShift{0%{filter:hue-rotate(0deg)}100%{filter:hue-rotate(360deg)}}
+/* BODY LAYOUT: icon rail | spines | panels | chat | hotrail */
+.body{display:grid;grid-template-columns:56px 44px 1fr 380px 56px;overflow:hidden}
 
-    /* BODY */
-    .body{display:grid;grid-template-columns:212px 1fr 372px 52px;overflow:hidden}
-    .body.nav-collapsed{grid-template-columns:56px 1fr 372px 52px}
+/* LEFT ICON RAIL (nav - emojis ok here) */
+.iconrail{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 0}
+.iconbtn{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;color:var(--muted);font-size:17px;transition:.15s;cursor:pointer}
+.iconbtn:hover{background:var(--panel);color:var(--text);transform:translateY(-1px)}
+.iconbtn.active{background:var(--panel2);color:var(--teal);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--teal) 35%, transparent)}
+.rail-sep{width:26px;height:1px;background:var(--border);margin:6px 0}
+.rail-bottom{margin-top:auto;display:flex;flex-direction:column;gap:4px;align-items:center}
 
-    /* LEFT NAV */
-    .nav{background:var(--bg2);border-right:1px solid var(--border);padding:12px 10px;overflow-y:auto}
-    .nav-section{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding:10px 10px 6px;font-weight:700}
-    .nav-item{display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer;font-size:13.5px;white-space:nowrap}
-    .nav-item:hover{background:var(--panel);color:var(--text)}
-    .nav-item.active{background:var(--panel2);color:var(--text)}
-    .nav-item .ic{width:18px;text-align:center;flex:0 0 18px}
-    .nav-item .badge{margin-left:auto;font-size:11px;background:var(--panel3);padding:1px 7px;border-radius:99px;color:var(--muted)}
-    .nav-collapsed .nav-section,.nav-collapsed .nav-item span.lbl,.nav-collapsed .nav-item .badge{display:none}
-    .persona-dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+/* BOOK SPINES */
+.spines{display:flex;flex-direction:column;gap:6px;padding:12px 6px;background:var(--bg2);border-right:1px solid var(--border)}
+.spine{writing-mode:vertical-rl;padding:14px 7px;background:var(--panel);border:1px solid var(--border);border-radius:9px;cursor:pointer;color:var(--muted);font-family:var(--disp);font-size:12px;font-weight:600;letter-spacing:.05em;transition:.18s;user-select:none;flex:1;display:flex;align-items:center;justify-content:center;min-height:60px}
+.spine:hover{color:var(--text);border-color:var(--border2);transform:translateX(3px)}
+.spine.open{background:linear-gradient(180deg,color-mix(in srgb,var(--teal) 20%, var(--panel)),var(--panel));color:var(--teal);border-color:color-mix(in srgb,var(--teal) 50%, transparent);transform:translateX(6px);box-shadow:0 0 16px color-mix(in srgb,var(--teal) 18%, transparent)}
 
-    /* CENTER */
-    .center{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
-    .flowbar{display:flex;align-items:center;gap:6px;padding:10px 18px;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto}
-    .flow-step{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);white-space:nowrap}
-    .flow-step .fdot{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;border:1.5px solid var(--border2);color:var(--dim)}
-    .flow-step.done{color:var(--muted)} .flow-step.done .fdot{background:var(--green);border-color:var(--green);color:#04220f}
-    .flow-step.current{color:var(--text)} .flow-step.current .fdot{background:var(--teal);border-color:var(--teal);color:#04201c;box-shadow:0 0 10px rgba(45,212,191,.4)}
-    .flow-arrow{color:var(--dim);font-size:12px}
-    .tabs{display:flex;gap:2px;padding:0 14px;background:var(--bg2);border-bottom:1px solid var(--border)}
-    .tab{padding:11px 15px;font-size:13.5px;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer}
-    .tab:hover{color:var(--text)}
-    .tab.active{color:var(--text);border-bottom-color:var(--teal)}
-    .pane{flex:1;overflow-y:auto;padding:24px 28px;display:none}
-    .pane.active{display:block}
-    .pane h2{font-size:18px;margin:0 0 4px}
-    .pane .sub{color:var(--muted);font-size:13px;margin-bottom:20px}
-    .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px}
-    .card h3{font-size:14.5px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
-    .req{display:flex;gap:10px;padding:7px 0;font-size:13.5px;color:var(--muted);border-bottom:1px solid var(--border)}
-    .req:last-child{border-bottom:none}
-    .req .n{color:var(--teal);font-weight:700;flex:0 0 26px}
+/* CENTER PANELS */
+.panels{display:flex;gap:10px;padding:12px;overflow:hidden;min-width:0}
+.panel{flex:1;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;min-width:0;animation:panelIn .25s ease}
+@keyframes panelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.panel.drag-over{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal)}
+.panel-h{display:flex;align-items:center;gap:9px;padding:9px 13px;background:var(--panel2);border-bottom:1px solid var(--border);cursor:grab;user-select:none}
+.panel-h:active{cursor:grabbing}
+.panel-h .grip{color:var(--dim);font-size:13px;letter-spacing:-1px}
+.panel-h .ptitle{font-family:var(--disp);font-weight:600;font-size:13.5px}
+.panel-h .pclose{margin-left:auto;color:var(--dim);width:22px;height:22px;display:grid;place-items:center;border-radius:6px;transition:.15s}
+.panel-h .pclose:hover{background:var(--panel3);color:var(--red)}
+.panel-b{flex:1;overflow-y:auto;padding:15px}
+.panel-b::-webkit-scrollbar{width:9px}
+.panel-b::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
 
-    /* wireframe mock */
-    .wire{background:#0d1117;border:1px dashed var(--border2);border-radius:12px;padding:18px;max-width:560px}
-    .wire .wbar{height:34px;border:1.5px dashed var(--border2);border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 12px;margin-bottom:14px;color:var(--dim);font-size:12px}
-    .wire .wadd{display:flex;gap:8px;margin-bottom:14px}
-    .wire .winput{flex:1;height:36px;border:1.5px dashed var(--border2);border-radius:8px;display:flex;align-items:center;padding:0 12px;color:var(--dim);font-size:12px}
-    .wire .wbtn{width:74px;height:36px;border:1.5px dashed var(--teal-d);border-radius:8px;display:grid;place-items:center;color:var(--teal);font-size:12px}
-    .wire .wtask{height:38px;border:1.5px dashed var(--border2);border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 12px;margin-bottom:8px;color:var(--dim);font-size:12px}
-    .wire .wcheck{width:16px;height:16px;border:1.5px dashed var(--border2);border-radius:5px}
-    .wire .wline{flex:1;height:8px;border-radius:4px;background:var(--panel3)}
-    .mock-note{margin-top:14px;font-size:12.5px;color:var(--muted);display:flex;gap:8px;align-items:center}
+/* dashboard */
+.dash-total{display:flex;gap:22px;align-items:baseline;margin-bottom:16px}
+.dash-total .big{font-family:var(--disp);font-size:34px;font-weight:700;color:var(--teal)}
+.dash-total .lbl{color:var(--muted);font-size:13px}
+.mrow{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:9px 0;border-bottom:1px solid var(--border)}
+.mrow:last-child{border-bottom:none}
+.mrow .mname{font-family:var(--mono);font-size:12.5px;display:flex;align-items:center;gap:8px}
+.mtype{font-size:10px;padding:2px 8px;border-radius:99px;font-weight:600}
+.mtype.local{background:color-mix(in srgb,var(--lime) 18%, transparent);color:var(--lime)}
+.mtype.cloud{background:color-mix(in srgb,var(--blue) 18%, transparent);color:var(--blue)}
+.mtype.embed{background:color-mix(in srgb,var(--purple) 18%, transparent);color:var(--purple)}
+.mrow .mtok{font-family:var(--mono);font-size:12.5px;color:var(--text);text-align:right}
+.mrow .mcost{font-size:11px;color:var(--dim);text-align:right}
+.mbar{grid-column:1/-1;height:5px;border-radius:99px;background:var(--panel3);overflow:hidden}
+.mbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--teal),var(--teal-d));animation:barIn .6s ease}
+@keyframes barIn{from{width:0}}
 
-    /* code */
-    .code{background:#0d1117;border:1px solid var(--border);border-radius:12px;font:12.5px/1.7 ui-monospace,"Cascadia Code",Consolas,monospace;overflow:auto}
-    .code .ch{padding:9px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:12px;display:flex;gap:8px}
-    .code pre{margin:0;padding:14px 16px;color:#c9d1d9}
-    .tk{color:#ff7b72}.ts{color:#a5d6ff}.tf{color:#d2a8ff}.tc{color:#8b949e}.tn{color:#79c0ff}
+/* tasks */
+.taskrow{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:9px;margin-bottom:7px;font-size:13.5px;transition:.15s}
+.taskrow:hover{border-color:var(--border2)}
+.tcheck{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--border2);flex:0 0 18px;display:grid;place-items:center;font-size:11px;cursor:pointer;transition:.15s}
+.taskrow.done .tcheck{background:var(--lime);border-color:var(--lime);color:#102005}
+.taskrow.done .tlabel{color:var(--dim);text-decoration:line-through}
+.taskrow.current{border-color:color-mix(in srgb,var(--teal) 55%, transparent);box-shadow:0 0 12px color-mix(in srgb,var(--teal) 12%, transparent)}
+.taskrow.current .tcheck{background:var(--teal);border-color:var(--teal);color:#04201c}
+.tlabel{flex:1}
+.twho{font-size:11px;padding:2px 9px;border-radius:99px;background:var(--panel3);color:var(--muted);font-weight:600}
+.twho.thor{color:var(--ember)}.twho.loki{color:var(--purple)}.twho.heimdall{color:var(--blue)}.twho.bragi{color:var(--gold)}.twho.forseti{color:var(--red)}
+.autoplace{display:flex;align-items:center;gap:9px;padding:10px 12px;background:var(--panel2);border:1px dashed var(--border2);border-radius:9px;margin-bottom:12px;font-size:13px;color:var(--muted);cursor:pointer}
+.autoplace .cb{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--teal-d);display:grid;place-items:center;font-size:10px;color:#04201c;background:var(--teal)}
+.taskcount{font-family:var(--disp);font-weight:600;font-size:13px;color:var(--teal);margin-bottom:12px}
 
-    /* tasks board */
-    .phase{margin-bottom:18px}
-    .phase-h{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-weight:700;margin-bottom:8px}
-    .taskrow{display:flex;align-items:center;gap:11px;padding:9px 12px;background:var(--panel);border:1px solid var(--border);border-radius:9px;margin-bottom:7px;font-size:13.5px}
-    .tcheck{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--border2);flex:0 0 18px;display:grid;place-items:center;font-size:11px}
-    .taskrow.done .tcheck{background:var(--green);border-color:var(--green);color:#04220f}
-    .taskrow.done .tlabel{color:var(--dim);text-decoration:line-through}
-    .taskrow.active{border-color:var(--teal-d)}
-    .taskrow.active .tcheck{background:var(--teal);border-color:var(--teal);color:#04201c}
-    .tlabel{flex:1}
-    .twho{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--panel3);color:var(--muted)}
-    .twho.thor{color:var(--ember)}.twho.loki{color:var(--purple)}.twho.heimdall{color:var(--blue)}.twho.bragi{color:var(--yellow)}
+/* chat */
+.chat{background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.chat-h{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;font-family:var(--disp);font-weight:600}
+.taskpill{margin-left:auto;font-size:11px;font-weight:600;color:var(--teal);background:color-mix(in srgb,var(--teal) 14%, transparent);border:1px solid color-mix(in srgb,var(--teal) 35%, transparent);padding:3px 10px;border-radius:99px}
+.flowbar{display:flex;align-items:center;gap:5px;padding:9px 14px;background:color-mix(in srgb,var(--bg) 60%, transparent);border-bottom:1px solid var(--border);overflow-x:auto}
+.flow-step{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--dim);white-space:nowrap}
+.flow-step .fdot{width:17px;height:17px;border-radius:50%;display:grid;place-items:center;font-size:10px;border:1.5px solid var(--border2);color:var(--dim);font-weight:700}
+.flow-step.done{color:var(--muted)}.flow-step.done .fdot{background:var(--lime);border-color:var(--lime);color:#102005}
+.flow-step.current{color:var(--text)}.flow-step.current .fdot{background:var(--teal);border-color:var(--teal);color:#04201c;box-shadow:0 0 10px color-mix(in srgb,var(--teal) 45%, transparent)}
+.flow-arrow{color:var(--dim);font-size:11px}
+.chat-body{flex:1;overflow-y:auto;padding:15px}
+.chat-body::-webkit-scrollbar{width:9px}
+.chat-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.msg{margin-bottom:15px}
+.msg .who{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-bottom:6px}
+.msg .who .pd{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:11px;font-weight:800;color:#04201c}
+.msg .who b{font-weight:600;font-family:var(--disp)}
+.msg .who .role{color:var(--dim);font-size:11.5px}
+.msg .who .talking{color:var(--teal);font-size:11px;display:inline-flex;align-items:center;gap:5px}
+.msg .who .talking .pulse{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 6px var(--teal)}50%{opacity:.35;box-shadow:0 0 2px var(--teal)}}
+.avatar-glow{filter:drop-shadow(0 0 8px color-mix(in srgb,var(--teal) 55%, transparent))}
+.bubble{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:11px 13px;font-size:13.5px}
+.bubble.user{background:var(--panel2);border-color:var(--border2)}
+.bubble .muted{color:var(--muted)}
+.msg.agent .bubble{border-color:color-mix(in srgb,var(--teal) 40%, transparent);animation:edgeGlow 3.2s ease-in-out infinite}
+@keyframes edgeGlow{
+  0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--teal) 18%, transparent),0 0 20px color-mix(in srgb,var(--teal) 14%, transparent),inset 0 0 14px color-mix(in srgb,var(--teal) 5%, transparent)}
+  50%{box-shadow:0 0 0 1px color-mix(in srgb,var(--teal) 34%, transparent),0 0 30px color-mix(in srgb,var(--teal) 25%, transparent),inset 0 0 18px color-mix(in srgb,var(--teal) 9%, transparent)}
+}
+.thinking{border:1px solid var(--border);border-radius:9px;margin-bottom:8px;overflow:hidden;background:rgba(255,255,255,.02)}
+.think-h{padding:7px 11px;font-size:12px;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:7px;user-select:none}
+.think-h:hover{color:var(--muted)}
+.think-h .chev{transition:transform .2s;font-size:10px}
+.thinking.collapsed .think-b{display:none}
+.thinking.collapsed .chev{transform:rotate(-90deg)}
+.think-b{padding:2px 11px 9px;font-size:12.5px;color:#8a94a0;line-height:1.55}
+.toolcall{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:8px 11px;margin-top:8px;font-size:12.5px}
+.toolcall .th{display:flex;align-items:center;gap:7px;color:var(--muted)}
+.toolcall .th .ok{color:var(--lime)}
+.toolcall code{color:var(--teal);font-family:var(--mono);font-size:12px}
+.qcard{background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:13px;margin-top:9px}
+.qcard .qq{font-size:13.5px;font-weight:600;margin-bottom:10px;font-family:var(--disp)}
+.qopts{display:flex;flex-wrap:wrap;gap:8px}
+.qopt{padding:7px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--panel);font-size:13px;color:var(--muted);cursor:pointer;transition:.15s}
+.qopt:hover{border-color:var(--teal-d);color:var(--text);transform:translateY(-1px)}
+.qopt.sel{background:var(--teal);border-color:var(--teal);color:#04201c;font-weight:600}
+.qopt .d{display:block;font-size:11px;opacity:.75;font-weight:400}
+.gate{background:linear-gradient(180deg,color-mix(in srgb,var(--teal) 9%, transparent),var(--panel));border:1px solid color-mix(in srgb,var(--teal) 45%, transparent);border-radius:12px;padding:14px;margin:8px 0}
+.gate .gt{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13.5px;margin-bottom:6px;font-family:var(--disp)}
+.gate .gt .badge{font-size:10.5px;background:var(--teal);color:#04201c;padding:2px 8px;border-radius:99px;font-weight:700}
+.gate p{margin:0 0 12px;font-size:13px;color:var(--muted)}
+.gate .btns{display:flex;gap:8px}
+.gbtn{padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600}
+.gbtn.approve{background:var(--teal);color:#04201c}
+.gbtn.approve:hover{background:var(--teal-d)}
+.gbtn.changes{background:var(--panel2);border:1px solid var(--border2);color:var(--text)}
+.todowidget{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-top:8px}
+.todowidget .tw-h{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px}
+.tw-row{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0;color:var(--muted)}
+.tw-row .b{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--border2);flex:0 0 14px;display:grid;place-items:center;font-size:9px}
+.tw-row.done{color:var(--dim)}.tw-row.done .b{background:var(--lime);border-color:var(--lime);color:#102005}
+.tw-row.active{color:var(--text)}.tw-row.active .b{background:var(--teal);border-color:var(--teal);color:#04201c}
 
-    /* RIGHT CHAT */
-    .chat{background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-    .chat-h{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;font-weight:600}
-    .chat-body{flex:1;overflow-y:auto;padding:16px}
-    .msg{margin-bottom:16px}
-    .msg .who{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-bottom:6px}
-    .msg .who .pd{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:11px;font-weight:800;color:#04201c}
-    .msg .who b{font-weight:600}.msg .who .role{color:var(--dim);font-size:11.5px}
-    .bubble{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:11px 13px;font-size:13.5px;color:var(--text)}
-    .bubble.user{background:var(--panel2);border-color:var(--border2)}
-    .bubble .muted{color:var(--muted)}
-    .toolcall{background:#0d1117;border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-top:8px;font-size:12.5px}
-    .toolcall .th{display:flex;align-items:center;gap:7px;color:var(--muted)}
-    .toolcall .th .ok{color:var(--green)}
-    .toolcall code{color:var(--teal);font-family:ui-monospace,monospace;font-size:12px}
-    /* checkpoint gate */
-    .gate{background:linear-gradient(180deg,rgba(45,212,191,.08),var(--panel));border:1px solid var(--teal-d);border-radius:12px;padding:14px;margin:8px 0}
-    .gate .gt{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13.5px;margin-bottom:6px}
-    .gate .gt .badge{font-size:10.5px;background:var(--teal);color:#04201c;padding:2px 8px;border-radius:99px;font-weight:700}
-    .gate p{margin:0 0 12px;font-size:13px;color:var(--muted)}
-    .gate .btns{display:flex;gap:8px}
-    .gbtn{padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600}
-    .gbtn.approve{background:var(--teal);color:#04201c}
-    .gbtn.approve:hover{background:var(--teal-d)}
-    .gbtn.changes{background:var(--panel2);border:1px solid var(--border2);color:var(--text)}
-    /* todo widget in chat */
-    .todowidget{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin-top:8px}
-    .todowidget .tw-h{font-size:11.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px}
-    .tw-row{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0;color:var(--muted)}
-    .tw-row .b{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--border2);flex:0 0 14px;display:grid;place-items:center;font-size:9px}
-    .tw-row.done{color:var(--dim)} .tw-row.done .b{background:var(--green);border-color:var(--green);color:#04220f}
-    .tw-row.active{color:var(--text)} .tw-row.active .b{background:var(--teal);border-color:var(--teal);color:#04201c}
-    /* question tool card */
-    .qcard{background:#0d1117;border:1px solid var(--border);border-radius:11px;padding:13px;margin-top:9px}
-    .qcard .qq{font-size:13.5px;font-weight:600;margin-bottom:10px}
-    .qopts{display:flex;flex-wrap:wrap;gap:8px}
-    .qopt{padding:7px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--panel);font-size:13px;color:var(--muted);cursor:pointer;transition:.15s}
-    .qopt:hover{border-color:var(--teal-d);color:var(--text);transform:translateY(-1px)}
-    .qopt.sel{background:var(--teal);border-color:var(--teal);color:#04201c;font-weight:600}
-    .qopt .d{display:block;font-size:11px;opacity:.75;font-weight:400}
+/* composer */
+.composer{border-top:1px solid var(--border);padding:10px 14px 14px;background:var(--bg2)}
+.comp-row{display:flex;align-items:center;gap:7px}
+.comp-row.top{margin-bottom:8px}
+.cbtn{width:30px;height:30px;border-radius:8px;border:1px solid var(--border2);background:var(--panel);color:var(--muted);display:grid;place-items:center;font-size:15px;cursor:pointer;transition:.15s;flex:0 0 30px}
+.cbtn:hover{border-color:var(--teal-d);color:var(--teal);transform:translateY(-1px)}
+.mode-tog{display:flex;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.mt{padding:5px 11px;font-size:12px;color:var(--muted);cursor:pointer;transition:.15s;font-weight:600}
+.mt.active{background:var(--teal);color:#04201c}
+.mt:not(.active):hover{color:var(--text)}
+.comp-spacer{flex:1}
+.picker{display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--panel);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--muted);cursor:pointer;transition:.15s}
+.picker:hover{border-color:var(--border2);color:var(--text)}
+.picker b{color:var(--text);font-weight:600;font-family:var(--mono);font-size:11.5px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.input-wrap{flex:1;display:flex;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px 12px;color:var(--dim);font-size:13px;transition:.2s;min-height:36px}
+.input-wrap:focus-within{border-color:var(--teal-d);box-shadow:0 0 0 1px color-mix(in srgb,var(--teal) 25%, transparent),0 0 14px color-mix(in srgb,var(--teal) 12%, transparent)}
+.send{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--teal),var(--teal-d));color:#04201c;display:grid;place-items:center;cursor:pointer;transition:.15s;flex:0 0 36px;box-shadow:0 4px 16px color-mix(in srgb,var(--teal) 30%, transparent)}
+.send:hover{transform:translateY(-2px);box-shadow:0 6px 22px color-mix(in srgb,var(--teal) 45%, transparent)}
+.send svg{width:16px;height:16px}
 
-    /* agent message - animated underglow on the bubble edges (moving light) */
-    .msg.agent .bubble{border-color:color-mix(in srgb, var(--teal) 40%, transparent);animation:edgeGlow 3.2s ease-in-out infinite}
-    @keyframes edgeGlow{
-      0%,100%{box-shadow:0 0 0 1px color-mix(in srgb, var(--teal) 18%, transparent),0 0 20px color-mix(in srgb, var(--teal) 14%, transparent),inset 0 0 14px color-mix(in srgb, var(--teal) 5%, transparent)}
-      50%{box-shadow:0 0 0 1px color-mix(in srgb, var(--teal) 34%, transparent),0 0 30px color-mix(in srgb, var(--teal) 25%, transparent),inset 0 0 18px color-mix(in srgb, var(--teal) 9%, transparent)}
-    }
-    .msg .who .talking{color:var(--teal);font-size:11px;display:inline-flex;align-items:center;gap:5px;margin-left:2px}
-    .msg .who .talking .pulse{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 1.4s ease-in-out infinite}
-    @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 6px var(--teal)}50%{opacity:.35;box-shadow:0 0 2px var(--teal)}}
-    .avatar-glow{filter:drop-shadow(0 0 8px rgba(45,212,191,.55))}
+/* RIGHT HOTLINK RAIL */
+.hotrail{background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0}
+.hot{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;color:var(--muted);font-size:15px;cursor:pointer;transition:.15s;border:1px solid transparent;position:relative}
+.hot:hover{background:var(--panel);color:var(--teal);border-color:var(--border)}
+.hot .pin{position:absolute;top:3px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--ember)}
+.hot-add{border:1px dashed var(--border2);color:var(--dim)}
+.hot-add:hover{color:var(--teal);border-color:var(--teal-d)}
 
-    /* thinking block - light gray, readable but de-emphasized, collapsible */
-    .thinking{border:1px solid var(--border);border-radius:9px;margin-bottom:8px;overflow:hidden;background:rgba(255,255,255,.02)}
-    .think-h{padding:7px 11px;font-size:12px;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:7px;user-select:none}
-    .think-h:hover{color:var(--muted)}
-    .think-h .chev{transition:transform .2s;font-size:10px}
-    .thinking.collapsed .think-b{display:none}
-    .thinking.collapsed .chev{transform:rotate(-90deg)}
-    .think-b{padding:2px 11px 9px;font-size:12.5px;color:#8a94a0;line-height:1.55}
-
-    /* typing indicator */
-    .typing{display:inline-flex;gap:4px;padding:10px 13px}
-    .typing .td{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:bounce 1.2s infinite}
-    .typing .td:nth-child(2){animation-delay:.15s}.typing .td:nth-child(3){animation-delay:.3s}
-    @keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-5px);opacity:1}}
-
-    /* composer (chat input bar) */
-    .composer{border-top:1px solid var(--border);padding:10px 14px 14px;background:var(--bg2)}
-    .comp-row{display:flex;align-items:center;gap:8px}
-    .comp-row.top{margin-bottom:9px}
-    .cbtn{width:32px;height:32px;border-radius:9px;border:1px solid var(--border2);background:var(--panel);color:var(--muted);display:grid;place-items:center;font-size:16px;cursor:pointer;transition:.15s;flex:0 0 32px}
-    .cbtn:hover{border-color:var(--teal-d);color:var(--teal);transform:translateY(-1px)}
-    .mode-tog{display:flex;background:var(--panel);border:1px solid var(--border);border-radius:9px;overflow:hidden}
-    .mt{padding:6px 13px;font-size:12.5px;color:var(--muted);cursor:pointer;transition:.15s;border:none;background:none}
-    .mt.active{background:var(--teal);color:#04201c;font-weight:600}
-    .mt:not(.active):hover{color:var(--text)}
-    .comp-spacer{flex:1}
-    .picker{display:flex;align-items:center;gap:6px;padding:6px 11px;background:var(--panel);border:1px solid var(--border);border-radius:9px;font-size:12.5px;color:var(--muted);cursor:pointer;transition:.15s}
-    .picker:hover{border-color:var(--border2);color:var(--text)}
-    .picker b{color:var(--text);font-weight:600}
-    .input-wrap{flex:1;display:flex;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:9px 13px;color:var(--dim);font-size:13px;transition:.2s}
-    .input-wrap:focus-within{border-color:var(--teal-d);box-shadow:0 0 0 1px rgba(45,212,191,.2),0 0 14px rgba(45,212,191,.1)}
-    .send{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--teal),var(--teal-d));color:#04201c;display:grid;place-items:center;font-size:16px;cursor:pointer;transition:.15s;flex:0 0 38px;box-shadow:0 4px 16px rgba(45,212,191,.25)}
-    .send:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(45,212,191,.4)}
-
-    /* RAIL */
-    .rail{background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0}
-    .rail button{width:36px;height:36px;display:grid;place-items:center;border-radius:9px;color:var(--muted);font-size:16px}
-    .rail button:hover{background:var(--panel);color:var(--teal)}
-    .rail .sep{width:24px;height:1px;background:var(--border);margin:4px 0}
-
-    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel2);border:1px solid var(--teal-d);border-radius:11px;padding:13px 20px;font-size:13.5px;opacity:0;transition:.3s;box-shadow:0 12px 40px rgba(0,0,0,.5);z-index:99}
-    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-    .toast b{color:var(--teal)}
-  </style>
+/* misc panels */
+.kv{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.kv:last-child{border-bottom:none}
+.kv .k{color:var(--muted)}
+.kv .v{font-family:var(--mono);font-size:12.5px}
+.tgl{width:36px;height:20px;border-radius:99px;background:var(--panel3);position:relative;cursor:pointer;transition:.2s;flex:0 0 36px}
+.tgl::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--muted);transition:.2s}
+.tgl.on{background:color-mix(in srgb,var(--teal) 40%, transparent)}
+.tgl.on::after{left:19px;background:var(--teal)}
+.mkt{display:flex;align-items:center;gap:11px;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;transition:.15s;cursor:pointer}
+.mkt:hover{border-color:var(--teal-d);transform:translateX(2px)}
+.mkt .mi{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:15px;background:var(--panel3);flex:0 0 34px}
+.mkt .mn{font-weight:600;font-size:13px;font-family:var(--disp)}
+.mkt .md{font-size:11.5px;color:var(--muted)}
+.mkt .minst{margin-left:auto;font-size:11px;font-weight:700;color:var(--teal);border:1px solid color-mix(in srgb,var(--teal) 40%, transparent);padding:4px 11px;border-radius:99px;transition:.15s}
+.mkt .minst:hover{background:var(--teal);color:#04201c}
+.codeblock{background:var(--bg);border:1px solid var(--border);border-radius:10px;font:12px/1.7 var(--mono);overflow:auto}
+.codeblock .ch{padding:8px 13px;border-bottom:1px solid var(--border);color:var(--muted);font-size:11.5px;display:flex;gap:8px}
+.codeblock pre{margin:0;padding:13px 15px;color:#c9d1d9}
+.tk{color:#ff7b72}.ts{color:#a5d6ff}.tf{color:#d2a8ff}.tc{color:#8b949c}.tn{color:#79c0ff}
+.wire{background:var(--bg);border:1px dashed var(--border2);border-radius:11px;padding:16px}
+.wire .wbar{height:32px;border:1.5px dashed var(--border2);border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 12px;margin-bottom:12px;color:var(--dim);font-size:11.5px}
+.wire .wadd{display:flex;gap:8px;margin-bottom:12px}
+.wire .winput{flex:1;height:34px;border:1.5px dashed var(--border2);border-radius:8px;display:flex;align-items:center;padding:0 12px;color:var(--dim);font-size:11.5px}
+.wire .wbtn{width:70px;height:34px;border:1.5px dashed var(--teal-d);border-radius:8px;display:grid;place-items:center;color:var(--teal);font-size:11.5px}
+.wire .wtask{height:36px;border:1.5px dashed var(--border2);border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 12px;margin-bottom:7px;color:var(--dim)}
+.wire .wcheck{width:15px;height:15px;border:1.5px dashed var(--border2);border-radius:5px}
+.wire .wline{flex:1;height:8px;border-radius:4px;background:var(--panel3)}
+.previewframe{background:var(--bg);border:1px solid var(--border);border-radius:11px;overflow:hidden}
+.previewframe .pbar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.previewframe .pdots{display:flex;gap:5px}
+.previewframe .pdots i{width:9px;height:9px;border-radius:50%}
+.pbody{padding:16px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel2);border:1px solid color-mix(in srgb,var(--teal) 45%, transparent);border-radius:11px;padding:13px 20px;font-size:13.5px;opacity:0;transition:.3s;box-shadow:0 12px 40px rgba(0,0,0,.5);z-index:99}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast b{color:var(--teal)}
+</style>
 </head>
 <body>
-  <div class="app">
-    <!-- TOP BAR -->
-    <div class="topbar">
-      <button class="iconbtn" id="navToggle" title="Toggle nav">☰</button>
-      <div class="brand"><span class="mark"></span> Mímir</div>
-      <div class="switcher">📁 <b>task-tracker</b> ▾</div>
-      <div class="switcher agent">⚡ <b>Odin</b> <span style="color:var(--dim)">· orchestrator</span> ▾</div>
-      <div class="topsearch">🔍 <span>Search sessions, cortex, skills…</span></div>
-      <div class="spacer"></div>
-      <div class="swatches" title="Change accent color (settings)">
-        <span class="swatch active" style="--sw:#2dd4bf" onclick="setAccent(this,'#2dd4bf')"></span>
-        <span class="swatch" style="--sw:#fb923c" onclick="setAccent(this,'#fb923c')"></span>
-        <span class="swatch" style="--sw:#60a5fa" onclick="setAccent(this,'#60a5fa')"></span>
-        <span class="swatch" style="--sw:#a3e635" onclick="setAccent(this,'#a3e635')"></span>
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><span class="mark"></span> Mímir</div>
+    <div class="switcher">📁 <b>task-tracker</b> ▾</div>
+    <div class="switcher agent">⚡ <b>Odin</b> <span style="color:var(--dim)">· orchestrator</span> ▾</div>
+    <div class="spacer"></div>
+    <div class="swatches" title="Accent color (settings)">
+      <span class="swatch active" style="--sw:#2dd4bf" onclick="setAccent(this,'#2dd4bf','#14b8a6')"></span>
+      <span class="swatch" style="--sw:#fb923c" onclick="setAccent(this,'#fb923c','#f97316')"></span>
+      <span class="swatch" style="--sw:#60a5fa" onclick="setAccent(this,'#60a5fa','#3b82f6')"></span>
+      <span class="swatch" style="--sw:#a3e635" onclick="setAccent(this,'#a3e635','#84cc16')"></span>
+    </div>
+    <div class="reactor" onclick="cycleStatus()" title="Status reactor - click to demo status colors">
+      <span class="reactor-core" id="reactorCore"></span>
+      <span class="reactor-label" id="reactorLabel">building</span>
+    </div>
+    <div class="rgbsync" title="RGB hardware sync (Corsair iCUE / Razer Chroma / OpenRGB)"><span class="led"></span> RGB sync</div>
+    <div class="status"><span class="dot"></span> daemon · ollama · sandbox ready</div>
+  </div>
+
+  <div class="body">
+    <!-- LEFT ICON RAIL (nav, emojis ok) -->
+    <nav class="iconrail">
+      <div class="iconbtn active" title="Projects">📁</div>
+      <div class="iconbtn" title="Cortex (knowledge)">🧠</div>
+      <div class="iconbtn" title="Sessions">💬</div>
+      <div class="iconbtn" title="Agents">🤖</div>
+      <div class="iconbtn" title="Skills">⚡</div>
+      <div class="rail-sep"></div>
+      <div class="rail-bottom">
+        <div class="iconbtn" title="Marketplace" onclick="togglePanel('market')">🧩</div>
+        <div class="iconbtn" title="Settings" onclick="togglePanel('settings')">⚙️</div>
       </div>
-      <div class="reactor" onclick="cycleStatus()" title="Status reactor - click to demo status colors">
-        <span class="reactor-core" id="reactorCore"></span>
-        <span class="reactor-label" id="reactorLabel">building</span>
+    </nav>
+
+    <!-- BOOK SPINES -->
+    <div class="spines" id="spines"></div>
+
+    <!-- CENTER PANELS -->
+    <div class="panels" id="panels"></div>
+
+    <!-- CHAT -->
+    <div class="chat">
+      <div class="chat-h">💬 Session <span style="color:var(--dim);font-weight:400;font-size:12px">· task-tracker</span>
+        <span class="taskpill" id="taskPill">Task 4 of 8 · next: S1 Layout</span>
       </div>
-      <div class="rgbsync" title="RGB hardware sync (Corsair iCUE / Razer Chroma / OpenRGB)"><span class="led"></span> RGB sync</div>
-      <div class="status"><span class="dot"></span> daemon · ollama/qwen3.6-35b · sandbox ready</div>
-      <button class="iconbtn" title="Settings">⚙</button>
+      <div class="flowbar">
+        <div class="flow-step done"><span class="fdot">✓</span> Discovery</div><span class="flow-arrow">→</span>
+        <div class="flow-step done"><span class="fdot">✓</span> Design mock</div><span class="flow-arrow">→</span>
+        <div class="flow-step done"><span class="fdot">✓</span> Research</div><span class="flow-arrow">→</span>
+        <div class="flow-step current" id="flowPlan"><span class="fdot">4</span> Plan</div><span class="flow-arrow">→</span>
+        <div class="flow-step" id="flowBuild"><span class="fdot">5</span> Build (1 at a time)</div><span class="flow-arrow">→</span>
+        <div class="flow-step" id="flowDebug"><span class="fdot">6</span> Debug</div><span class="flow-arrow">→</span>
+        <div class="flow-step" id="flowPolish"><span class="fdot">7</span> Polish</div>
+      </div>
+      <div class="chat-body" id="chatBody">
+        <div class="msg agent">
+          <div class="who"><span class="pd avatar-glow" style="background:var(--teal)">O</span><b>Odin</b><span class="role">orchestrator · Discovery</span><span class="talking"><span class="pulse"></span> talking to you</span></div>
+          <div class="thinking">
+            <div class="think-h" onclick="toggleThink(this)">thinking <span class="chev">▾</span></div>
+            <div class="think-b">Alright, before we build anything I gotta figure out what this actually is. Let me ask what platform it is, what vibe they want, and if they need logins or payments. Then I can plan it right.</div>
+          </div>
+          <div class="bubble">Hey, before we build anything, lemme make sure I got this right. Quick questions:</div>
+          <div class="qcard">
+            <div class="qq">What kind of app is this?</div>
+            <div class="qopts">
+              <div class="qopt sel">Web<span class="d">browser app</span></div>
+              <div class="qopt">Mobile<span class="d">iOS / Android</span></div>
+              <div class="qopt">Desktop<span class="d">native app</span></div>
+              <div class="qopt">SaaS<span class="d">logins + billing</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="msg">
+          <div class="who"><span class="pd" style="background:var(--panel3);color:var(--text)">Y</span><b>You</b></div>
+          <div class="bubble user">Just a simple web task-tracker, clean minimal look, no logins, no backend. Save it to localStorage.</div>
+        </div>
+        <div class="msg agent">
+          <div class="who"><span class="pd avatar-glow" style="background:var(--teal)">O</span><b>Odin</b><span class="role">orchestrator</span></div>
+          <div class="bubble">Bet. Docs are done (PRD + design + tech spec) and I split it into 8 tasks. <span class="muted">Before any code, I mocked the UI so you can check it out. It's in the Design panel.</span></div>
+          <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>discovery.interview</code> · 4 questions · concept locked</div></div>
+          <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>docs.write</code> · PRD + design + tech spec</div></div>
+          <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>docker.write</code> · Dockerfile + preview on port 47312</div></div>
+        </div>
+        <div class="gate" id="gate">
+          <div class="gt">Checkpoint <span class="badge">NEEDS YOU</span></div>
+          <p>The UI mock is ready in the Design panel. Mímir won't write code until you approve it. (Prep first: Design, then Research, Plan, Build.)</p>
+          <div class="btns">
+            <button class="gbtn approve" id="approveBtn">Approve and start build</button>
+            <button class="gbtn changes">Annotate / changes</button>
+          </div>
+        </div>
+        <div class="msg agent" id="buildMsg" style="display:none">
+          <div class="who"><span class="pd avatar-glow" style="background:var(--ember)">T</span><b>Thor</b><span class="role">builder</span></div>
+          <div class="bubble">Design's approved. Building <b>Task 5 of 8: S1 Layout + header</b>. After this, Loki debugs it, Forseti audits the code, and Heimdall screenshots it to make sure it looks right. <span class="muted">One task at a time.</span></div>
+          <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>write_file</code> · index.html (S1)</div></div>
+          <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>bash</code> · docker · <code>npm run build</code> → ok</div></div>
+          <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>loki.debug</code> · pass · <code>forseti.audit</code> · clean · <code>heimdall.screenshot</code> · matches mock</div></div>
+        </div>
+        <div class="todowidget">
+          <div class="tw-h">To-do · game plan</div>
+          <div class="tw-row done"><span class="b">✓</span> Discovery</div>
+          <div class="tw-row done"><span class="b">✓</span> Design mock</div>
+          <div class="tw-row done"><span class="b">✓</span> Research</div>
+          <div class="tw-row active" id="twPlan"><span class="b">4</span> Plan</div>
+          <div class="tw-row" id="twS1"><span class="b"></span> S1 Layout + header</div>
+          <div class="tw-row"><span class="b"></span> S1 Debug + audit</div>
+          <div class="tw-row"><span class="b"></span> S2 Add-task form</div>
+          <div class="tw-row"><span class="b"></span> S3 + S4 ...</div>
+        </div>
+      </div>
+      <div class="composer">
+        <div class="comp-row top">
+          <button class="cbtn" title="Attach documents, images, files">+</button>
+          <div class="mode-tog">
+            <button class="mt active" onclick="setMode(this)">Build</button>
+            <button class="mt" onclick="setMode(this)">Plan</button>
+          </div>
+          <div class="comp-spacer"></div>
+          <div class="picker" title="Model"><b>ollama/qwen3.6-35b-a3b</b> ▾</div>
+          <div class="picker" title="Thinking level" onclick="cycleThink(this)"><b>med</b> ▾</div>
+        </div>
+        <div class="comp-row">
+          <div class="input-wrap" contenteditable="true">Message Mímir…</div>
+          <button class="send" title="Send"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12l15-8-6 8 6 8-15-8z" fill="currentColor"/></svg></button>
+        </div>
+      </div>
     </div>
 
-    <!-- BODY -->
-    <div class="body" id="body">
-      <!-- LEFT NAV -->
-      <nav class="nav">
-        <div class="nav-section">Workspace</div>
-        <div class="nav-item active"><span class="ic">📁</span><span class="lbl">Projects</span><span class="badge">3</span></div>
-        <div class="nav-item"><span class="ic">🧠</span><span class="lbl">Cortex</span><span class="badge">128</span></div>
-        <div class="nav-item"><span class="ic">💬</span><span class="lbl">Sessions</span></div>
-        <div class="nav-section">Agents</div>
-        <div class="nav-item"><span class="persona-dot" style="background:var(--teal)"></span><span class="lbl">Odin · plan</span></div>
-        <div class="nav-item"><span class="persona-dot" style="background:var(--ember)"></span><span class="lbl">Thor · build</span></div>
-        <div class="nav-item"><span class="persona-dot" style="background:var(--purple)"></span><span class="lbl">Loki · test/debug</span></div>
-        <div class="nav-item"><span class="persona-dot" style="background:var(--blue)"></span><span class="lbl">Heimdall · visual audit</span></div>
-        <div class="nav-item"><span class="persona-dot" style="background:var(--red)"></span><span class="lbl">Forseti · code audit</span></div>
-        <div class="nav-item"><span class="persona-dot" style="background:var(--yellow)"></span><span class="lbl">Bragi · docs</span></div>
-        <div class="nav-section">Extend</div>
-        <div class="nav-item"><span class="ic">⚡</span><span class="lbl">Skills</span></div>
-        <div class="nav-item"><span class="ic">🧩</span><span class="lbl">Marketplace</span></div>
-        <div class="nav-item"><span class="ic">⚙</span><span class="lbl">Settings</span></div>
-      </nav>
+    <!-- RIGHT HOTLINK RAIL -->
+    <div class="hotrail">
+      <div class="hot" title="Pinned: Discovery conversation" onclick="toast('Opening pinned conversation')">💬<span class="pin"></span></div>
+      <div class="hot" title="Pinned: Settings" onclick="togglePanel('settings')">⚙️<span class="pin"></span></div>
+      <div class="hot" title="Pinned: Ollama provider" onclick="toast('Ollama provider · localhost:11434')">🦙<span class="pin"></span></div>
+      <div class="hot" title="Pinned: Dashboard" onclick="togglePanel('dashboard')">📊</div>
+      <div class="rail-sep"></div>
+      <div class="hot hot-add" title="Add a hotlink (pin a conversation, setting, or provider)" onclick="toast('Pin something: a conversation, a setting, a provider link')">+</div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
 
-      <!-- CENTER -->
-      <div class="center">
-        <!-- guided workflow progress -->
-        <div class="flowbar">
-          <div class="flow-step done"><span class="fdot">✓</span> Discovery</div><span class="flow-arrow">→</span>
-          <div class="flow-step current" id="flowDesign"><span class="fdot">2</span> Design mock</div><span class="flow-arrow">→</span>
-          <div class="flow-step" id="flowResearch"><span class="fdot">3</span> Research</div><span class="flow-arrow">→</span>
-          <div class="flow-step" id="flowPlan"><span class="fdot">4</span> Plan</div><span class="flow-arrow">→</span>
-          <div class="flow-step" id="flowBuild"><span class="fdot">5</span> Build (1 section at a time)</div><span class="flow-arrow">→</span>
-          <div class="flow-step" id="flowPolish"><span class="fdot">6</span> Polish</div>
-        </div>
-        <!-- tabs -->
-        <div class="tabs">
-          <div class="tab" data-tab="plan">Plan</div>
-          <div class="tab active" data-tab="design">Design</div>
-          <div class="tab" data-tab="code">Code</div>
-          <div class="tab" data-tab="preview">Preview</div>
-          <div class="tab" data-tab="tasks">Tasks</div>
-        </div>
+<script>
+/* accent */
+function setAccent(el,c,cd){ document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active')); el.classList.add('active'); document.documentElement.style.setProperty('--teal',c); document.documentElement.style.setProperty('--teal-d',cd); }
+/* status reactor */
+const statuses=[{l:'building',c:'#2dd4bf'},{l:'task done',c:'#f87171'},{l:'final answer',c:'#fbbf24'},{l:'error',c:'#ef4444'},{l:'waiting for you',c:'#f59e0b'}];
+let statusIdx=0;
+function cycleStatus(){ statusIdx=(statusIdx+1)%statuses.length; const s=statuses[statusIdx]; const core=document.getElementById('reactorCore'); core.style.background=s.c; core.style.boxShadow='0 0 10px '+s.c; document.getElementById('reactorLabel').textContent=s.l; toast('Status: <b style="color:'+s.c+'">'+s.l+'</b> · UI + RGB lights react'); }
+/* thinking / mode / think level */
+function toggleThink(el){ el.parentElement.classList.toggle('collapsed'); }
+function setMode(el){ document.querySelectorAll('.mt').forEach(x=>x.classList.remove('active')); el.classList.add('active'); toast(el.textContent==='Plan' ? '<b>Plan mode</b>: Mímir will only plan, not build.' : '<b>Build mode</b>: Mímir will write code.'); }
+const thinkLevels=['low','med','high'];
+function cycleThink(el){ const b=el.querySelector('b'); const i=(thinkLevels.indexOf(b.textContent)+1)%thinkLevels.length; b.textContent=thinkLevels[i]; }
+function toast(html){ const el=document.getElementById('toast'); el.innerHTML=html; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),3200); }
 
-        <!-- PLAN PANE -->
-        <div class="pane" data-pane="plan">
-          <h2>Discovery - agreed with you</h2>
-          <div class="sub">Odin worked this out with you before writing any code. Nothing builds until you sign off.</div>
-          <div class="card">
-            <h3>🎯 Goal</h3>
-            <p style="margin:0;color:var(--muted);font-size:13.5px">A simple task-tracker web app: add tasks, mark done, filter by status. Static, no backend.</p>
-          </div>
-          <div class="card">
-            <h3>✅ Requirements</h3>
-            <div class="req"><span class="n">1.1</span> User can add a task via an input + button.</div>
-            <div class="req"><span class="n">1.2</span> User can toggle a task complete/incomplete.</div>
-            <div class="req"><span class="n">1.3</span> User can filter: All / Active / Done.</div>
-            <div class="req"><span class="n">1.4</span> Tasks persist in localStorage.</div>
-          </div>
-          <div class="card">
-            <h3>📐 Sections (build order)</h3>
-            <div class="req"><span class="n">S1</span> Layout + header</div>
-            <div class="req"><span class="n">S2</span> Add-task form</div>
-            <div class="req"><span class="n">S3</span> Task list + toggle</div>
-            <div class="req"><span class="n">S4</span> Filters + persistence</div>
-          </div>
-        </div>
-
-        <!-- DESIGN PANE (the mock for approval) -->
-        <div class="pane active" data-pane="design">
-          <h2>UI Mock - needs your approval</h2>
-          <div class="sub">Mímir designed this wireframe before writing code. Approve it (or annotate &amp; request changes) to unlock the build.</div>
-          <div class="card">
-            <h3>🖼️ Task Tracker - wireframe</h3>
-            <div class="wire">
-              <div class="wbar">☰ &nbsp; Task Tracker <span style="margin-left:auto">All · Active · Done</span></div>
-              <div class="wadd"><div class="winput">Add a task…</div><div class="wbtn">+ Add</div></div>
-              <div class="wtask"><div class="wcheck"></div><div class="wline" style="max-width:70%"></div></div>
-              <div class="wtask"><div class="wcheck" style="border-color:var(--teal-d)"></div><div class="wline" style="max-width:50%;opacity:.5"></div></div>
-              <div class="wtask"><div class="wcheck"></div><div class="wline" style="max-width:82%"></div></div>
-            </div>
-            <div class="mock-note">✏️ Tip: click <b>Annotate</b> in the chat to draw on this mock and send feedback to Odin.</div>
-          </div>
-        </div>
-
-        <!-- CODE PANE -->
-        <div class="pane" data-pane="code">
-          <h2>Build - Section S1: Layout + header</h2>
-          <div class="sub">Thor builds one section, then stops for Heimdall's audit before the next.</div>
-          <div class="code">
-            <div class="ch">📄 index.html <span style="margin-left:auto;color:var(--green)">● saved</span></div>
-            <pre><span class="tc">&lt;!-- S1: Layout + header (built by Thor) --&gt;</span>
+/* ===== BOOK SPINES + PANELS ===== */
+const spineDefs=[
+  {id:'dashboard',label:'DASHBOARD'},{id:'plan',label:'PLAN'},{id:'design',label:'DESIGN'},
+  {id:'code',label:'CODE'},{id:'preview',label:'PREVIEW'},{id:'tasks',label:'TASKS'},
+  {id:'settings',label:'SETTINGS'},{id:'market',label:'MARKET'}
+];
+let openPanels=['dashboard','preview'];
+const panelContent={
+  dashboard:()=>`<div class="disp" style="font-size:16px;font-weight:600;margin-bottom:4px">task-tracker</div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:14px;color:var(--muted)">Project dashboard · token usage by model</div>
+    <div class="dash-total"><span class="big">116,000</span><span class="lbl">tokens total · ~$0.42 est.</span></div>
+    ${[['ollama/qwen3.6-35b-a3b','local','45,200','$0.00',100],
+       ['claude-sonnet-5','cloud','32,100','$0.21',71],
+       ['gpt-5.5','cloud','18,400','$0.14',41],
+       ['nomic-embed-text-v2-moe','embed','12,000','$0.00',27],
+       ['ollama/qwen3.6-flash','local','8,300','$0.00',18]]
+      .map(m=>`<div class="mrow"><span class="mname">${m[0]} <span class="mtype ${m[1]}">${m[1]}</span></span><span class="mtok">${m[2]} tok</span><span class="mcost">${m[3]}</span><div class="mbar"><i style="width:${m[4]}%"></i></div></div>`).join('')}
+    <div style="margin-top:12px;font-size:11.5px;color:var(--dim)">Sorted most-used to least-used. Local models cost $0.</div>`,
+  plan:()=>`<div class="disp" style="font-size:16px;font-weight:600;margin-bottom:12px">Discovery · agreed with you</div>
+    <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:13px;margin-bottom:12px"><b style="font-family:var(--disp)">Goal</b><div style="color:var(--muted);font-size:13px;margin-top:5px">A simple task-tracker web app: add tasks, mark done, filter by status. Static, no backend.</div></div>
+    <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:13px"><b style="font-family:var(--disp)">Requirements</b>
+      ${['1.1 Add a task via input + button','1.2 Toggle a task complete/incomplete','1.3 Filter: All / Active / Done','1.4 Persist in localStorage'].map(r=>`<div style="display:flex;gap:10px;padding:6px 0;font-size:13px;color:var(--muted);border-bottom:1px solid var(--border)"><span style="color:var(--teal);font-weight:700">${r.slice(0,3)}</span>${r.slice(4)}</div>`).join('')}</div>`,
+  design:()=>`<div class="disp" style="font-size:16px;font-weight:600;margin-bottom:12px">UI mock · needs your approval</div>
+    <div class="wire"><div class="wbar">☰ Task Tracker <span style="margin-left:auto">All · Active · Done</span></div>
+      <div class="wadd"><div class="winput">Add a task…</div><div class="wbtn">+ Add</div></div>
+      <div class="wtask"><div class="wcheck"></div><div class="wline" style="max-width:70%"></div></div>
+      <div class="wtask"><div class="wcheck" style="border-color:var(--teal-d)"></div><div class="wline" style="max-width:50%;opacity:.5"></div></div>
+      <div class="wtask"><div class="wcheck"></div><div class="wline" style="max-width:82%"></div></div></div>
+    <div style="margin-top:12px;font-size:12.5px;color:var(--muted)">Approve it (or annotate) in the chat checkpoint to unlock the build.</div>`,
+  code:()=>`<div class="codeblock"><div class="ch">index.html <span style="margin-left:auto;color:var(--lime)">● saved</span></div><pre><span class="tc">&lt;!-- S1: Layout + header (built by Thor) --&gt;</span>
 <span class="tk">&lt;body&gt;</span>
   <span class="tk">&lt;header</span> <span class="tf">class</span>=<span class="ts">"topbar"</span><span class="tk">&gt;</span>
     <span class="tk">&lt;h1&gt;</span>Task Tracker<span class="tk">&lt;/h1&gt;</span>
     <span class="tk">&lt;nav</span> <span class="tf">id</span>=<span class="ts">"filters"</span><span class="tk">&gt;</span>
-      <span class="tk">&lt;button</span> <span class="tf">data-filter</span>=<span class="ts">"all"</span> <span class="tf">class</span>=<span class="ts">"active"</span><span class="tk">&gt;</span>All<span class="tk">&lt;/button&gt;</span>
+      <span class="tk">&lt;button</span> <span class="tf">data-filter</span>=<span class="ts">"all"</span><span class="tk">&gt;</span>All<span class="tk">&lt;/button&gt;</span>
       <span class="tk">&lt;button</span> <span class="tf">data-filter</span>=<span class="ts">"active"</span><span class="tk">&gt;</span>Active<span class="tk">&lt;/button&gt;</span>
       <span class="tk">&lt;button</span> <span class="tf">data-filter</span>=<span class="ts">"done"</span><span class="tk">&gt;</span>Done<span class="tk">&lt;/button&gt;</span>
     <span class="tk">&lt;/nav&gt;</span>
   <span class="tk">&lt;/header&gt;</span>
   <span class="tk">&lt;main</span> <span class="tf">id</span>=<span class="ts">"app"</span><span class="tk">&gt;&lt;/main&gt;</span>
-<span class="tk">&lt;/body&gt;</span></pre>
-          </div>
-        </div>
+<span class="tk">&lt;/body&gt;</span></pre></div>`,
+  preview:()=>`<div class="previewframe"><div class="pbar"><span class="pdots"><i style="background:#ff5f56"></i><i style="background:#ffbd2e"></i><i style="background:#27c93f"></i></span> localhost:47312 <span style="margin-left:auto;color:var(--lime)">● live</span></div>
+    <div class="pbody" style="background:#111827">
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;border-bottom:1px solid var(--border);background:#0f172a;border-radius:8px;margin-bottom:14px"><b style="font-family:var(--disp)">Task Tracker</b>
+        <span style="margin-left:auto;display:flex;gap:6px"><span style="background:var(--teal);color:#04201c;padding:3px 11px;border-radius:7px;font-size:12px;font-weight:600">All</span><span style="background:var(--panel3);padding:3px 11px;border-radius:7px;font-size:12px;color:var(--muted)">Active</span><span style="background:var(--panel3);padding:3px 11px;border-radius:7px;font-size:12px;color:var(--muted)">Done</span></span></div>
+      <div style="display:flex;gap:8px;margin-bottom:14px"><div style="flex:1;background:var(--panel2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--dim)">Add a task…</div><div style="background:var(--teal);color:#04201c;border-radius:8px;padding:9px 16px;font-weight:600">+ Add</div></div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px;margin-bottom:8px"><span style="width:16px;height:16px;border:1.5px solid var(--border2);border-radius:5px"></span> Review the wireframe</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px"><span style="width:16px;height:16px;border:1.5px solid var(--lime);background:var(--lime);border-radius:5px;color:#102005;display:grid;place-items:center;font-size:10px">✓</span><span style="color:var(--dim);text-decoration:line-through">Set up the project</span></div>
+    </div></div>
+    <div style="margin-top:12px;font-size:12.5px;color:var(--muted)">Live from the Docker sandbox on port <b style="font-family:var(--mono)">47312</b> (never 8080).</div>`,
+  tasks:()=>`<div class="taskcount">Task 4 of 8 · next: S1 Layout + header</div>
+    <div class="autoplace" onclick="this.querySelector('.cb').innerHTML=this.querySelector('.cb').innerHTML?'':'✓';toast('Auto-place: Mímir will review new tasks and put them in order, with advice')"><span class="cb">✓</span> Auto-place new tasks (Mímir reviews + orders them, offers advice)</div>
+    ${[['done','1','Discovery','Odin',''],['done','2','Design mock','Odin',''],['done','3','Research','Huginn',''],['current','4','Plan','Odin',''],['','5','S1 Layout + header','Thor','thor'],['','6','S1 Debug + audit','Loki','loki'],['','7','S2 Add-task form','Thor','thor'],['','8','S3 + S4 + Polish','Thor','thor']]
+      .map(t=>`<div class="taskrow ${t[0]}"><span class="tcheck">${t[0]==='done'?'✓':(t[0]==='current'?'▶':'')}</span><span class="tlabel">${t[2]}</span><span class="twho ${t[4]}">${t[3]}</span></div>`).join('')}`,
+  settings:()=>`<div class="disp" style="font-size:16px;font-weight:600;margin-bottom:14px">Settings</div>
+    ${[['Accent color','see swatches in top bar'],['Glow intensity','70%'],['Theme','Nebula (dark)'],['Motion / underglow','on',true],['Thinking visible','on (light gray)',true],['Default thinking level','medium'],['Telemetry','on (opt-out)',true],['RGB hardware sync','on · OpenRGB',true],['Default preview port','auto (5-digit, never 8080)'],['Embedding model','nomic-embed-text-v2-moe']]
+      .map(s=>`<div class="kv"><span class="k">${s[0]}</span>${s[2]!==undefined?`<span class="tgl ${s[2]?'on':''}" onclick="this.classList.toggle('on')"></span>`:`<span class="v">${s[1]}</span>`}</div>`).join('')}`,
+  market:()=>`<div class="disp" style="font-size:16px;font-weight:600;margin-bottom:4px">Marketplace</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:14px">One-click install: skills, MCP servers, personas, triggers</div>
+    ${[['⚡','oneshot-websites','Skill · build a site in one shot','Install'],
+       ['🔌','github-mcp','MCP server · GitHub tools','Install'],
+       ['🎭','loki-debugger','Persona · debugger','Install'],
+       ['💡','hue-sync','Trigger · sync Philips Hue on task done','Install'],
+       ['🕸️','deep-scraper','MCP server · web scraping','Install'],
+       ['📊','token-dashboard','Skill · usage reports','Install']]
+      .map(m=>`<div class="mkt" onclick="toast('Installing <b>${m[1]}</b>…')"><span class="mi">${m[0]}</span><span><span class="mn">${m[1]}</span><div class="md">${m[2]}</div></span><span class="minst">${m[3]}</span></div>`).join('')}`
+};
+function renderSpines(){
+  document.getElementById('spines').innerHTML=spineDefs.map(s=>
+    `<div class="spine ${openPanels.includes(s.id)?'open':''}" onclick="togglePanel('${s.id}')" title="${s.label}">${s.label}</div>`).join('');
+}
+function renderPanels(){
+  const el=document.getElementById('panels');
+  el.innerHTML=openPanels.map(id=>{
+    const def=spineDefs.find(s=>s.id===id);
+    return `<div class="panel" draggable="true" data-id="${id}" ondragover="panelDragOver(event,this)" ondrop="panelDrop(event,this)" ondragleave="this.classList.remove('drag-over')">
+      <div class="panel-h" ondragstart="event.dataTransfer.setData('text','${id}')"><span class="grip">⋮⋮</span><span class="ptitle">${def.label}</span><span class="pclose" onclick="closePanel('${id}')">✕</span></div>
+      <div class="panel-b">${panelContent[id]()}</div></div>`;
+  }).join('');
+}
+function togglePanel(id){
+  const i=openPanels.indexOf(id);
+  if(i>=0){ openPanels.splice(i,1); }
+  else{ openPanels.push(id); if(openPanels.length>2) openPanels.shift(); }
+  renderSpines(); renderPanels();
+}
+function closePanel(id){ openPanels=openPanels.filter(x=>x!==id); renderSpines(); renderPanels(); }
+function panelDragOver(e,el){ e.preventDefault(); el.classList.add('drag-over'); }
+function panelDrop(e,el){ e.preventDefault(); el.classList.remove('drag-over');
+  const from=e.dataTransfer.getData('text'), to=el.dataset.id;
+  if(from&&to&&from!==to){ const fi=openPanels.indexOf(from), ti=openPanels.indexOf(to);
+    openPanels.splice(ti,0,openPanels.splice(fi,1)[0]); renderPanels(); } }
+renderSpines(); renderPanels();
 
-        <!-- PREVIEW PANE -->
-        <div class="pane" data-pane="preview">
-          <h2>Live Preview</h2>
-          <div class="sub">Served from the sandbox at localhost:8080. Annotate it and send feedback to the agent.</div>
-          <div class="card" style="padding:0;overflow:hidden">
-            <div style="background:#111827;padding:14px 18px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border)">
-              <b>Task Tracker</b>
-              <span style="margin-left:auto;display:flex;gap:6px">
-                <span style="background:var(--teal);color:#04201c;padding:3px 11px;border-radius:7px;font-size:12px;font-weight:600">All</span>
-                <span style="background:var(--panel3);padding:3px 11px;border-radius:7px;font-size:12px;color:var(--muted)">Active</span>
-                <span style="background:var(--panel3);padding:3px 11px;border-radius:7px;font-size:12px;color:var(--muted)">Done</span>
-              </span>
-            </div>
-            <div style="padding:18px">
-              <div style="display:flex;gap:8px;margin-bottom:16px">
-                <div style="flex:1;background:var(--panel2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--dim)">Add a task…</div>
-                <div style="background:var(--teal);color:#04201c;border-radius:8px;padding:9px 16px;font-weight:600">+ Add</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px;margin-bottom:8px"><span style="width:16px;height:16px;border:1.5px solid var(--border2);border-radius:5px"></span> Review the wireframe</div>
-              <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px"><span style="width:16px;height:16px;border:1.5px solid var(--green);background:var(--green);border-radius:5px;color:#04220f;display:grid;place-items:center;font-size:10px">✓</span><span style="color:var(--dim);text-decoration:line-through">Set up the project</span></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- TASKS PANE -->
-        <div class="pane" data-pane="tasks">
-          <h2>Tasks - the game plan, sectioned</h2>
-          <div class="sub">One section at a time. Each is tested by Loki and audited by Heimdall before the next.</div>
-          <div class="phase">
-            <div class="phase-h">Prep (must finish before build)</div>
-            <div class="taskrow done"><span class="tcheck">✓</span><span class="tlabel">Discovery - interview + brainstorm + docs</span><span class="twho">Odin</span></div>
-            <div class="taskrow active"><span class="tcheck">2</span><span class="tlabel">Design - UI mock approved by user</span><span class="twho">Odin</span></div>
-            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">Research - gather context into the Cortex</span><span class="twho" style="color:var(--teal)">Huginn&Muninn</span></div>
-          </div>
-          <div class="phase">
-            <div class="phase-h">Build - one section at a time, each verified before the next</div>
-            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S1 - Layout + header</span><span class="twho thor">Thor</span></div>
-            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S1 - end-to-end test + debug</span><span class="twho loki">Loki</span></div>
-            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S1 - code audit</span><span class="twho" style="color:var(--red)">Forseti</span></div>
-            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S1 - visual audit (screenshot + vision)</span><span class="twho heimdall">Heimdall</span></div>
-            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S2 - Add-task form</span><span class="twho thor">Thor</span></div>
-            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S3 - Task list + toggle</span><span class="twho thor">Thor</span></div>
-            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">S4 - Filters + persistence</span><span class="twho thor">Thor</span></div>
-          </div>
-          <div class="phase">
-            <div class="phase-h">Polish</div>
-            <div class="taskrow"><span class="tcheck"></span><span class="tlabel">Docs + README + marketing copy</span><span class="twho bragi">Bragi</span></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- RIGHT CHAT -->
-      <div class="chat">
-        <div class="chat-h">💬 Session <span style="color:var(--dim);font-weight:400;font-size:12.5px">· task-tracker · guided build</span></div>
-        <div class="chat-body" id="chatBody">
-          <div class="msg agent">
-            <div class="who"><span class="pd avatar-glow" style="background:var(--teal)">O</span><b>Odin</b><span class="role">orchestrator · Discovery</span><span class="talking"><span class="pulse"></span> talking to you</span></div>
-            <div class="thinking">
-              <div class="think-h" onclick="toggleThink(this)">💭 thinking <span class="chev">▾</span></div>
-              <div class="think-b">Alright, before we build anything I gotta figure out what this actually is. Let me ask what platform it is, what vibe they want, and if they need logins or payments. Then I can plan it right.</div>
-            </div>
-            <div class="bubble">Hey, before we build anything, lemme make sure I got this right. Quick questions:</div>
-            <div class="qcard">
-              <div class="qq">What kind of app is this?</div>
-              <div class="qopts">
-                <div class="qopt sel">Web<span class="d">browser app</span></div>
-                <div class="qopt">Mobile<span class="d">iOS / Android</span></div>
-                <div class="qopt">Desktop<span class="d">native app</span></div>
-                <div class="qopt">SaaS<span class="d">logins + billing</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="msg">
-            <div class="who"><span class="pd" style="background:var(--panel3);color:var(--text)">Y</span><b>You</b></div>
-            <div class="bubble user">Just a simple web task-tracker, clean minimal look, no logins, no backend. Save it to localStorage.</div>
-          </div>
-          <div class="msg agent">
-            <div class="who"><span class="pd avatar-glow" style="background:var(--teal)">O</span><b>Odin</b><span class="role">orchestrator</span></div>
-            <div class="bubble">Bet. Docs are done (PRD + design + tech spec) and I split it into 4 sections. <span class="muted">Before any code, I mocked up the UI so you can check it out first →</span></div>
-            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>discovery.interview</code> · 4 questions · concept locked</div></div>
-            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>docs.write</code> · PRD + design + tech spec</div></div>
-            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>mock.generate</code> · wireframe → Design tab</div></div>
-          </div>
-
-          <!-- CHECKPOINT GATE -->
-          <div class="gate" id="gate">
-            <div class="gt">⏸ Checkpoint <span class="badge">NEEDS YOU</span></div>
-            <p>The UI mock is ready in the <b>Design</b> tab. Mímir won't write code until you approve it. (Prep-first: Design ✓ → Research → Plan → Build.)</p>
-            <div class="btns">
-              <button class="gbtn approve" id="approveBtn">✓ Approve &amp; start build</button>
-              <button class="gbtn changes">✏️ Annotate / changes</button>
-            </div>
-          </div>
-
-          <!-- building message (hidden until approved) -->
-          <div class="msg agent" id="buildMsg" style="display:none">
-            <div class="who"><span class="pd" style="background:var(--ember)">T</span><b>Thor</b><span class="role">builder</span></div>
-            <div class="bubble">Design's approved. Building <b>Section S1: Layout + header</b> now. After this, Loki runs the end-to-end tests, Forseti checks the code, and Heimdall screenshots it to make sure the UI looks right, then we move to S2. <span class="muted">One section at a time, and we check each one before moving on.</span></div>
-            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>write_file</code> · index.html (S1)</div></div>
-            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>bash</code> · sandbox · <code>npm run build</code> → ok</div></div>
-            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>loki.test</code> · end-to-end → pass &nbsp;·&nbsp; <code>forseti.audit</code> · code → clean</div></div>
-            <div class="toolcall"><div class="th"><span class="ok">✓</span> <code>heimdall.screenshot</code> · vision-verify UI vs mock → matches</div></div>
-          </div>
-
-          <!-- to-do widget -->
-          <div class="todowidget">
-            <div class="tw-h">To-do · game plan</div>
-            <div class="tw-row done"><span class="b">✓</span> Discovery (plan with user)</div>
-            <div class="tw-row active" id="twDesign"><span class="b">2</span> Design mock - awaiting approval</div>
-            <div class="tw-row" id="twResearch"><span class="b"></span> Research (Cortex)</div>
-            <div class="tw-row" id="twS1"><span class="b"></span> S1 - Layout + header</div>
-            <div class="tw-row"><span class="b"></span> S2 - Add-task form</div>
-            <div class="tw-row"><span class="b"></span> S3 - Task list + toggle</div>
-            <div class="tw-row"><span class="b"></span> S4 - Filters + persistence</div>
-          </div>
-        </div>
-        <div class="composer">
-          <div class="comp-row top">
-            <button class="cbtn" title="Attach documents, images, files">＋</button>
-            <div class="mode-tog">
-              <button class="mt active" onclick="setMode(this)">🔨 Build</button>
-              <button class="mt" onclick="setMode(this)">📋 Plan</button>
-            </div>
-            <div class="comp-spacer"></div>
-            <div class="picker" title="Pick the model">⚡ <b>qwen3.6-35b</b> ▾</div>
-            <div class="picker" title="Thinking level" onclick="cycleThink(this)">💭 <b>med</b> ▾</div>
-          </div>
-          <div class="comp-row">
-            <div class="input-wrap" contenteditable="true">Message Mímir…</div>
-            <button class="send" title="Send">➤</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- RAIL -->
-      <div class="rail">
-        <button title="Terminal">⌘</button>
-        <button title="Browser">🌐</button>
-        <button title="Files">📄</button>
-        <button title="Cortex">🧠</button>
-        <div class="sep"></div>
-        <button title="Run goal">🎯</button>
-        <button title="Marketplace">🧩</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="toast" id="toast"></div>
-
-  <script>
-    // live accent color (theme settings demo)
-    function setAccent(el,color){ document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active')); el.classList.add('active'); document.documentElement.style.setProperty('--teal',color); document.documentElement.style.setProperty('--teal-d',color); }
-    // status reactor - cycles status colors (UI + RGB lights react)
-    const statuses=[{l:'building',c:'#2dd4bf'},{l:'task done',c:'#f87171'},{l:'final answer',c:'#fbbf24'},{l:'error',c:'#ef4444'},{l:'waiting for you',c:'#f59e0b'}];
-    let statusIdx=0;
-    function cycleStatus(){ statusIdx=(statusIdx+1)%statuses.length; const s=statuses[statusIdx]; const core=document.getElementById('reactorCore'); core.style.background=s.c; core.style.boxShadow='0 0 10px '+s.c; document.getElementById('reactorLabel').textContent=s.l; toast('Status: <b style="color:'+s.c+'">'+s.l+'</b> · UI + RGB lights react'); }
-    // thinking block collapse
-    function toggleThink(el){ el.parentElement.classList.toggle('collapsed'); }
-    // Build/Plan mode toggle
-    function setMode(el){ document.querySelectorAll('.mt').forEach(x=>x.classList.remove('active')); el.classList.add('active'); toast(el.textContent.includes('Plan') ? '<b>Plan mode</b>: Mímir will only plan, not build.' : '<b>Build mode</b>: Mímir will write code.'); }
-    // thinking level cycle (low/med/high)
-    const thinkLevels=['low','med','high'];
-    function cycleThink(el){ const b=el.querySelector('b'); const i=(thinkLevels.indexOf(b.textContent)+1)%thinkLevels.length; b.textContent=thinkLevels[i]; }
-    // tab switching
-    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-      document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
-      t.classList.add('active');
-      document.querySelector('.pane[data-pane="'+t.dataset.tab+'"]').classList.add('active');
-    }));
-    // nav collapse
-    document.getElementById('navToggle').addEventListener('click', () => {
-      document.getElementById('body').classList.toggle('nav-collapsed');
-    });
-    // approve checkpoint -> advance the guided workflow
-    function toast(html){ const el=document.getElementById('toast'); el.innerHTML=html; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),3800); }
-    document.getElementById('approveBtn').addEventListener('click', () => {
-      document.getElementById('gate').innerHTML = '<div class="gt" style="color:var(--green)">✓ Checkpoint cleared</div><p style="margin:0">Design approved. Prep continues → Research → Plan → Build.</p>';
-      document.getElementById('buildMsg').style.display='block';
-      // update flow bar
-      document.getElementById('flowDesign').className='flow-step done'; document.getElementById('flowDesign').querySelector('.fdot').textContent='✓';
-      document.getElementById('flowBuild').className='flow-step current'; document.getElementById('flowBuild').querySelector('.fdot').textContent='5';
-      // update todo widget
-      const d=document.getElementById('twDesign'); d.className='tw-row done'; d.querySelector('.b').textContent='✓'; d.lastChild.textContent=' Design mock - approved';
-      const s=document.getElementById('twS1'); s.className='tw-row active'; s.querySelector('.b').textContent='▶';
-      // switch to code tab
-      document.querySelector('.tab[data-tab="code"]').click();
-      document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
-      toast('<b>Thor</b> is building Section S1 - one section at a time, with audit gates.');
-    });
-  </script>
+/* approve checkpoint */
+document.getElementById('approveBtn').addEventListener('click',()=>{
+  document.getElementById('gate').innerHTML='<div class="gt" style="color:var(--lime)">Checkpoint cleared</div><p style="margin:0">Design approved. Research, Plan, then Build.</p>';
+  document.getElementById('buildMsg').style.display='block';
+  document.getElementById('flowPlan').className='flow-step done'; document.getElementById('flowPlan').querySelector('.fdot').textContent='✓';
+  document.getElementById('flowBuild').className='flow-step current';
+  const tp=document.getElementById('twPlan'); tp.className='tw-row done'; tp.querySelector('.b').textContent='✓';
+  const ts=document.getElementById('twS1'); ts.className='tw-row active'; ts.querySelector('.b').textContent='▶';
+  document.getElementById('taskPill').textContent='Task 5 of 8 · next: S1 Debug';
+  openPanels=['code','preview']; renderSpines(); renderPanels();
+  document.getElementById('chatBody').scrollTop=document.getElementById('chatBody').scrollHeight;
+  toast('<b>Thor</b> is building Task 5 of 8 · Loki debugs, Forseti audits, Heimdall screenshots');
+});
+</script>
 </body>
 </html>
