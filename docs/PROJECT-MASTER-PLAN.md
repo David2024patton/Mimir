@@ -1030,6 +1030,52 @@ Record what the agent did and replay it.
 - F65.2 Replay: step through a recorded session (watch what the agent did).
 - F65.3 Share recordings: share a session recording with others (learn, debug, review).
 - F65.4 Ties to observability (F60) and checkpoints (F5).
+
+### F66. Voice I/O (speak to Mímir) [Differentiator - accessibility]
+- F66.1 Voice input: speak to Mímir - speech-to-text converts your voice to prompts
+  (Antigravity-style; Whisper for local STT).
+- F66.2 Voice output: Mímir speaks back - text-to-speech reads its responses.
+- F66.3 Push-to-talk + a voice-mode toggle.
+- F66.4 Local STT/TTS (whisper.cpp, Piper) for offline/private voice.
+
+### F67. Diagram Generation (extends Bragi) [Differentiator - docs]
+- F67.1 Auto-generate diagrams: architecture diagrams, flowcharts, sequence diagrams,
+  ER diagrams from the code/spec.
+- F67.2 Formats: Mermaid, Excalidraw, PlantUML, SVG/PNG export.
+- F67.3 Bragi generates diagrams as part of documentation.
+- F67.4 Live diagrams: diagrams update as the code changes.
+
+### F68. Vulnerability & Secret Scanning (extends governance) [Differentiator - security]
+- F68.1 Secret scanning: scan for leaked secrets (API keys, tokens, passwords) in code
+  and commits (gitleaks/trufflehog-style).
+- F68.2 Dependency vulnerability scanning: scan dependencies for known CVEs (npm audit /
+  Snyk / Dependabot-style).
+- F68.3 SAST: static application security testing (code security analysis).
+- F68.4 Ties to governance (F27): scanning runs as part of build/verification.
+- F68.5 Block commits with leaked secrets (pre-commit hook).
+
+### F69. Multi-Agent Debate & Self-Reflection [Differentiator - quality]
+- F69.1 Multi-agent debate: multiple agents (or the same model several times) debate a
+  decision/approach, then synthesize the best answer.
+- F69.2 Self-reflection: the agent critiques + improves its own work before finalizing.
+- F69.3 Ensemble: run multiple models on the same task, vote/synthesize the best result.
+- F69.4 Ties to verification: debate/reflection as part of the verification loop.
+
+### F70. Real-Time Collaboration [Differentiator - team]
+- F70.1 Multi-user: multiple users on the same project at once (CodePen/Cursor-style
+  collab).
+- F70.2 Shared sessions: see what others' agents are doing in real time.
+- F70.3 Shared Cortex: collaborate on the knowledge brain.
+- F70.4 Presence: see who's online and what they're working on.
+- F70.5 Conflict resolution: handle concurrent edits.
+
+### F71. Offline Mode [Differentiator - sovereignty]
+- F71.1 Fully local: Mímir works with no network - local models (Ollama), local
+  embeddings, local everything.
+- F71.2 Offline detection: detect when offline and switch to local-only mode.
+- F71.3 Graceful degradation: network features (cloud models, marketplace) degrade
+  gracefully; the core works offline.
+- F71.4 Air-gapped: works in fully air-gapped environments (no internet at all).
 - F42.8 Paid listings: creators set a price (one-time or subscription) for skills/hooks/
   MCP/personas/scrapers/workflows (the Apify-Actor-Store model for agent components).
 - F42.9 Revenue share + payouts: e.g. 80/20 (creator/Mímir); creator dashboard with
@@ -1380,6 +1426,12 @@ platform/backend that earns.
 | E80 | Project Management Sync (two-way sync with Jira/Linear/GitHub Issues/Notion/Trello) | F63 | E72 | M |
 | E81 | Knowledge Graph Visualization (interactive graph of neurons + synapses, explore, filter) | F64 | E6 | M |
 | E82 | Session Recording & Playback (record every step, replay, share recordings) | F65 | E77 | M |
+| E83 | Voice I/O (speech-to-text input, text-to-speech output, push-to-talk, local STT/TTS) | F66 | E12 | M |
+| E84 | Diagram Generation (architecture/flow/sequence/ER diagrams, Mermaid/Excalidraw/PlantUML, live updates) | F67 | E12 | M |
+| E85 | Vulnerability & Secret Scanning (secret scanning, dependency CVE scanning, SAST, pre-commit block) | F68 | E27 | M |
+| E86 | Multi-Agent Debate & Self-Reflection (debate, self-critique, ensemble voting) | F69 | E9 | M |
+| E87 | Real-Time Collaboration (multi-user, shared sessions + Cortex, presence, conflict resolution) | F70 | E12 | L |
+| E88 | Offline Mode (fully local, offline detection, graceful degradation, air-gapped) | F71 | E41 | M |
 
 ---
 
@@ -1397,7 +1449,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E82 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E88 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |
