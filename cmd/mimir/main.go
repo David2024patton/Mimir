@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/David2024patton/Mimir/internal/agent"
 	"github.com/David2024patton/Mimir/internal/config"
@@ -36,7 +38,78 @@ Provider config (environment):
 
 Memory (the Cortex) persists across runs to a JSON file:
   MIMIR_HOME        memory dir (default: ./.mimir in the working directory)
-  MIMIR_CORTEX      full path to the cortex file (default: <MIMIR_HOME>/cortex.json)`
+  MIMIR_CORTEX      full path to the cortex file (default: <MIMIR_HOME>/cortex.json)
+
+Cortex backend (E6): set MIMIR_CORTEX_BACKEND=surreal for the SurrealDB brain
+(managed sidecar + hybrid vector/full-text recall). Related env:
+  MIMIR_CORTEX_BACKEND  file (default) | surreal
+  MIMIR_SURREAL_ADDR    sidecar bind address (default 127.0.0.1:8000)
+  MIMIR_SURREAL_DATA    sidecar data dir (default <MIMIR_HOME>/surreal; "memory" = in-memory)
+  MIMIR_SURREAL_BIN     path to the surreal binary (auto-located if unset)
+  MIMIR_EMBED_URL       embeddings server (default: Ollama at MIMIR_BASE_URL or :11434)
+  MIMIR_EMBED_MODEL     embedding model (default nomic-embed-text)
+  MIMIR_EMBED_DIM       embedding dimension (default 768)`
+
+// buildCortex creates the Cortex store for the configured backend. MIMIR_CORTEX_BACKEND
+// selects it: "surreal" starts a managed SurrealDB sidecar with an Ollama embedder for
+// hybrid vector + full-text recall (E6); anything else (default) uses the file-backed
+// store. The returned cleanup stops the sidecar, if one was started.
+func buildCortex(home string) (cortex.Store, string, func(), error) {
+	noop := func() {}
+	if strings.EqualFold(os.Getenv("MIMIR_CORTEX_BACKEND"), "surreal") {
+		addr := os.Getenv("MIMIR_SURREAL_ADDR")
+		if addr == "" {
+			addr = "127.0.0.1:8000"
+		}
+		dataPath := os.Getenv("MIMIR_SURREAL_DATA")
+		if dataPath == "" {
+			dataPath = filepath.Join(home, "surreal")
+		}
+		sc := &cortex.Sidecar{Addr: addr, DataPath: dataPath}
+		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+		defer cancel()
+		if err := sc.Start(ctx); err != nil {
+			return nil, "", noop, fmt.Errorf("surreal sidecar: %w", err)
+		}
+		embedURL := os.Getenv("MIMIR_EMBED_URL")
+		if embedURL == "" {
+			embedURL = strings.TrimSuffix(strings.TrimRight(os.Getenv("MIMIR_BASE_URL"), "/"), "/v1")
+		}
+		if embedURL == "" {
+			embedURL = "http://localhost:11434"
+		}
+		embedModel := os.Getenv("MIMIR_EMBED_MODEL")
+		if embedModel == "" {
+			embedModel = "nomic-embed-text"
+		}
+		dim := 768
+		if d := os.Getenv("MIMIR_EMBED_DIM"); d != "" {
+			if n, err := strconv.Atoi(d); err == nil && n > 0 {
+				dim = n
+			}
+		}
+		store, err := cortex.NewSurrealStore(context.Background(), cortex.SurrealConfig{
+			Addr:      sc.HTTPAddr(),
+			Dimension: dim,
+			Embedder:  &cortex.OllamaEmbedder{BaseURL: embedURL, Model: embedModel},
+		})
+		if err != nil {
+			sc.Stop()
+			return nil, "", noop, fmt.Errorf("surreal store: %w", err)
+		}
+		desc := fmt.Sprintf("SurrealDB %s (embed %s, dim %d)", sc.HTTPAddr(), embedModel, dim)
+		return store, desc, sc.Stop, nil
+	}
+	cpath := os.Getenv("MIMIR_CORTEX")
+	if cpath == "" {
+		cpath = filepath.Join(home, "cortex.json")
+	}
+	store, err := cortex.NewMemoryStoreAt(cpath)
+	if err != nil {
+		return nil, "", noop, err
+	}
+	return store, "file-backed " + cpath, noop, nil
+}
 
 func main() {
 	args := os.Args[1:]
@@ -58,15 +131,12 @@ func main() {
 	if home == "" {
 		home = filepath.Join(cwd, ".mimir")
 	}
-	cpath := os.Getenv("MIMIR_CORTEX")
-	if cpath == "" {
-		cpath = filepath.Join(home, "cortex.json")
-	}
-	store, err := cortex.NewMemoryStoreAt(cpath)
+	store, storeDesc, cleanup, err := buildCortex(home)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "cortex error:", err)
 		os.Exit(1)
 	}
+	defer cleanup()
 
 	var provider llm.Provider
 	model := ""
@@ -144,7 +214,7 @@ func main() {
 		names = append(names, t.Name())
 	}
 	fmt.Println("tools:", strings.Join(names, ", "))
-	fmt.Println("memory:", cpath)
+	fmt.Println("memory:", storeDesc)
 	if provider == nil {
 		fmt.Println("provider: (none configured)")
 		fmt.Println("set MIMIR_BASE_URL + MIMIR_API_KEY (+ MIMIR_MODEL), then: mimir \"your prompt\"  or  mimir trace \"...\"")

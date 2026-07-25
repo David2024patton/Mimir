@@ -17,7 +17,7 @@ import (
 // Deps wires the server to a live agent + the Cortex store it reads/writes.
 type Deps struct {
 	Agent *agent.Agent
-	Store *cortex.MemoryStore
+	Store cortex.Store
 	Addr  string
 }
 
@@ -31,7 +31,7 @@ func Serve(d Deps) error {
 }
 
 // Handler builds the HTTP handler (exposed for tests).
-func Handler(ag *agent.Agent, st *cortex.MemoryStore) http.Handler {
+func Handler(ag *agent.Agent, st cortex.Store) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"status": "ok"})

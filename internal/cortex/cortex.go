@@ -48,4 +48,5 @@ type Store interface {
 	Search(ctx context.Context, query string, limit int) ([]Neuron, error)
 	Relate(ctx context.Context, s Synapse) error
 	Remember(ctx context.Context, e Engram) error
+	All() []Neuron
 }

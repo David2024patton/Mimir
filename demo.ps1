@@ -120,12 +120,48 @@ try {
 } finally {
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
 }
+$surrealBin = $null
+foreach ($cand in @((Join-Path $here "bin\surreal.exe"), (Join-Path $here "bin\surreal"))) { if (Test-Path $cand) { $surrealBin = $cand; break } }
+if (-not $surrealBin) { $surrealBin = (Get-Command surreal -ErrorAction SilentlyContinue).Source }
+Step 8 "SURREALDB BRAIN (E6) - vector recall finds meaning, not just matching words"
+if ($surrealBin) {
+    Note "surreal binary: $surrealBin  (managed sidecar, in-memory, nomic-embed-text embeddings)"
+    $env:MIMIR_CORTEX_BACKEND = "surreal"
+    $env:MIMIR_SURREAL_ADDR = "127.0.0.1:8013"
+    $env:MIMIR_SURREAL_DATA = "memory"
+    $env:MIMIR_SURREAL_BIN = $surrealBin
+    $env:MIMIR_EMBED_URL = "http://localhost:11434"
+    $proc = Start-Process -FilePath $exe -ArgumentList @("serve","--addr",$addr) -WorkingDirectory $here -PassThru -WindowStyle Hidden
+    Start-Sleep -Seconds 7
+    try {
+        Invoke-RestMethod -Uri "http://localhost:8420/health" -TimeoutSec 10 | Out-Null
+        Note "run 1: plant a fact (embedded into SurrealDB)."
+        Invoke-RestMethod -Uri "http://localhost:8420/chat" -Method Post -ContentType "application/json" -Body '{"prompt":"Remember this fact exactly: Photosynthesis converts sunlight into chemical energy in plants. Reply OK.","mode":"chat"}' -TimeoutSec 240 | Out-Null
+        Note "run 2: ask with NO matching words - only vector similarity can find it."
+        $r2 = Invoke-RestMethod -Uri "http://localhost:8420/chat" -Method Post -ContentType "application/json" -Body '{"prompt":"How do green leaves make food from the sun? Answer briefly from what you recall.","mode":"chat"}' -TimeoutSec 240
+        $recalledText = ($r2.recalled -join " ")
+        if ($recalledText -match "Photosynthesis|sunlight|chemical energy") {
+            Write-Host "    [VERIFIED] SurrealDB vector recall: a lexically-disjoint query found the memory by meaning (E6)." -ForegroundColor Green
+        } else {
+            Note "[observed] vector recall did not surface the memory this run (model/embedding variance)."
+        }
+    } catch {
+        Note ("SurrealDB demo error: " + $_.Exception.Message)
+    } finally {
+        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+        Get-Process surreal -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        $env:MIMIR_CORTEX_BACKEND = ""
+    }
+} else {
+    Note "skipped: surreal binary not found. Put it at bin\surreal.exe (or on PATH) to demo the SurrealDB brain."
+}
 Remove-Item $note -Force -ErrorAction SilentlyContinue
 Remove-Item $cortex -Force -ErrorAction SilentlyContinue
 Write-Host ""
 Write-Host "=== demo complete ===" -ForegroundColor Green
-Note "Memory persists across runs in .mimir/cortex.json (file-backed Cortex; SurrealDB upgrades to vector+graph)."
+Note "Memory persists across runs in .mimir/cortex.json (file-backed Cortex is the default; SurrealDB is the opt-in vector+graph brain)."
 Note "The GUI wire (browser <-> server <-> brain) is live at http://localhost:8420/ via: mimir serve"
 Note "The polished book-spine UI (E70) is the live face: vertical spines, open/close + drag panels, live chat + Cortex."
 Note "Chat streams token-by-token over SSE (F2.1) via POST /chat/stream - reasoning think-blocks stripped, tool calls inline."
+Note "SurrealDB brain (E6): set MIMIR_CORTEX_BACKEND=surreal for hybrid vector+full-text recall (managed sidecar + Ollama embeddings)."
 Note "Ad-hoc use anytime:  test-mimir `"your prompt`"   or   test-mimir trace `"...`""
