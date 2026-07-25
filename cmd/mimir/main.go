@@ -50,6 +50,12 @@ Cortex backend (E6): set MIMIR_CORTEX_BACKEND=surreal for the SurrealDB brain
   MIMIR_EMBED_MODEL     embedding model (default nomic-embed-text)
   MIMIR_EMBED_DIM       embedding dimension (default 768)`
 
+// isLocalURL reports whether a provider base URL points at a local server (Ollama,
+// vLLM, Mímir's own gateway). Local tokens cost $0 on the dashboard (F52).
+func isLocalURL(u string) bool {
+	return strings.Contains(u, "localhost") || strings.Contains(u, "127.0.0.1") || strings.Contains(u, "0.0.0.0")
+}
+
 // buildCortex creates the Cortex store for the configured backend. MIMIR_CORTEX_BACKEND
 // selects it: "surreal" starts a managed SurrealDB sidecar with an Ollama embedder for
 // hybrid vector + full-text recall (E6); anything else (default) uses the file-backed
@@ -140,15 +146,19 @@ func main() {
 
 	var provider llm.Provider
 	model := ""
+	local := false
 	if ep, ok := config.ProviderFromEnv(); ok {
 		provider = &llm.OpenAIProvider{
 			IDStr: ep.ID, BaseURL: ep.BaseURL, APIKey: ep.APIKey, Model: ep.Model,
 		}
 		model = ep.Model
+		local = isLocalURL(ep.BaseURL)
 	}
+	tracker := llm.NewTracker()
 
 	a := agent.New(agent.Config{
 		Provider: provider, Tools: toolReg, Cortex: store, Model: model,
+		Usage: tracker, Local: local,
 	})
 
 	if len(args) > 0 && args[0] == "serve" {
@@ -160,7 +170,7 @@ func main() {
 			}
 		}
 		fmt.Println("Mímir serving the live UI at http://localhost" + addr + "/  (Ctrl+C to stop)")
-		if err := server.Serve(server.Deps{Agent: a, Store: store, Addr: addr}); err != nil {
+		if err := server.Serve(server.Deps{Agent: a, Store: store, Usage: tracker, Addr: addr}); err != nil {
 			fmt.Fprintln(os.Stderr, "serve:", err)
 			os.Exit(1)
 		}

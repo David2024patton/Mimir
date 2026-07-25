@@ -34,7 +34,7 @@ func TestServerChatAndMemory(t *testing.T) {
 	ag := agent.New(agent.Config{
 		Provider: &fakeText{"WIRED"}, Tools: tools.NewRegistry(), Cortex: store, Model: "m",
 	})
-	srv := httptest.NewServer(Handler(ag, store))
+	srv := httptest.NewServer(Handler(ag, store, nil))
 	defer srv.Close()
 
 	resp, err := http.Post(srv.URL+"/chat", "application/json", strings.NewReader(`{"prompt":"hi","mode":"chat"}`))
@@ -84,7 +84,7 @@ func TestServerServesBookSpineUI(t *testing.T) {
 		t.Fatalf("store: %v", err)
 	}
 	ag := agent.New(agent.Config{Provider: &fakeText{"x"}, Tools: tools.NewRegistry(), Cortex: store, Model: "m"})
-	srv := httptest.NewServer(Handler(ag, store))
+	srv := httptest.NewServer(Handler(ag, store, nil))
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL + "/")
@@ -120,7 +120,7 @@ func TestServerMemoryJSONCasing(t *testing.T) {
 		t.Fatalf("put: %v", err)
 	}
 	ag := agent.New(agent.Config{Provider: &fakeText{"x"}, Tools: tools.NewRegistry(), Cortex: store, Model: "m"})
-	srv := httptest.NewServer(Handler(ag, store))
+	srv := httptest.NewServer(Handler(ag, store, nil))
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL + "/memory")
@@ -173,7 +173,7 @@ func TestServerChatStream(t *testing.T) {
 		t.Fatalf("store: %v", err)
 	}
 	ag := agent.New(agent.Config{Provider: &fakeStream{}, Tools: tools.NewRegistry(), Cortex: store, Model: "m"})
-	srv := httptest.NewServer(Handler(ag, store))
+	srv := httptest.NewServer(Handler(ag, store, nil))
 	defer srv.Close()
 
 	resp, err := http.Post(srv.URL+"/chat/stream", "application/json", strings.NewReader(`{"prompt":"hi","mode":"chat"}`))
@@ -211,5 +211,48 @@ func TestServerChatStream(t *testing.T) {
 	}
 	if !sawDone || reply != "WIRED" {
 		t.Errorf("done reply = %q (sawDone=%v), want WIRED", reply, sawDone)
+	}
+}
+
+// TestServerUsage proves GET /usage reports per-model token totals (E69), sorted
+// most-to-least, with the local flag.
+func TestServerUsage(t *testing.T) {
+	store, err := cortex.NewMemoryStoreAt(filepath.Join(t.TempDir(), "cortex.json"))
+	if err != nil {
+		t.Fatalf("store: %v", err)
+	}
+	ag := agent.New(agent.Config{Provider: &fakeText{"x"}, Tools: tools.NewRegistry(), Cortex: store, Model: "m"})
+	tracker := llm.NewTracker()
+	tracker.Record("qwen3:8b", true, llm.Usage{PromptTokens: 100, CompletionTokens: 50})
+	tracker.Record("qwen3:8b", true, llm.Usage{PromptTokens: 10, CompletionTokens: 5})
+	srv := httptest.NewServer(Handler(ag, store, tracker))
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/usage")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	defer resp.Body.Close()
+	var out struct {
+		TotalTokens int `json:"total_tokens"`
+		Models      []struct {
+			Model       string `json:"model"`
+			Local       bool   `json:"local"`
+			Requests    int    `json:"requests"`
+			TotalTokens int    `json:"total_tokens"`
+		} `json:"models"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.TotalTokens != 165 {
+		t.Errorf("total_tokens = %d, want 165", out.TotalTokens)
+	}
+	if len(out.Models) != 1 {
+		t.Fatalf("models = %d, want 1", len(out.Models))
+	}
+	m := out.Models[0]
+	if m.Model != "qwen3:8b" || !m.Local || m.Requests != 2 || m.TotalTokens != 165 {
+		t.Errorf("model usage = %+v", m)
 	}
 }

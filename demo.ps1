@@ -75,6 +75,8 @@ try {
     Note ("POST /chat  -> reply: " + (($chat.reply -replace "`r`n"," ") -replace "`n"," "))
     $mem = Invoke-RestMethod -Uri "http://localhost:8420/memory" -TimeoutSec 8
     Note ("GET  /memory -> " + $mem.count + " neuron(s) persisted")
+    $usage = Invoke-RestMethod -Uri "http://localhost:8420/usage" -TimeoutSec 8
+    Note ("GET  /usage  -> " + $usage.total_tokens + " tokens counted across " + $usage.models.Count + " model(s) (E69 dashboard)")
     if ([string]::IsNullOrWhiteSpace($chat.reply) -eq $false -and [int]$mem.count -ge 1 -and $isBookSpine) {
         Write-Host "    [VERIFIED] the book-spine UI is live end-to-end: browser -> server -> model -> Cortex." -ForegroundColor Green
         Note "Open it in a browser: http://localhost:8420/  (spines open/close + drag; chat + Cortex are live)"

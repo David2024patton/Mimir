@@ -59,14 +59,33 @@ type oaChoice struct {
 }
 
 type oaRequest struct {
-	Model    string      `json:"model"`
-	Messages []oaMessage `json:"messages"`
-	Tools    []oaTool    `json:"tools,omitempty"`
-	Stream   bool        `json:"stream"`
+	Model         string           `json:"model"`
+	Messages      []oaMessage      `json:"messages"`
+	Tools         []oaTool         `json:"tools,omitempty"`
+	Stream        bool             `json:"stream"`
+	StreamOptions *oaStreamOptions `json:"stream_options,omitempty"`
+}
+
+type oaStreamOptions struct {
+	IncludeUsage bool `json:"include_usage"`
 }
 
 type oaResponse struct {
 	Choices []oaChoice `json:"choices"`
+	Usage   *oaUsage   `json:"usage"`
+}
+
+type oaUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
+func (u *oaUsage) toUsage() Usage {
+	if u == nil {
+		return Usage{}
+	}
+	return Usage{PromptTokens: u.PromptTokens, CompletionTokens: u.CompletionTokens}
 }
 
 func (p *OpenAIProvider) httpClient() *http.Client {
@@ -201,12 +220,16 @@ func tail(s string, n int) string {
 }
 
 func (p *OpenAIProvider) post(ctx context.Context, req GenerateRequest) (*http.Response, error) {
-	body, err := json.Marshal(oaRequest{
+	oReq := oaRequest{
 		Model:    p.model(req.Model),
 		Messages: toOpenAI(req.Messages),
 		Tools:    toOATools(req.Tools),
 		Stream:   req.Stream,
-	})
+	}
+	if req.Stream {
+		oReq.StreamOptions = &oaStreamOptions{IncludeUsage: true}
+	}
+	body, err := json.Marshal(oReq)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +268,7 @@ func (p *OpenAIProvider) Generate(ctx context.Context, req GenerateRequest) (Gen
 	for _, tc := range ch.Message.ToolCalls {
 		calls = append(calls, ToolCall{ID: tc.ID, Name: tc.Function.Name, Arguments: tc.Function.Arguments})
 	}
-	return GenerateResponse{Content: stripThink(ch.Message.Content), ToolCalls: calls, FinishReason: ch.FinishReason}, nil
+	return GenerateResponse{Content: stripThink(ch.Message.Content), ToolCalls: calls, FinishReason: ch.FinishReason, Usage: r.Usage.toUsage()}, nil
 }
 
 // Stream returns a channel of streamed events: text deltas (with reasoning
@@ -268,6 +291,7 @@ func (p *OpenAIProvider) Stream(ctx context.Context, req GenerateRequest) (<-cha
 		defer resp.Body.Close()
 		var ts thinkStripper
 		toolAcc := map[int]*ToolCall{}
+		var lastUsage Usage
 		finish := func() {
 			if vis := ts.flush(); vis != "" {
 				out <- StreamEvent{Delta: vis}
@@ -283,7 +307,7 @@ func (p *OpenAIProvider) Stream(ctx context.Context, req GenerateRequest) (<-cha
 					tcs = append(tcs, *toolAcc[i])
 				}
 			}
-			out <- StreamEvent{Done: true, ToolCalls: tcs}
+			out <- StreamEvent{Done: true, ToolCalls: tcs, Usage: lastUsage}
 		}
 		scanner := bufio.NewScanner(resp.Body)
 		for scanner.Scan() {
@@ -302,6 +326,9 @@ func (p *OpenAIProvider) Stream(ctx context.Context, req GenerateRequest) (<-cha
 			var r oaResponse
 			if err := json.Unmarshal([]byte(data), &r); err != nil {
 				continue
+			}
+			if r.Usage != nil {
+				lastUsage = r.Usage.toUsage()
 			}
 			if len(r.Choices) == 0 {
 				continue

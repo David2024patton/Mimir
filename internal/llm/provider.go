@@ -39,14 +39,16 @@ type GenerateResponse struct {
 	Content      string
 	ToolCalls    []ToolCall
 	FinishReason string
+	Usage        Usage
 }
 
 // StreamEvent is one chunk of a streamed response. Text arrives as Delta events;
 // the final event has Done set and carries any ToolCalls the model issued
-// (accumulated across the stream's fragmented tool-call deltas).
+// (accumulated across the stream's fragmented tool-call deltas) and the token Usage.
 type StreamEvent struct {
 	Delta     string
 	ToolCalls []ToolCall
+	Usage     Usage
 	Done      bool
 	Err       error
 }

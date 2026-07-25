@@ -218,3 +218,64 @@ func TestOpenAIProviderStreamStripsThink(t *testing.T) {
 		t.Errorf("streamed %q, want %q (think block must be stripped)", got, "The answer is 42.")
 	}
 }
+
+// TestOpenAIProviderGenerateUsage proves Generate surfaces the token usage block.
+func TestOpenAIProviderGenerateUsage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(oaResponse{
+			Choices: []oaChoice{{Message: oaMessage{Content: "hi"}, FinishReason: "stop"}},
+			Usage:   &oaUsage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15},
+		})
+	}))
+	defer srv.Close()
+	p := &OpenAIProvider{IDStr: "fake", BaseURL: srv.URL + "/v1", APIKey: "k", Model: "m"}
+	resp, err := p.Generate(context.Background(), GenerateRequest{Messages: []Message{{Role: "user", Content: "hi"}}})
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	if resp.Usage.PromptTokens != 10 || resp.Usage.CompletionTokens != 5 {
+		t.Errorf("usage = %+v, want prompt=10 completion=5", resp.Usage)
+	}
+}
+
+// TestOpenAIProviderStreamUsage proves Stream captures the usage from the final
+// (empty-choices) chunk that Ollama sends with stream_options.include_usage.
+func TestOpenAIProviderStreamUsage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher, _ := w.(http.Flusher)
+		write := func(v any) {
+			b, _ := json.Marshal(v)
+			_, _ = w.Write([]byte("data: " + string(b) + "\n\n"))
+			flusher.Flush()
+		}
+		write(oaResponse{Choices: []oaChoice{{Delta: oaMessage{Content: "hello"}}}})
+		write(oaResponse{Choices: []oaChoice{}, Usage: &oaUsage{PromptTokens: 8, CompletionTokens: 3, TotalTokens: 11}})
+		_, _ = w.Write([]byte("data: [DONE]\n\n"))
+		flusher.Flush()
+	}))
+	defer srv.Close()
+	p := &OpenAIProvider{IDStr: "fake", BaseURL: srv.URL + "/v1", APIKey: "k", Model: "m"}
+	ch, err := p.Stream(context.Background(), GenerateRequest{Messages: []Message{{Role: "user", Content: "hi"}}})
+	if err != nil {
+		t.Fatalf("Stream: %v", err)
+	}
+	var got string
+	var usage Usage
+	for ev := range ch {
+		if ev.Err != nil {
+			t.Fatalf("stream error: %v", ev.Err)
+		}
+		got += ev.Delta
+		if ev.Done {
+			usage = ev.Usage
+		}
+	}
+	if got != "hello" {
+		t.Errorf("streamed %q, want hello", got)
+	}
+	if usage.PromptTokens != 8 || usage.CompletionTokens != 3 {
+		t.Errorf("stream usage = %+v, want prompt=8 completion=3", usage)
+	}
+}

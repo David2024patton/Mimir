@@ -23,6 +23,8 @@ type Config struct {
 	Tools    *tools.Registry
 	Cortex   cortex.Store
 	Model    string
+	Usage    *llm.Tracker // optional: records token usage for the dashboard (E69)
+	Local    bool         // whether the provider is local (local tokens cost $0)
 }
 
 // Step records one tool execution in a turn (used by RunTrace / the trace CLI).
@@ -95,6 +97,9 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step
 		})
 		if err != nil {
 			return "", trace, err
+		}
+		if a.cfg.Usage != nil {
+			a.cfg.Usage.Record(a.cfg.Model, a.cfg.Local, resp.Usage)
 		}
 		last = resp.Content
 		msgs = append(msgs, llm.Message{Role: "assistant", Content: resp.Content, ToolCalls: resp.ToolCalls})
@@ -173,6 +178,7 @@ func (a *Agent) RunStream(ctx context.Context, input string, emit func(Event)) e
 		}
 		var content strings.Builder
 		var toolCalls []llm.ToolCall
+		var usage llm.Usage
 		for ev := range ch {
 			if ev.Err != nil {
 				emit(Event{Type: EventError, Err: ev.Err.Error()})
@@ -184,7 +190,11 @@ func (a *Agent) RunStream(ctx context.Context, input string, emit func(Event)) e
 			}
 			if ev.Done {
 				toolCalls = ev.ToolCalls
+				usage = ev.Usage
 			}
+		}
+		if a.cfg.Usage != nil {
+			a.cfg.Usage.Record(a.cfg.Model, a.cfg.Local, usage)
 		}
 		text := content.String()
 		finalReply = text

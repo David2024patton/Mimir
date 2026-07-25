@@ -105,6 +105,17 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .kv .k{color:var(--muted)}
 .kv .v{font-family:var(--mono);font-size:12.5px}
 .kv .v.ok{color:var(--lime)}
+.mrow{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:9px 0;border-bottom:1px solid var(--border)}
+.mrow:last-child{border-bottom:none}
+.mrow .mname{font-family:var(--mono);font-size:12.5px;display:flex;align-items:center;gap:8px}
+.mtype{font-size:10px;padding:2px 8px;border-radius:99px;font-weight:600}
+.mtype.local{background:color-mix(in srgb,var(--lime) 18%, transparent);color:var(--lime)}
+.mtype.cloud{background:color-mix(in srgb,var(--blue) 18%, transparent);color:var(--blue)}
+.mrow .mtok{font-family:var(--mono);font-size:12.5px;color:var(--text);text-align:right}
+.mrow .mcost{font-size:11px;color:var(--dim);text-align:right}
+.mbar{grid-column:1/-1;height:5px;border-radius:99px;background:var(--panel3);overflow:hidden}
+.mbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--teal),var(--teal-d));animation:barIn .6s ease}
+@keyframes barIn{from{width:0}}
 
 /* placeholder panels */
 .taskrow{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:9px;margin-bottom:7px;font-size:13.5px}
@@ -296,6 +307,7 @@ function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return 
 
 /* ===== live state ===== */
 var memCache = [];
+var usageCache = {total_tokens:0, models:[]};
 var healthOK = false;
 var sending = false;
 var showTrace = true;
@@ -340,6 +352,13 @@ function refreshMemory(){
   }).catch(function(){});
 }
 
+function refreshUsage(){
+  return fetch('/usage').then(function(r){return r.json()}).then(function(d){
+    usageCache = {total_tokens:d.total_tokens||0, models:d.models||[]};
+    if(openPanels.indexOf('dashboard')>=0) renderPanels();
+  }).catch(function(){});
+}
+
 /* ===== BOOK SPINES + PANELS (F53) ===== */
 var spineDefs=[
   {id:'cortex',label:'CORTEX',live:true},
@@ -361,14 +380,24 @@ var panelContent={
     }).join('');
   },
   dashboard:function(){
+    var models = usageCache.models||[];
+    var total = usageCache.total_tokens||0;
+    var maxTok = models.length ? models[0].total_tokens : 1;
+    var rows = models.map(function(m){
+      var pct = Math.max(2, Math.round(100*m.total_tokens/maxTok));
+      var cost = m.local ? '$0.00' : ('$'+(m.total_tokens*0.00001).toFixed(4)+' est');
+      return '<div class="mrow"><span class="mname">'+esc(m.model)+' <span class="mtype '+(m.local?'local':'cloud')+'">'+(m.local?'local':'cloud')+'</span></span>'+
+        '<span class="mtok">'+m.total_tokens.toLocaleString()+' tok · '+m.requests+' req</span>'+
+        '<span class="mcost">'+cost+'</span>'+
+        '<div class="mbar"><i style="width:'+pct+'%"></i></div></div>';
+    }).join('');
+    if(!rows) rows = '<div class="empty">No token usage yet. Chat with Mímir and per-model usage appears here.</div>';
     return '<div class="disp" style="font-size:16px;font-weight:600;margin-bottom:2px">Mímir</div>'+
       '<div style="color:var(--muted);font-size:12.5px;margin-bottom:10px">the agent that remembers</div>'+
-      '<div class="dash-total"><span class="big">'+memCache.length+'</span><span class="lbl">memories in the Cortex</span></div>'+
-      '<div class="kv"><span class="k">Daemon</span><span class="v '+(healthOK?'ok':'')+'">'+(healthOK?'online':'checking...')+'</span></div>'+
-      '<div class="kv"><span class="k">Memory store</span><span class="v">file-backed cortex.json</span></div>'+
-      '<div class="kv"><span class="k">Recall</span><span class="v">lexical token-overlap</span></div>'+
-      '<div class="kv"><span class="k">Tools</span><span class="v">bash · edit_block</span></div>'+
-      '<div class="pnote">Per-model token usage + cost estimates (E69) and vector + graph recall via SurrealDB (E6) land next. The Cortex count and daemon status above are live.</div>';
+      '<div class="dash-total"><span class="big">'+total.toLocaleString()+'</span><span class="lbl">tokens used · '+memCache.length+' memories</span></div>'+
+      rows+
+      '<div class="kv" style="margin-top:12px"><span class="k">Daemon</span><span class="v '+(healthOK?'ok':'')+'">'+(healthOK?'online':'checking...')+'</span></div>'+
+      '<div class="pnote">Token usage by model (E69), sorted most-to-least. Local models (Ollama) cost $0; cloud cost is a rough estimate.</div>';
   },
   tasks:function(){
     return '<span class="sampletag">SAMPLE · not live yet</span>'+
@@ -500,6 +529,7 @@ function send(){
     } else if(e.type==='done'){
       if(thinking){ thinking.remove(); thinking=null; }
       refreshMemory();
+      refreshUsage();
     } else if(e.type==='error'){
       if(thinking){ thinking.remove(); thinking=null; }
       bubble.innerHTML='<span style="color:var(--red)">'+esc(e.err||'error')+'</span>';
@@ -537,8 +567,8 @@ function send(){
 }
 
 /* ===== boot ===== */
-renderSpines(); renderPanels(); welcome(); refreshMemory(); checkHealth(false);
-setInterval(function(){checkHealth(false)},15000);
+renderSpines(); renderPanels(); welcome(); refreshMemory(); refreshUsage(); checkHealth(false);
+setInterval(function(){checkHealth(false); refreshUsage();},15000);
 </script>
 </body>
 </html>
