@@ -37,10 +37,10 @@ func freePort(t *testing.T) int {
 	return l.Addr().(*net.TCPAddr).Port
 }
 
-// TestSurrealStore is an integration test against a real (sidecar) SurrealDB. It skips
-// if the surreal binary is not available. It exercises put/get/hybrid-search/relate/
-// remember/all over the HTTP /sql wire.
-func TestSurrealStore(t *testing.T) {
+// newTestStore starts an in-memory SurrealDB sidecar and returns a SurrealStore wired
+// to a deterministic 3-dim fake embedder. Skips if the surreal binary is unavailable.
+func newTestStore(t *testing.T) *SurrealStore {
+	t.Helper()
 	if LocateSurreal() == "" {
 		t.Skip("surreal binary not found; skipping SurrealDB integration test")
 	}
@@ -48,14 +48,21 @@ func TestSurrealStore(t *testing.T) {
 	if err := sc.Start(context.Background()); err != nil {
 		t.Fatalf("sidecar start: %v", err)
 	}
-	defer sc.Stop()
-
+	t.Cleanup(sc.Stop)
 	store, err := NewSurrealStore(context.Background(), SurrealConfig{
 		Addr: sc.HTTPAddr(), Dimension: 3, Embedder: fakeEmbedder{dim: 3},
 	})
 	if err != nil {
 		t.Fatalf("NewSurrealStore: %v", err)
 	}
+	return store
+}
+
+// TestSurrealStore is an integration test against a real (sidecar) SurrealDB. It skips
+// if the surreal binary is not available. It exercises put/get/hybrid-search/relate/
+// remember/all over the HTTP /sql wire.
+func TestSurrealStore(t *testing.T) {
+	store := newTestStore(t)
 	ctx := context.Background()
 
 	idA, err := store.PutNeuron(ctx, Neuron{Kind: KindMemory, Content: "cats are great pets", Decay: 1})
@@ -95,10 +102,118 @@ func TestSurrealStore(t *testing.T) {
 	}
 
 	if err := store.Relate(ctx, Synapse{From: idA, To: idB, Kind: "relates_to"}); err != nil {
-		t.Errorf("relate: %v", err)
+		t.Fatalf("relate: %v", err)
+	}
+	// the synapse must actually exist in the graph: A's neighbours include B.
+	nbs, err := store.neighbors(ctx, []string{idA})
+	if err != nil {
+		t.Fatalf("neighbors: %v", err)
+	}
+	foundB := false
+	for _, nb := range nbs {
+		if nb.ID == idB {
+			foundB = true
+		}
+	}
+	if !foundB {
+		t.Errorf("graph edge A->B not found via neighbours: %+v", nbs)
 	}
 	if err := store.Remember(ctx, Engram{NeuronID: idA, Strength: 1.0}); err != nil {
 		t.Errorf("remember: %v", err)
+	}
+}
+
+// TestSurrealReinforcement proves recall strengthens a memory (F6): searching bumps the
+// neuron's access_count and pushes its decay back toward 1.0.
+func TestSurrealReinforcement(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	id, err := store.PutNeuron(ctx, Neuron{Kind: KindMemory, Content: "cats are great pets", Decay: 0.5})
+	if err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	before, _ := store.GetNeuron(ctx, id)
+	if before.AccessCount != 0 {
+		t.Fatalf("fresh neuron access_count = %d, want 0", before.AccessCount)
+	}
+	if _, err := store.Search(ctx, "cats", 3); err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	after, _ := store.GetNeuron(ctx, id)
+	if after.AccessCount < 1 {
+		t.Errorf("access_count after recall = %d, want >= 1 (reinforcement)", after.AccessCount)
+	}
+	if after.Decay <= before.Decay {
+		t.Errorf("decay after recall = %f, want > %f (reinforced)", after.Decay, before.Decay)
+	}
+}
+
+// TestSurrealGraphExpansion proves recall traverses synapses (F6): a neuron related to a
+// recalled neuron surfaces as a neighbour even when it does not match the query.
+func TestSurrealGraphExpansion(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	idA, _ := store.PutNeuron(ctx, Neuron{Kind: KindMemory, Content: "cats purr softly", Decay: 1})
+	idB, _ := store.PutNeuron(ctx, Neuron{Kind: KindMemory, Content: "fish swim deep", Decay: 1})
+	if err := store.Relate(ctx, Synapse{From: idA, To: idB, Kind: "relates_to"}); err != nil {
+		t.Fatalf("relate: %v", err)
+	}
+	// B ("fish") does not match the query "cats" - it must arrive via the graph edge.
+	nbs, err := store.neighbors(ctx, []string{idA})
+	if err != nil {
+		t.Fatalf("neighbors: %v", err)
+	}
+	found := false
+	for _, nb := range nbs {
+		if nb.ID == idB {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("neighbour B not reached from A: %+v", nbs)
+	}
+	hits, err := store.Search(ctx, "cats", 5)
+	if err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	inHits := false
+	for _, h := range hits {
+		if h.ID == idB {
+			inHits = true
+		}
+	}
+	if !inHits {
+		t.Errorf("graph neighbour B not surfaced by Search for 'cats': %+v", hits)
+	}
+}
+
+// TestSurrealForgetting proves the forgetting curve (F6): un-reinforced neurons decay
+// and are pruned, while engram-hardened neurons survive.
+func TestSurrealForgetting(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	idEphemeral, _ := store.PutNeuron(ctx, Neuron{Kind: KindMemory, Content: "a passing thought", Decay: 1})
+	idDurable, _ := store.PutNeuron(ctx, Neuron{Kind: KindMemory, Content: "a hardened lesson", Decay: 1})
+	if err := store.Remember(ctx, Engram{NeuronID: idDurable, Strength: 1.0}); err != nil {
+		t.Fatalf("remember: %v", err)
+	}
+	// decay halves each Forget; after 5 passes 1.0 -> ~0.03 (< 0.1 threshold).
+	var pruned int
+	for i := 0; i < 5; i++ {
+		n, err := store.Forget(ctx)
+		if err != nil {
+			t.Fatalf("forget: %v", err)
+		}
+		pruned += n
+	}
+	if pruned < 1 {
+		t.Errorf("expected the ephemeral neuron to be pruned, pruned=%d", pruned)
+	}
+	if got, _ := store.GetNeuron(ctx, idEphemeral); got.ID != "" {
+		t.Errorf("ephemeral neuron should have been forgotten, got %+v", got)
+	}
+	if got, _ := store.GetNeuron(ctx, idDurable); got.ID == "" {
+		t.Error("engram-hardened neuron should survive forgetting")
 	}
 }
 

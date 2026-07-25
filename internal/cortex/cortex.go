@@ -18,13 +18,14 @@ const (
 
 // Neuron is one node in the knowledge graph.
 type Neuron struct {
-	ID        string     `json:"id"`
-	Kind      NeuronKind `json:"kind"`
-	Layer     string     `json:"layer,omitempty"` // activity | context | experience | identity | preference
-	Title     string     `json:"title,omitempty"`
-	Content   string     `json:"content"`
-	Embedding []float64  `json:"embedding,omitempty"` // vector for RAG
-	Decay     float64    `json:"decay"`               // forgetting-curve weight (F6)
+	ID          string     `json:"id"`
+	Kind        NeuronKind `json:"kind"`
+	Layer       string     `json:"layer,omitempty"` // activity | context | experience | identity | preference
+	Title       string     `json:"title,omitempty"`
+	Content     string     `json:"content"`
+	Embedding   []float64  `json:"embedding,omitempty"` // vector for RAG
+	Decay       float64    `json:"decay"`               // forgetting-curve weight (F6)
+	AccessCount int        `json:"access_count,omitempty"` // reinforcement: times recalled (F6)
 }
 
 // Synapse is a relationship between two neurons.
