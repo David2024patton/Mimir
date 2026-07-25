@@ -492,6 +492,7 @@ const panelContent={
     </div></div>
     <div style="margin-top:12px;font-size:12.5px;color:var(--muted)">Live from the Docker sandbox on port <b style="font-family:var(--mono)">47312</b> (never 8080).</div>`,
   tasks:()=>`<div class="taskcount">Task 4 of 8 · next: S1 Layout + header</div>
+    <div style="font-size:11.5px;color:var(--dim);margin-bottom:12px;display:flex;align-items:center;gap:7px"><span style="color:var(--gold);font-size:14px">↻</span> Each task loops: build → test → fix → re-test until it passes (max 5 tries, then it asks you)</div>
     <div class="autoplace" onclick="this.querySelector('.cb').innerHTML=this.querySelector('.cb').innerHTML?'':'✓';toast('Auto-place: Mímir will review new tasks and put them in order, with advice')"><span class="cb">✓</span> Auto-place new tasks (Mímir reviews + orders them, offers advice)</div>
     ${[['done','1','Discovery','Odin',''],['done','2','Design mock','Odin',''],['done','3','Research','Huginn',''],['current','4','Plan','Odin',''],['','5','S1 Layout + header','Thor','thor'],['','6','S1 Debug + audit','Loki','loki'],['','7','S2 Add-task form','Thor','thor'],['','8','S3 + S4 + Polish','Thor','thor']]
       .map(t=>`<div class="taskrow ${t[0]}"><span class="tcheck">${t[0]==='done'?'✓':(t[0]==='current'?'▶':'')}</span><span class="tlabel">${t[2]}</span><span class="twho ${t[4]}">${t[3]}</span></div>`).join('')}`,

@@ -1029,6 +1029,14 @@ Phases (each ends with a user checkpoint gate):
   deploy, and verify it's live. Mímir handles the deploy and confirms it's running.
 - F43.16 **Maintenance phase**: ongoing - monitor the deployed app, fix bugs, handle
   issues, update dependencies. Mímir can watch the app and fix problems as they arise.
+- F43.17 **Test-fix-retest loop (regression loop)**: when a verification finds a bug
+  (Loki's test fails, Forseti flags the code, Heimdall sees a visual issue), the section
+  loops back to Thor to fix it, then re-verifies - repeating until every check passes and
+  it looks good, then it advances to the next section.
+  - Per-section: a section must pass all checks before the next one starts.
+  - Final pass: after all sections, a final end-to-end verification; if issues, loop back.
+  - Safety valve: after N failed attempts (configurable), escalate to the user instead of
+    looping forever.
 
 **F43 follows the Software Development Life Cycle (SDLC):**
 | SDLC phase | Mímir phase |
@@ -1039,6 +1047,11 @@ Phases (each ends with a user checkpoint gate):
 | Testing | Debug + three verification roles (F43.8, F43.12, F43.13) |
 | Deployment | Deployment phase (F43.15) + Docker-first (F51) |
 | Maintenance | Maintenance phase (F43.16) |
+
+**Feedback loops (it doesn't just move on):** Testing loops back to Implementation
+(F43.17) - a bug sends the section back to Thor to fix and re-test until it's clean.
+Maintenance loops back to Implementation for bugs found in production. So a phase keeps
+fixing until its issues are all gone and it looks good, rather than skipping ahead.
 
 ### F44. Default Voice & Communication Style [Core - identity]
 How Mímir talks. Baked into the base system prompt every persona inherits.
