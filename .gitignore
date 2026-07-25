@@ -43,6 +43,7 @@ desktop.ini
 logs/
 tmp/
 temp/
+demo-note.txt
 
 # Databases (local data)
 *.db

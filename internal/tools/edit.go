@@ -59,7 +59,7 @@ func (t *EditBlockTool) Run(ctx context.Context, args map[string]any) (string, e
 			}
 			return fmt.Sprintf("edited %s (normalized fallback, %d replacement(s))", path, min(n, c)), nil
 		}
-		return "", fmt.Errorf("old_string not found in %s", path)
+		return "", notFoundErr(path, content)
 	}
 	if n == 0 {
 		content = strings.ReplaceAll(content, oldStr, newStr)
@@ -77,6 +77,19 @@ func (t *EditBlockTool) Run(ctx context.Context, args map[string]any) (string, e
 		replaced = count
 	}
 	return fmt.Sprintf("edited %s (%d replacement(s))", path, replaced), nil
+}
+
+// notFoundErr builds a self-healing error: when the model's old_string doesn't match
+// (often because it mangled a non-ASCII character while copying), we echo the real file
+// content back so the model can copy the exact bytes and retry instead of giving up.
+func notFoundErr(path, content string) error {
+	preview := content
+	if r := []rune(preview); len(r) > 1500 {
+		preview = string(r[:1500]) + "\n...[truncated]"
+	}
+	return fmt.Errorf(
+		"old_string not found in %s. Do NOT give up or reply yet: call read_file on %s and copy the EXACT text (including any accented or special characters, byte-for-byte) into old_string, then retry edit_block. Current file content:\n-----\n%s\n-----",
+		path, path, preview)
 }
 
 func replaceN(s, old, new string, n int) string {
