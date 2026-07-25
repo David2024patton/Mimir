@@ -949,6 +949,16 @@ WebAssembly, so users can build them in any language and they all just work.
 - F56.4 The marketplace distributes .wasm modules; one-click install works regardless
   of the language the module was written in.
 - F56.5 Module types: tools, skills, MCP servers, personas, triggers - all as WASM.
+
+### F57. Forkable Templates & Experiments (CodePen-style) [Differentiator - community]
+CodePen's most transferable idea: small, shareable, forkable, live experiments.
+- F57.1 Templates: reusable starting points in the marketplace (project skeletons,
+  module templates, persona packs) - one-click to start from one.
+- F57.2 Experiments: small, shareable, forkable snippets/projects with a live preview -
+  share a working experiment, others fork and remix it.
+- F57.3 Embeddable previews: embed a live preview of an experiment/template anywhere.
+- F57.4 Fork & remix: one-click fork of any public experiment/template to build on it.
+- F57.5 (Community) Discover trending/popular experiments and templates.
 - F42.8 Paid listings: creators set a price (one-time or subscription) for skills/hooks/
   MCP/personas/scrapers/workflows (the Apify-Actor-Store model for agent components).
 - F42.9 Revenue share + payouts: e.g. 80/20 (creator/Mímir); creator dashboard with
@@ -1263,6 +1273,7 @@ platform/backend that earns.
 | E71 | Custom Hotlink Rail (pin conversations/settings/providers, reorder, unpin) | F54 | E12 | S |
 | E72 | Smart Task Tracker (auto-place with LLM review, "Task X of Y" in chat, debug in every step) | F55 | E12, E48 | M |
 | E73 | WASM Module System (wazero runtime, WASI Component Model interface, sandboxed any-language modules for the marketplace) | F56 | E11 | L |
+| E74 | Forkable Templates & Experiments (marketplace templates, shareable/forkable experiments with live preview, embeds, fork & remix) | F57 | E73 | M |
 
 ---
 
@@ -1280,7 +1291,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E73 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E74 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |

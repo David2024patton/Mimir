@@ -429,6 +429,16 @@ Grouped by theme. Each notes the originator(s) and why it matters.
 - WHY: a polyglot module system makes the marketplace truly open - anyone builds a
   module in their language and it just works, safely.
 
+### B34. Forkable templates & experiments (CodePen-style)
+- CodePen's core idea: a "Pen" = a small, shareable, forkable front-end experiment with
+  a live preview. Plus templates, embeds, fork & remix, trending discovery.
+- Transferable to Mímir: forkable/shareable templates + experiments with live previews in
+  the marketplace, embeddable previews, fork & remix, trending discovery.
+- CodePen's pricing (free + Pro ~$8/mo + teams) aligns with the freemium model.
+- What NOT to take: the whole social front-end playground (different category). Take the
+  forkable/template/embed mechanics, not the social playground.
+- WHY: forkable experiments + templates make the marketplace sticky and communal.
+
 ---
 
 ## C. Per-Tool Cheat Sheet (one-liner differentiators)
