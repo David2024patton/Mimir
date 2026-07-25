@@ -1583,6 +1583,45 @@ payouts + dashboard; featured/verified listings. Security scanning gates every l
 
 ---
 
+## 12. v1 Scope (MVP) - "the one that remembers"
+
+71 features is a 12-month product. v1 ships the smallest thing that is still
+unmistakably Mímir: an agent that **remembers**, **walks the SDLC with you**, and is
+**yours** (local-first, your models). Everything else is seasoning for v1.x.
+
+### In v1
+| Feature | Why it's load-bearing |
+|---|---|
+| F1 Provider & Model Access (BYOK + Ollama) | can't do anything without a model |
+| F2 Conversation & Agent Loop | the engine |
+| F3 Built-in System Tools (terminal, files, code exec) | it has to act |
+| **F6 Memory & Persona (the Cortex)** | the namesake - no memory, no Mímir |
+| F7 Skills System (basic) | reusable workflows |
+| F8 Plan Mode | the "plan with you" experience |
+| F12 GUI (book-spine nav, chat, dashboard) | the face of it |
+| F43 Guided Development Protocol (SDLC, gated, loops back) | the "walks with you" experience |
+| F44 Question Tool | how it interviews you |
+| F51 Docker-first | it ships working software |
+| F52 Per-project Dashboard (token usage) | transparency |
+| F55 Smart Task Tracker (auto-place, Task X of Y) | keeps you oriented |
+| F59 Git Workflow (commits, comments) | it explains what it did |
+| One verifier (Loki) | start with one tester, add Forseti/Heimdall in v1.x |
+
+### Deferred to v1.x
+F31 small-model mode · F48 computer use · F49 futuristic theme polish · F50 RGB sync ·
+F42 marketplace · F56 WASM modules · F66 voice I/O · F67 diagrams · F68 security
+scanning · F69 multi-agent debate · F70 real-time collaboration · F71 offline mode ·
+F61 CI/CD · F60 observability · F62 visual regression · F63 PM sync · F64 graph viz ·
+F65 session recording · Forseti + Heimdall as separate auditors.
+
+### v1 success test
+A user opens Mímir, tells it to build a small app, and Mímir: interviews them, mocks the
+UI, builds it one verified section at a time, commits it, deploys it in Docker - and in
+the NEXT session, remembers their preferences without being told. That "it remembered"
+moment is the product.
+
+---
+
 ## Appendix A: Reference URLs
 - OpenClaw (PRIMARY architectural reference): https://github.com/openclaw/openclaw , https://docs.openclaw.ai , https://openclawlab.com/en/docs/deep-dive/framework-focus/ai-five-kit/
 - opencode: https://opencode.ai/ (source: https://github.com/anomalyco/opencode)
