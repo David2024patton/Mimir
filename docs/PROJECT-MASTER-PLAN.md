@@ -973,6 +973,63 @@ When a project needs a database, Mímir provisions and connects it.
 - F58.5 Migrations: the agent can create and run migrations.
 - F58.6 Mímir's own brain uses SurrealDB (the Cortex); project databases are separate
   and provisioned per project.
+
+### F59. Git Workflow & Self-Documenting Work [Core - workflow]
+Mímir commits its work as it goes and explains what it does.
+- F59.1 Standard git commits: Mímir does standard git commits as it builds - it commits
+  each section/task as it completes and passes verification.
+- F59.2 Meaningful commit messages: each commit has a clear message describing what it
+  did (what changed and why).
+- F59.3 Branches: Mímir works on a feature branch, commits there, and can open a PR.
+- F59.4 Code comments: Mímir comments its code - explains what each part does (and why
+  where it's useful), so the work is understandable.
+- F59.5 Commit per verified section: after a section passes verification (Loki/Forseti/
+  Heimdall), Mímir commits it with a descriptive message.
+- F59.6 Commit history as a record: the git history becomes a step-by-step record of
+  what Mímir did.
+
+### F60. Observability & Tracing (flight recorder) [Differentiator - trust]
+See exactly what the agent is doing, thinking, and deciding.
+- F60.1 Traces & spans: every step (reasoning, tool call, decision) is recorded as a
+  trace with spans - see the full chain of what happened and why.
+- F60.2 Decision log: why the agent chose each action (which model, which tool, why).
+- F60.3 Token/cost breakdown per step (ties to the dashboard, F52).
+- F60.4 Replay a trace: step through what the agent did (ties to F65).
+- F60.5 Export traces (for debugging, sharing, compliance).
+
+### F61. CI/CD Integration [Differentiator - dev pipeline]
+Mímir runs in CI/CD pipelines, not just interactively.
+- F61.1 Headless mode: run Mímir headless in CI (GitHub Actions, GitLab CI, etc.).
+- F61.2 Automated PR reviews: Mímir reviews PRs automatically (comments, suggestions).
+- F61.3 Run on PRs/issues: trigger Mímir on a PR or issue to implement/fix/review.
+- F61.4 CI checks: Mímir runs tests/lint/build as part of CI.
+
+### F62. Visual Regression Testing [Differentiator - quality]
+Catch visual regressions automatically.
+- F62.1 Screenshot comparison: compare UI screenshots across builds to catch visual
+  regressions (pixel diff + perceptual diff).
+- F62.2 Baseline screenshots: store baselines; flag differences.
+- F62.3 Ties to Heimdall: Heimdall uses visual regression to verify UI changes.
+
+### F63. Project Management Sync [Differentiator - workflow]
+Sync Mímir's tasks with the team's project management tools.
+- F63.1 Sync tasks with Jira, Linear, GitHub Issues, Notion, Trello.
+- F63.2 Two-way sync: create/update tasks in both Mímir and the external tool.
+- F63.3 Map Mímir's task tracker (F55) to external issues.
+
+### F64. Knowledge Graph Visualization [Differentiator - insight]
+Visualize the Cortex as an interactive graph.
+- F64.1 Graph view: see neurons (nodes) and synapses (edges) as an interactive graph.
+- F64.2 Explore connections: click a neuron to see its connections, sources, memories.
+- F64.3 Filter by type/layer/importance.
+- F64.4 Makes the knowledge brain tangible and explorable.
+
+### F65. Session Recording & Playback [Differentiator - learn & share]
+Record what the agent did and replay it.
+- F65.1 Record a session: capture every step (reasoning, tool calls, decisions, results).
+- F65.2 Replay: step through a recorded session (watch what the agent did).
+- F65.3 Share recordings: share a session recording with others (learn, debug, review).
+- F65.4 Ties to observability (F60) and checkpoints (F5).
 - F42.8 Paid listings: creators set a price (one-time or subscription) for skills/hooks/
   MCP/personas/scrapers/workflows (the Apify-Actor-Store model for agent components).
 - F42.9 Revenue share + payouts: e.g. 80/20 (creator/Mímir); creator dashboard with
@@ -1316,6 +1373,13 @@ platform/backend that earns.
 | E73 | WASM Module System (wazero runtime, WASI Component Model interface, sandboxed any-language modules for the marketplace) | F56 | E11 | L |
 | E74 | Forkable Templates & Experiments (marketplace templates, shareable/forkable experiments with live preview, embeds, fork & remix) | F57 | E73 | M |
 | E75 | Database Integration (Docker-provisioned databases per project, config, query/migrate/seed tools, connection injection) | F58 | E68 | M |
+| E76 | Git Workflow & Self-Documenting Work (standard git commits per verified section, meaningful commit messages, feature branches + PRs, code comments) | F59 | E3 | M |
+| E77 | Observability & Tracing (traces/spans, decision log, per-step cost, replay, export) | F60 | E12 | M |
+| E78 | CI/CD Integration (headless CI runs, automated PR reviews, run on PRs/issues, CI checks) | F61 | E76 | M |
+| E79 | Visual Regression Testing (screenshot comparison, baselines, ties to Heimdall) | F62 | E65 | S |
+| E80 | Project Management Sync (two-way sync with Jira/Linear/GitHub Issues/Notion/Trello) | F63 | E72 | M |
+| E81 | Knowledge Graph Visualization (interactive graph of neurons + synapses, explore, filter) | F64 | E6 | M |
+| E82 | Session Recording & Playback (record every step, replay, share recordings) | F65 | E77 | M |
 
 ---
 
@@ -1333,7 +1397,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E75 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E82 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |
