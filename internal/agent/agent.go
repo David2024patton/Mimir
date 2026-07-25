@@ -41,6 +41,24 @@ type Result struct {
 	Recalled []string
 }
 
+// Event kinds emitted by RunStream (F2.1 streaming).
+const (
+	EventMemory = "memory" // recalled memory (Text = content)
+	EventToken  = "token"  // a delta of the model's reply (Text = delta)
+	EventTool   = "tool"   // a tool execution (Step)
+	EventDone   = "done"   // turn complete (Reply = final answer)
+	EventError  = "error"  // turn failed (Err)
+)
+
+// Event is one streaming update from a turn, surfaced to live UIs by RunStream.
+type Event struct {
+	Type  string `json:"type"`
+	Text  string `json:"text,omitempty"`
+	Step  *Step  `json:"step,omitempty"`
+	Reply string `json:"reply,omitempty"`
+	Err   string `json:"err,omitempty"`
+}
+
 // Agent runs the gather -> infer -> act -> verify loop.
 type Agent struct {
 	cfg Config
@@ -123,6 +141,85 @@ func (a *Agent) RunTrace(ctx context.Context, input string) (string, []Step, err
 // prompt - used by the trace CLI and the cross-run memory tests.
 func (a *Agent) RunFull(ctx context.Context, input string) (Result, error) {
 	return a.runTurn(ctx, input)
+}
+
+// RunStream runs one conversational turn while streaming updates to emit as they
+// happen: recalled memories, token deltas of the model's reply, tool executions, and
+// a final done event carrying the full reply (F2.1 streaming + tool calling). It
+// mirrors RunFull's recall -> infer -> act -> remember cycle, but the answer streams
+// token by token instead of arriving all at once. The doom-loop guard caps steps.
+func (a *Agent) RunStream(ctx context.Context, input string, emit func(Event)) error {
+	memories, err := a.cfg.Cortex.Search(ctx, input, 5)
+	if err != nil {
+		emit(Event{Type: EventError, Err: err.Error()})
+		return err
+	}
+	for _, m := range memories {
+		emit(Event{Type: EventMemory, Text: m.Content})
+	}
+	msgs := []llm.Message{
+		{Role: "system", Content: systemPrompt(memories, a.schemas())},
+		{Role: "user", Content: input},
+	}
+	schemas := a.schemas()
+	var finalReply string
+	for step := 0; step < maxToolSteps; step++ {
+		ch, err := a.cfg.Provider.Stream(ctx, llm.GenerateRequest{
+			Model: a.cfg.Model, Messages: msgs, Tools: schemas,
+		})
+		if err != nil {
+			emit(Event{Type: EventError, Err: err.Error()})
+			return err
+		}
+		var content strings.Builder
+		var toolCalls []llm.ToolCall
+		for ev := range ch {
+			if ev.Err != nil {
+				emit(Event{Type: EventError, Err: ev.Err.Error()})
+				return ev.Err
+			}
+			if ev.Delta != "" {
+				content.WriteString(ev.Delta)
+				emit(Event{Type: EventToken, Text: ev.Delta})
+			}
+			if ev.Done {
+				toolCalls = ev.ToolCalls
+			}
+		}
+		text := content.String()
+		finalReply = text
+		msgs = append(msgs, llm.Message{Role: "assistant", Content: text, ToolCalls: toolCalls})
+		if len(toolCalls) == 0 {
+			_, _ = a.cfg.Cortex.PutNeuron(ctx, cortex.Neuron{
+				Kind: cortex.KindMemory, Layer: "experience", Title: "exchange",
+				Content: input + "\n" + finalReply, Decay: 1.0,
+			})
+			emit(Event{Type: EventDone, Reply: finalReply})
+			return nil
+		}
+		for _, tc := range toolCalls {
+			st := Step{Name: tc.Name, Args: tc.Arguments}
+			tool, ok := a.cfg.Tools.Get(tc.Name)
+			if !ok {
+				st.Err = "unknown tool: " + tc.Name
+				st.Result = st.Err
+			} else {
+				var args map[string]any
+				if tc.Arguments != "" {
+					_ = json.Unmarshal([]byte(tc.Arguments), &args)
+				}
+				r, err := tool.Run(ctx, args)
+				st.Result = r
+				if err != nil {
+					st.Err = err.Error()
+				}
+			}
+			emit(Event{Type: EventTool, Step: &st})
+			msgs = append(msgs, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: st.Result})
+		}
+	}
+	emit(Event{Type: EventDone, Reply: finalReply})
+	return nil
 }
 
 func (a *Agent) runTurn(ctx context.Context, input string) (Result, error) {

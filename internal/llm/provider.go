@@ -41,11 +41,14 @@ type GenerateResponse struct {
 	FinishReason string
 }
 
-// StreamEvent is one chunk of a streamed response.
+// StreamEvent is one chunk of a streamed response. Text arrives as Delta events;
+// the final event has Done set and carries any ToolCalls the model issued
+// (accumulated across the stream's fragmented tool-call deltas).
 type StreamEvent struct {
-	Delta string
-	Done  bool
-	Err   error
+	Delta     string
+	ToolCalls []ToolCall
+	Done      bool
+	Err       error
 }
 
 // Provider talks to one model backend. Implementations wrap OpenAI-compatible

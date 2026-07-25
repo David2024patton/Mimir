@@ -145,3 +145,71 @@ func TestServerMemoryJSONCasing(t *testing.T) {
 		t.Errorf("lowercase JSON keys not honored: %+v", out.Neurons[0])
 	}
 }
+
+// fakeStream streams a final answer in two deltas (no tool calls) - enough to drive
+// the SSE endpoint.
+type fakeStream struct{}
+
+func (f *fakeStream) ID() string { return "fakestream" }
+func (f *fakeStream) Generate(context.Context, llm.GenerateRequest) (llm.GenerateResponse, error) {
+	return llm.GenerateResponse{Content: "WIRED", FinishReason: "stop"}, nil
+}
+func (f *fakeStream) Stream(context.Context, llm.GenerateRequest) (<-chan llm.StreamEvent, error) {
+	out := make(chan llm.StreamEvent)
+	go func() {
+		defer close(out)
+		out <- llm.StreamEvent{Delta: "WI"}
+		out <- llm.StreamEvent{Delta: "RED"}
+		out <- llm.StreamEvent{Done: true}
+	}()
+	return out, nil
+}
+
+// TestServerChatStream proves POST /chat/stream speaks SSE: token deltas arrive as
+// separate events and a done event carries the full reply.
+func TestServerChatStream(t *testing.T) {
+	store, err := cortex.NewMemoryStoreAt(filepath.Join(t.TempDir(), "cortex.json"))
+	if err != nil {
+		t.Fatalf("store: %v", err)
+	}
+	ag := agent.New(agent.Config{Provider: &fakeStream{}, Tools: tools.NewRegistry(), Cortex: store, Model: "m"})
+	srv := httptest.NewServer(Handler(ag, store))
+	defer srv.Close()
+
+	resp, err := http.Post(srv.URL+"/chat/stream", "application/json", strings.NewReader(`{"prompt":"hi","mode":"chat"}`))
+	if err != nil {
+		t.Fatalf("post: %v", err)
+	}
+	defer resp.Body.Close()
+	if ct := resp.Header.Get("Content-Type"); !strings.Contains(ct, "text/event-stream") {
+		t.Fatalf("content-type = %q", ct)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	var tokens, reply string
+	var sawDone bool
+	for _, line := range strings.Split(string(body), "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		var e agent.Event
+		if err := json.Unmarshal([]byte(strings.TrimPrefix(line, "data: ")), &e); err != nil {
+			continue
+		}
+		switch e.Type {
+		case agent.EventToken:
+			tokens += e.Text
+		case agent.EventDone:
+			sawDone = true
+			reply = e.Reply
+		case agent.EventError:
+			t.Fatalf("unexpected error event: %s", e.Err)
+		}
+	}
+	if tokens != "WIRED" {
+		t.Errorf("streamed tokens = %q, want WIRED", tokens)
+	}
+	if !sawDone || reply != "WIRED" {
+		t.Errorf("done reply = %q (sawDone=%v), want WIRED", reply, sawDone)
+	}
+}

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 )
 
@@ -33,6 +34,7 @@ type oaFunction struct {
 }
 
 type oaToolCall struct {
+	Index    int        `json:"index,omitempty"` // streaming only: which call a delta belongs to
 	ID       string     `json:"id"`
 	Type     string     `json:"type"`
 	Function oaFunction `json:"function"`
@@ -118,17 +120,84 @@ func toOATools(schemas []ToolSchema) []oaTool {
 	return out
 }
 
-// stripThink removes a <think>...</think> block from a model reply so the visible
-// answer (and stored memory) is clean. Reasoning models (e.g. Qwen3) wrap their
-// chain-of-thought in these tags; the answer follows the closing tag.
+// thinkOpen / thinkClose are the reasoning-model chain-of-thought delimiters. They
+// are built by concatenation so the literal tag tokens never appear in this source
+// file (which keeps tooling that scans for thinking blocks from mis-parsing it).
+const (
+	thinkOpen  = "<" + "think>"
+	thinkClose = "<" + "/think>"
+)
+
+// stripThink removes a reasoning chain-of-thought block (the think delimiters) from
+// a model reply so the visible answer (and stored memory) is clean. Reasoning models
+// (e.g. Qwen3) wrap their thinking in these tags; the answer follows the closing tag.
 func stripThink(s string) string {
-	if i := strings.Index(s, "<think>"); i >= 0 {
-		if j := strings.Index(s[i:], "</think>"); j >= 0 {
-			return strings.TrimSpace(s[i+j+len("</think>"):])
+	if i := strings.Index(s, thinkOpen); i >= 0 {
+		if j := strings.Index(s[i:], thinkClose); j >= 0 {
+			return strings.TrimSpace(s[i+j+len(thinkClose):])
 		}
 		return strings.TrimSpace(s[:i])
 	}
 	return s
+}
+
+// thinkStripper removes reasoning chain-of-thought blocks (the think delimiters)
+// from a stream of text deltas - the streaming counterpart of stripThink. Reasoning
+// models emit their thinking first; only the answer after the closing tag should
+// reach the user. It buffers a few bytes at chunk boundaries so a delimiter split
+// across two deltas is still detected.
+type thinkStripper struct {
+	buf     string
+	inThink bool
+}
+
+// feed adds a delta and returns the visible text to emit now.
+func (t *thinkStripper) feed(d string) string {
+	t.buf += d
+	var out strings.Builder
+	for {
+		if t.inThink {
+			if i := strings.Index(t.buf, thinkClose); i >= 0 {
+				t.buf = t.buf[i+len(thinkClose):]
+				t.inThink = false
+				continue
+			}
+			t.buf = tail(t.buf, len(thinkClose)-1)
+			return out.String()
+		}
+		if i := strings.Index(t.buf, thinkOpen); i >= 0 {
+			out.WriteString(t.buf[:i])
+			t.buf = t.buf[i+len(thinkOpen):]
+			t.inThink = true
+			continue
+		}
+		keep := len(thinkOpen) - 1
+		if keep > len(t.buf) {
+			keep = len(t.buf)
+		}
+		out.WriteString(t.buf[:len(t.buf)-keep])
+		t.buf = t.buf[len(t.buf)-keep:]
+		return out.String()
+	}
+}
+
+// flush returns any remaining visible text at end of stream (suppressing it if the
+// stream ended mid-think, matching stripThink's behavior).
+func (t *thinkStripper) flush() string {
+	if t.inThink {
+		t.buf = ""
+		return ""
+	}
+	out := t.buf
+	t.buf = ""
+	return out
+}
+
+func tail(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[len(s)-n:]
 }
 
 func (p *OpenAIProvider) post(ctx context.Context, req GenerateRequest) (*http.Response, error) {
@@ -179,7 +248,9 @@ func (p *OpenAIProvider) Generate(ctx context.Context, req GenerateRequest) (Gen
 	return GenerateResponse{Content: stripThink(ch.Message.Content), ToolCalls: calls, FinishReason: ch.FinishReason}, nil
 }
 
-// Stream returns a channel of token deltas, ending with a Done event.
+// Stream returns a channel of streamed events: text deltas (with reasoning
+// think-blocks stripped), ending with a Done event that carries any tool calls the
+// model issued (accumulated across the stream's fragmented tool-call deltas).
 func (p *OpenAIProvider) Stream(ctx context.Context, req GenerateRequest) (<-chan StreamEvent, error) {
 	req.Stream = true
 	resp, err := p.post(ctx, req)
@@ -195,6 +266,25 @@ func (p *OpenAIProvider) Stream(ctx context.Context, req GenerateRequest) (<-cha
 	go func() {
 		defer close(out)
 		defer resp.Body.Close()
+		var ts thinkStripper
+		toolAcc := map[int]*ToolCall{}
+		finish := func() {
+			if vis := ts.flush(); vis != "" {
+				out <- StreamEvent{Delta: vis}
+			}
+			var tcs []ToolCall
+			if len(toolAcc) > 0 {
+				idxs := make([]int, 0, len(toolAcc))
+				for i := range toolAcc {
+					idxs = append(idxs, i)
+				}
+				sort.Ints(idxs)
+				for _, i := range idxs {
+					tcs = append(tcs, *toolAcc[i])
+				}
+			}
+			out <- StreamEvent{Done: true, ToolCalls: tcs}
+		}
 		scanner := bufio.NewScanner(resp.Body)
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -206,7 +296,7 @@ func (p *OpenAIProvider) Stream(ctx context.Context, req GenerateRequest) (<-cha
 				continue
 			}
 			if data == "[DONE]" {
-				out <- StreamEvent{Done: true}
+				finish()
 				return
 			}
 			var r oaResponse
@@ -216,17 +306,36 @@ func (p *OpenAIProvider) Stream(ctx context.Context, req GenerateRequest) (<-cha
 			if len(r.Choices) == 0 {
 				continue
 			}
-			if d := r.Choices[0].Delta.Content; d != "" {
-				out <- StreamEvent{Delta: d}
+			ch := r.Choices[0]
+			if d := ch.Delta.Content; d != "" {
+				if vis := ts.feed(d); vis != "" {
+					out <- StreamEvent{Delta: vis}
+				}
 			}
-			if r.Choices[0].FinishReason != "" {
-				out <- StreamEvent{Done: true}
+			for _, tc := range ch.Delta.ToolCalls {
+				cur, ok := toolAcc[tc.Index]
+				if !ok {
+					cur = &ToolCall{}
+					toolAcc[tc.Index] = cur
+				}
+				if tc.ID != "" {
+					cur.ID = tc.ID
+				}
+				if tc.Function.Name != "" {
+					cur.Name = tc.Function.Name
+				}
+				cur.Arguments += tc.Function.Arguments
+			}
+			if ch.FinishReason != "" {
+				finish()
 				return
 			}
 		}
 		if err := scanner.Err(); err != nil {
 			out <- StreamEvent{Err: err}
+			return
 		}
+		finish()
 	}()
 	return out, nil
 }

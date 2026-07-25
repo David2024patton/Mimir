@@ -1,6 +1,7 @@
 // Package server is Mímir's live HTTP interface: it lets a browser (or any client)
 // talk to the brain. GET / serves the polished book-spine UI (E70 / F53); the same
-// wire backs it. Endpoints: GET / (the page), POST /chat, GET /memory, GET /health.
+// wire backs it. Endpoints: GET / (the page), POST /chat, POST /chat/stream (SSE,
+// F2.1), GET /memory, GET /health.
 package server
 
 import (
@@ -61,6 +62,36 @@ func Handler(ag *agent.Agent, st *cortex.MemoryStore) http.Handler {
 			"reply":    res.Reply,
 			"trace":    res.Trace,
 			"recalled": res.Recalled,
+		})
+	})
+	mux.HandleFunc("/chat/stream", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST only", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			Prompt string `json:"prompt"`
+			Mode   string `json:"mode"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		_ = ag.RunStream(r.Context(), strings.TrimSpace(req.Prompt), func(e agent.Event) {
+			b, err := json.Marshal(e)
+			if err != nil {
+				return
+			}
+			_, _ = w.Write([]byte("data: " + string(b) + "\n\n"))
+			flusher.Flush()
 		})
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

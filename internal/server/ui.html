@@ -458,33 +458,14 @@ function appendUser(text){
   b.insertAdjacentHTML('beforeend','<div class="msg"><div class="who"><span class="pd" style="background:var(--panel3);color:var(--text)">Y</span><b>You</b></div><div class="bubble user">'+esc(text)+'</div></div>');
   scrollDown();
 }
-function appendThinking(){
-  var b=el('chatBody');
-  b.insertAdjacentHTML('beforeend','<div class="msg agent" id="thinkingMsg">'+agentHeader()+'<div class="bubble"><span class="thinking-line"><span class="pulse"></span> Mímir is thinking...</span></div></div>');
-  scrollDown();
-  return el('thinkingMsg');
-}
-function appendAgent(d){
-  var h='<div class="msg agent">'+agentHeader()+'<div class="bubble">';
-  (d.recalled||[]).forEach(function(c){ h+='<span class="memchip"><span class="mk">memory</span> '+esc(c)+'</span>'; });
-  h+=esc(d.reply||'');
-  h+='</div>';
-  if(showTrace && d.trace && d.trace.length){
-    d.trace.forEach(function(s){
-      var ok = !s.err;
-      h+='<div class="toolcall"><div class="th"><span class="'+(ok?'ok':'bad')+'">'+(ok?'v':'!')+'</span> <code>'+esc(s.name)+'</code>'+(s.args?' · '+esc(s.args):'')+'</div>';
-      if(s.result) h+='<div class="tres">-&gt; '+esc(s.result)+'</div>';
-      if(s.err) h+='<div class="tres" style="color:var(--red)">!! '+esc(s.err)+'</div>';
-      h+='</div>';
-    });
-  }
-  h+='</div>';
-  el('chatBody').insertAdjacentHTML('beforeend',h);
-  scrollDown();
-}
-function appendError(msg){
-  el('chatBody').insertAdjacentHTML('beforeend','<div class="msg agent">'+agentHeader()+'<div class="bubble" style="border-color:color-mix(in srgb,var(--red) 45%, transparent);color:var(--red)">'+esc(msg)+'</div></div>');
-  scrollDown();
+function toolChip(s){
+  s=s||{};
+  var ok=!s.err;
+  var tc=document.createElement('div'); tc.className='toolcall';
+  tc.innerHTML='<div class="th"><span class="'+(ok?'ok':'bad')+'">'+(ok?'v':'!')+'</span> <code>'+esc(s.name)+'</code>'+(s.args?' · '+esc(s.args):'')+'</div>'+
+    (s.result?'<div class="tres">-&gt; '+esc(s.result)+'</div>':'')+
+    (s.err?'<div class="tres" style="color:var(--red)">!! '+esc(s.err)+'</div>':'');
+  return tc;
 }
 
 function send(){
@@ -493,11 +474,65 @@ function send(){
   sending=true;
   appendUser(p);
   t.value=''; autogrow(t);
-  var thinking=appendThinking();
-  fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p,mode:mode})})
-    .then(function(r){ if(!r.ok) return r.text().then(function(x){throw new Error(x||('HTTP '+r.status))}); return r.json(); })
-    .then(function(d){ thinking.remove(); appendAgent(d); refreshMemory(); })
-    .catch(function(e){ thinking.remove(); appendError(e.message||String(e)); })
+
+  var msg=document.createElement('div'); msg.className='msg agent';
+  msg.innerHTML=agentHeader()+
+    '<div class="bubble"><span class="thinking-line"><span class="pulse"></span> Mímir is thinking...</span></div>'+
+    '<div class="tool-row"></div>';
+  el('chatBody').appendChild(msg);
+  var bubble=msg.querySelector('.bubble');
+  var toolRow=msg.querySelector('.tool-row');
+  var thinking=bubble.querySelector('.thinking-line');
+  var replySpan=null;
+  scrollDown();
+
+  function onEvent(e){
+    if(e.type==='memory'){
+      var mc=document.createElement('span'); mc.className='memchip';
+      mc.innerHTML='<span class="mk">memory</span> '+esc(e.text);
+      bubble.insertBefore(mc, thinking||replySpan||null);
+    } else if(e.type==='token'){
+      if(thinking){ thinking.remove(); thinking=null; }
+      if(!replySpan){ replySpan=document.createElement('span'); replySpan.className='reply-text'; bubble.appendChild(replySpan); }
+      replySpan.textContent+=e.text;
+    } else if(e.type==='tool'){
+      if(showTrace){ toolRow.appendChild(toolChip(e.step)); }
+    } else if(e.type==='done'){
+      if(thinking){ thinking.remove(); thinking=null; }
+      refreshMemory();
+    } else if(e.type==='error'){
+      if(thinking){ thinking.remove(); thinking=null; }
+      bubble.innerHTML='<span style="color:var(--red)">'+esc(e.err||'error')+'</span>';
+    }
+  }
+
+  fetch('/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p,mode:mode})})
+    .then(function(r){
+      if(!r.ok) return r.text().then(function(x){ throw new Error(x||('HTTP '+r.status)); });
+      var reader=r.body.getReader();
+      var decoder=new TextDecoder();
+      var buf='';
+      function pump(){
+        return reader.read().then(function(res){
+          if(res.done) return;
+          buf+=decoder.decode(res.value,{stream:true});
+          var parts=buf.split('\n\n');
+          buf=parts.pop();
+          parts.forEach(function(part){
+            var line=part.trim();
+            if(line.indexOf('data: ')!==0) return;
+            try{ onEvent(JSON.parse(line.slice(6))); }catch(_){}
+          });
+          scrollDown();
+          return pump();
+        });
+      }
+      return pump();
+    })
+    .catch(function(err){
+      if(thinking) thinking.remove();
+      if(!replySpan) bubble.innerHTML='<span style="color:var(--red)">'+esc(err.message||String(err))+'</span>';
+    })
     .then(function(){ sending=false; });
 }
 

@@ -122,3 +122,99 @@ func TestOpenAIProviderStream(t *testing.T) {
 		t.Errorf("streamed %q, want %q", got, "hello")
 	}
 }
+
+// TestOpenAIProviderStreamToolCalls proves Stream accumulates tool calls that arrive
+// fragmented across many deltas (id + name once, arguments in pieces) and surfaces
+// them on the final Done event.
+func TestOpenAIProviderStreamToolCalls(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher, _ := w.(http.Flusher)
+		write := func(v any) {
+			b, _ := json.Marshal(v)
+			_, _ = w.Write([]byte("data: " + string(b) + "\n\n"))
+			flusher.Flush()
+		}
+		tc := func(id, name, args string) oaResponse {
+			return oaResponse{Choices: []oaChoice{{Delta: oaMessage{ToolCalls: []oaToolCall{
+				{Type: "function", ID: id, Function: oaFunction{Name: name, Arguments: args}},
+			}}}}}
+		}
+		write(tc("call_1", "bash", ""))
+		write(tc("", "", `{"command":`))
+		write(tc("", "", `"echo hi"}`))
+		write(oaResponse{Choices: []oaChoice{{FinishReason: "tool_calls"}}})
+		_, _ = w.Write([]byte("data: [DONE]\n\n"))
+		flusher.Flush()
+	}))
+	defer srv.Close()
+
+	p := &OpenAIProvider{IDStr: "fake", BaseURL: srv.URL + "/v1", APIKey: "k", Model: "m"}
+	ch, err := p.Stream(context.Background(), GenerateRequest{Messages: []Message{{Role: "user", Content: "run echo"}}})
+	if err != nil {
+		t.Fatalf("Stream: %v", err)
+	}
+	var got []ToolCall
+	var done bool
+	for ev := range ch {
+		if ev.Err != nil {
+			t.Fatalf("stream error: %v", ev.Err)
+		}
+		if ev.Done {
+			done = true
+			got = ev.ToolCalls
+			break
+		}
+	}
+	if !done {
+		t.Fatal("stream did not signal Done")
+	}
+	if len(got) != 1 {
+		t.Fatalf("tool calls = %d, want 1 (%+v)", len(got), got)
+	}
+	if got[0].ID != "call_1" || got[0].Name != "bash" || got[0].Arguments != `{"command":"echo hi"}` {
+		t.Errorf("accumulated tool call = %+v", got[0])
+	}
+}
+
+// TestOpenAIProviderStreamStripsThink proves Stream removes a reasoning think block
+// from the visible deltas, even when the delimiters are split across chunk
+// boundaries (content is emitted in 3-byte slices).
+func TestOpenAIProviderStreamStripsThink(t *testing.T) {
+	full := thinkOpen + "reasoning that should be hidden" + thinkClose + "The answer is 42."
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher, _ := w.(http.Flusher)
+		for i := 0; i < len(full); i += 3 {
+			end := i + 3
+			if end > len(full) {
+				end = len(full)
+			}
+			b, _ := json.Marshal(oaResponse{Choices: []oaChoice{{Delta: oaMessage{Content: full[i:end]}}}})
+			_, _ = w.Write([]byte("data: " + string(b) + "\n\n"))
+			flusher.Flush()
+		}
+		_, _ = w.Write([]byte("data: [DONE]\n\n"))
+		flusher.Flush()
+	}))
+	defer srv.Close()
+
+	p := &OpenAIProvider{IDStr: "fake", BaseURL: srv.URL + "/v1", APIKey: "k", Model: "m"}
+	ch, err := p.Stream(context.Background(), GenerateRequest{Messages: []Message{{Role: "user", Content: "q"}}})
+	if err != nil {
+		t.Fatalf("Stream: %v", err)
+	}
+	var got string
+	for ev := range ch {
+		if ev.Err != nil {
+			t.Fatalf("stream error: %v", ev.Err)
+		}
+		got += ev.Delta
+		if ev.Done {
+			break
+		}
+	}
+	if got != "The answer is 42." {
+		t.Errorf("streamed %q, want %q (think block must be stripped)", got, "The answer is 42.")
+	}
+}
