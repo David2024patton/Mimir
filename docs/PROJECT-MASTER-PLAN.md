@@ -1025,6 +1025,20 @@ Phases (each ends with a user checkpoint gate):
   tools are first-class throughout the whole build (not bolted on).
 - F43.14 **Document-first gate**: the build cannot start until the Discovery docs (PRD +
   design + tech spec) are complete and user-approved.
+- F43.15 **Deployment phase**: deploy the built project - containerize (Docker, F51),
+  deploy, and verify it's live. Mímir handles the deploy and confirms it's running.
+- F43.16 **Maintenance phase**: ongoing - monitor the deployed app, fix bugs, handle
+  issues, update dependencies. Mímir can watch the app and fix problems as they arise.
+
+**F43 follows the Software Development Life Cycle (SDLC):**
+| SDLC phase | Mímir phase |
+|---|---|
+| Planning & Requirements | Discovery (F43.1) + Research (F43.3) + Plan (F43.4) |
+| Design | Design mock (F43.2) + Mock generator (F43.10) |
+| Implementation | Build, one section at a time (F43.5) |
+| Testing | Debug + three verification roles (F43.8, F43.12, F43.13) |
+| Deployment | Deployment phase (F43.15) + Docker-first (F51) |
+| Maintenance | Maintenance phase (F43.16) |
 
 ### F44. Default Voice & Communication Style [Core - identity]
 How Mímir talks. Baked into the base system prompt every persona inherits.
