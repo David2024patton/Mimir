@@ -246,6 +246,19 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel2);border:1px solid color-mix(in srgb,var(--teal) 45%, transparent);border-radius:11px;padding:13px 20px;font-size:13.5px;opacity:0;transition:.3s;box-shadow:0 12px 40px rgba(0,0,0,.5);z-index:99}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast b{color:var(--teal)}
+/* settings popup */
+.modal-backdrop{position:fixed;inset:0;background:rgba(5,8,12,.72);backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;z-index:100}
+.modal-backdrop.open{display:flex;animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:0}}
+.modal{width:min(540px,92vw);max-height:82vh;background:var(--panel);border:1px solid var(--border2);border-radius:14px;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6),0 0 0 1px color-mix(in srgb,var(--teal) 18%, transparent),0 0 40px color-mix(in srgb,var(--teal) 8%, transparent);animation:modalIn .22s ease}
+@keyframes modalIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+.modal-h{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)}
+.modal-h .ptitle{font-family:var(--disp);font-weight:600;font-size:15px}
+.modal-h .pclose{margin-left:auto;color:var(--dim);width:26px;height:26px;display:grid;place-items:center;border-radius:7px;transition:.15s;cursor:pointer}
+.modal-h .pclose:hover{background:var(--panel3);color:var(--red)}
+.modal-b{overflow-y:auto;padding:16px 18px}
+.modal-b::-webkit-scrollbar{width:9px}
+.modal-b::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
 </style>
 </head>
 <body>
@@ -280,7 +293,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
       <div class="rail-sep"></div>
       <div class="rail-bottom">
         <div class="iconbtn" title="Marketplace" onclick="togglePanel('market')">🧩</div>
-        <div class="iconbtn" title="Settings" onclick="togglePanel('settings')">⚙️</div>
+        <div class="iconbtn" title="Settings" onclick="openSettings()">⚙️</div>
       </div>
     </nav>
 
@@ -381,11 +394,29 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
     <!-- RIGHT HOTLINK RAIL -->
     <div class="hotrail">
       <div class="hot" title="Pinned: Discovery conversation" onclick="toast('Opening pinned conversation')">💬<span class="pin"></span></div>
-      <div class="hot" title="Pinned: Settings" onclick="togglePanel('settings')">⚙️<span class="pin"></span></div>
+      <div class="hot" title="Pinned: Settings" onclick="openSettings()">⚙️<span class="pin"></span></div>
       <div class="hot" title="Pinned: Ollama provider" onclick="toast('Ollama provider · localhost:11434')">🦙<span class="pin"></span></div>
       <div class="hot" title="Pinned: Dashboard" onclick="togglePanel('dashboard')">📊</div>
       <div class="rail-sep"></div>
       <div class="hot hot-add" title="Add a hotlink (pin a conversation, setting, or provider)" onclick="toast('Pin something: a conversation, a setting, a provider link')">+</div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop" id="settingsModal" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <div class="modal-h"><span class="ptitle">Settings</span><span class="pclose" onclick="closeSettings()">✕</span></div>
+    <div class="modal-b">
+      <div class="kv"><span class="k">Accent color</span><span class="v">swatches in top bar</span></div>
+      <div class="kv"><span class="k">Glow intensity</span><span class="v">70%</span></div>
+      <div class="kv"><span class="k">Theme</span><span class="v">Nebula (dark)</span></div>
+      <div class="kv"><span class="k">Motion / underglow</span><span class="tgl on" onclick="this.classList.toggle('on')"></span></div>
+      <div class="kv"><span class="k">Thinking visible</span><span class="tgl on" onclick="this.classList.toggle('on')"></span></div>
+      <div class="kv"><span class="k">Default thinking level</span><span class="v">medium</span></div>
+      <div class="kv"><span class="k">Telemetry</span><span class="tgl on" onclick="this.classList.toggle('on')"></span></div>
+      <div class="kv"><span class="k">RGB hardware sync</span><span class="tgl on" onclick="this.classList.toggle('on')"></span></div>
+      <div class="kv"><span class="k">Default preview port</span><span class="v">auto (5-digit, never 8080)</span></div>
+      <div class="kv"><span class="k">Embedding model</span><span class="v">nomic-embed-text-v2-moe</span></div>
+      <div class="kv"><span class="k">Module runtime</span><span class="v">WebAssembly (wazero)</span></div>
     </div>
   </div>
 </div>
@@ -404,12 +435,14 @@ function setMode(el){ document.querySelectorAll('.mt').forEach(x=>x.classList.re
 const thinkLevels=['low','med','high'];
 function cycleThink(el){ const b=el.querySelector('b'); const i=(thinkLevels.indexOf(b.textContent)+1)%thinkLevels.length; b.textContent=thinkLevels[i]; }
 function toast(html){ const el=document.getElementById('toast'); el.innerHTML=html; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),3200); }
+function openSettings(){ document.getElementById('settingsModal').classList.add('open'); }
+function closeSettings(){ document.getElementById('settingsModal').classList.remove('open'); }
 
 /* ===== BOOK SPINES + PANELS ===== */
 const spineDefs=[
   {id:'dashboard',label:'DASHBOARD'},{id:'plan',label:'PLAN'},{id:'design',label:'DESIGN'},
   {id:'code',label:'CODE'},{id:'preview',label:'PREVIEW'},{id:'tasks',label:'TASKS'},
-  {id:'settings',label:'SETTINGS'},{id:'market',label:'MARKET'}
+  {id:'market',label:'MARKET'}
 ];
 let openPanels=['dashboard','preview'];
 const panelContent={
@@ -459,9 +492,6 @@ const panelContent={
     <div class="autoplace" onclick="this.querySelector('.cb').innerHTML=this.querySelector('.cb').innerHTML?'':'✓';toast('Auto-place: Mímir will review new tasks and put them in order, with advice')"><span class="cb">✓</span> Auto-place new tasks (Mímir reviews + orders them, offers advice)</div>
     ${[['done','1','Discovery','Odin',''],['done','2','Design mock','Odin',''],['done','3','Research','Huginn',''],['current','4','Plan','Odin',''],['','5','S1 Layout + header','Thor','thor'],['','6','S1 Debug + audit','Loki','loki'],['','7','S2 Add-task form','Thor','thor'],['','8','S3 + S4 + Polish','Thor','thor']]
       .map(t=>`<div class="taskrow ${t[0]}"><span class="tcheck">${t[0]==='done'?'✓':(t[0]==='current'?'▶':'')}</span><span class="tlabel">${t[2]}</span><span class="twho ${t[4]}">${t[3]}</span></div>`).join('')}`,
-  settings:()=>`<div class="disp" style="font-size:16px;font-weight:600;margin-bottom:14px">Settings</div>
-    ${[['Accent color','see swatches in top bar'],['Glow intensity','70%'],['Theme','Nebula (dark)'],['Motion / underglow','on',true],['Thinking visible','on (light gray)',true],['Default thinking level','medium'],['Telemetry','on (opt-out)',true],['RGB hardware sync','on · OpenRGB',true],['Default preview port','auto (5-digit, never 8080)'],['Embedding model','nomic-embed-text-v2-moe']]
-      .map(s=>`<div class="kv"><span class="k">${s[0]}</span>${s[2]!==undefined?`<span class="tgl ${s[2]?'on':''}" onclick="this.classList.toggle('on')"></span>`:`<span class="v">${s[1]}</span>`}</div>`).join('')}`,
   market:()=>`<div class="disp" style="font-size:16px;font-weight:600;margin-bottom:4px">Marketplace</div>
     <div style="font-size:12.5px;color:var(--muted);margin-bottom:14px">One-click install: skills, MCP servers, personas, triggers</div>
     ${[['⚡','oneshot-websites','Skill · build a site in one shot','Install'],
@@ -480,8 +510,8 @@ function renderPanels(){
   const el=document.getElementById('panels');
   el.innerHTML=openPanels.map(id=>{
     const def=spineDefs.find(s=>s.id===id);
-    return `<div class="panel" draggable="true" data-id="${id}" ondragover="panelDragOver(event,this)" ondrop="panelDrop(event,this)" ondragleave="this.classList.remove('drag-over')">
-      <div class="panel-h" ondragstart="event.dataTransfer.setData('text','${id}')"><span class="grip">⋮⋮</span><span class="ptitle">${def.label}</span><span class="pclose" onclick="closePanel('${id}')">✕</span></div>
+    return `<div class="panel" data-id="${id}" ondragover="panelDragOver(event,this)" ondrop="panelDrop(event,this)" ondragleave="this.classList.remove('drag-over')">
+      <div class="panel-h" draggable="true" ondragstart="panelDragStart(event,'${id}')"><span class="grip">⋮⋮</span><span class="ptitle">${def.label}</span><span class="pclose" onclick="closePanel('${id}')" onmousedown="event.stopPropagation()">✕</span></div>
       <div class="panel-b">${panelContent[id]()}</div></div>`;
   }).join('');
 }
@@ -492,11 +522,13 @@ function togglePanel(id){
   renderSpines(); renderPanels();
 }
 function closePanel(id){ openPanels=openPanels.filter(x=>x!==id); renderSpines(); renderPanels(); }
-function panelDragOver(e,el){ e.preventDefault(); el.classList.add('drag-over'); }
+function panelDragStart(e,id){ e.dataTransfer.setData('text/plain',id); e.dataTransfer.effectAllowed='move'; }
+function panelDragOver(e,el){ e.preventDefault(); e.dataTransfer.dropEffect='move'; el.classList.add('drag-over'); }
 function panelDrop(e,el){ e.preventDefault(); el.classList.remove('drag-over');
-  const from=e.dataTransfer.getData('text'), to=el.dataset.id;
+  const from=e.dataTransfer.getData('text/plain'), to=el.dataset.id;
   if(from&&to&&from!==to){ const fi=openPanels.indexOf(from), ti=openPanels.indexOf(to);
-    openPanels.splice(ti,0,openPanels.splice(fi,1)[0]); renderPanels(); } }
+    if(fi>=0&&ti>=0){ openPanels.splice(ti,0,openPanels.splice(fi,1)[0]); renderPanels(); toast('Moved <b>'+def_label(from)+'</b> panel'); } } }
+function def_label(id){ const d=spineDefs.find(s=>s.id===id); return d?d.label:id; }
 renderSpines(); renderPanels();
 
 /* approve checkpoint */

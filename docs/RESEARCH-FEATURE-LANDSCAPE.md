@@ -416,6 +416,19 @@ Grouped by theme. Each notes the originator(s) and why it matters.
 - WHY: full computer use across all platforms is a huge differentiator; most agents are
   desktop-only or cloud-only.
 
+### B33. WASM modules (build in any language)
+- Modules as WebAssembly: users write modules (tools, skills, MCP servers, personas,
+  triggers) in any language (Rust, C, Go, AssemblyScript), compile to .wasm, and the
+  framework loads them via a WASM runtime.
+- For a Go framework, **wazero** (pure-Go WASM runtime, no CGO) is the natural choice.
+- The **WASI Component Model** is the emerging standard interface so any-language
+  modules run identically.
+- WASM gives a strong sandbox for marketplace code (a real security boundary).
+- Precedent: Envoy/Istio WASM filters, Fastly Compute, Cloudflare Workers, Extism,
+  Figma plugins.
+- WHY: a polyglot module system makes the marketplace truly open - anyone builds a
+  module in their language and it just works, safely.
+
 ---
 
 ## C. Per-Tool Cheat Sheet (one-liner differentiators)

@@ -934,6 +934,21 @@ aggregating existing registries plus a Mímir-curated registry.
   security gateway); "will install" permission preview.
 - F42.6 Mímir-curated registry + featured listings (monetization: featured/verified slots).
 - F42.7 Publish flow: authors publish MCP/Skills/Personas to the Mímir registry.
+- F42.8 Modules are WASM (F56): build a module in any language, it runs anywhere Mímir
+  runs.
+
+### F56. WASM Module System (build modules in any language) [Core - extensibility]
+Modules (tools, skills, MCP servers, personas, triggers in the marketplace) are
+WebAssembly, so users can build them in any language and they all just work.
+- F56.1 Modules compile to WASM (Rust, C, Go, AssemblyScript, any WASM target) and
+  Mímir loads them via a WASM runtime (wazero - pure Go, no CGO).
+- F56.2 Standard module interface (WASI Component Model) so a module written in any
+  language runs identically.
+- F56.3 WASM sandbox: modules run sandboxed by the WASM runtime - a strong security
+  boundary for marketplace code (ties to F27 governance + F42.5 scanning).
+- F56.4 The marketplace distributes .wasm modules; one-click install works regardless
+  of the language the module was written in.
+- F56.5 Module types: tools, skills, MCP servers, personas, triggers - all as WASM.
 - F42.8 Paid listings: creators set a price (one-time or subscription) for skills/hooks/
   MCP/personas/scrapers/workflows (the Apify-Actor-Store model for agent components).
 - F42.9 Revenue share + payouts: e.g. 80/20 (creator/Mímir); creator dashboard with
@@ -1247,6 +1262,7 @@ platform/backend that earns.
 | E70 | Book-Spine Navigation + Flexible Panels (vertical spines, open/close, side-by-side, drag-and-drop) | F53 | E12 | L |
 | E71 | Custom Hotlink Rail (pin conversations/settings/providers, reorder, unpin) | F54 | E12 | S |
 | E72 | Smart Task Tracker (auto-place with LLM review, "Task X of Y" in chat, debug in every step) | F55 | E12, E48 | M |
+| E73 | WASM Module System (wazero runtime, WASI Component Model interface, sandboxed any-language modules for the marketplace) | F56 | E11 | L |
 
 ---
 
@@ -1264,7 +1280,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E72 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E73 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |
