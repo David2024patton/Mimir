@@ -99,7 +99,10 @@ Requires [Go](https://go.dev) 1.26+.
 # build the single binary
 go build -o mimir ./cmd/mimir
 
-# run the daemon + GUI (default http://localhost:8420)
+# serve the live book-spine UI + HTTP wire (default http://localhost:8420)
+./mimir serve
+
+# show status (provider + tools + memory file)
 ./mimir
 
 # other commands

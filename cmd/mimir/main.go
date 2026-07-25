@@ -12,6 +12,7 @@ import (
 	"github.com/David2024patton/Mimir/internal/config"
 	"github.com/David2024patton/Mimir/internal/cortex"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/server"
 	"github.com/David2024patton/Mimir/internal/tools"
 )
 
@@ -24,6 +25,7 @@ Usage:
   mimir "your prompt"         run one turn (final reply only)
   mimir chat "your prompt"    same as above
   mimir trace "your prompt"   run one turn and print recalled memory + every tool call
+  mimir serve [--addr :8420]  serve the live book-spine UI + HTTP wire (E70)
   mimir version               print version
 
 Provider config (environment):
@@ -78,6 +80,22 @@ func main() {
 	a := agent.New(agent.Config{
 		Provider: provider, Tools: toolReg, Cortex: store, Model: model,
 	})
+
+	if len(args) > 0 && args[0] == "serve" {
+		addr := ":8420"
+		for i := 1; i < len(args); i++ {
+			if args[i] == "--addr" && i+1 < len(args) {
+				addr = args[i+1]
+				i++
+			}
+		}
+		fmt.Println("Mímir serving the live UI at http://localhost" + addr + "/  (Ctrl+C to stop)")
+		if err := server.Serve(server.Deps{Agent: a, Store: store, Addr: addr}); err != nil {
+			fmt.Fprintln(os.Stderr, "serve:", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	mode := "chat"
 	if len(args) > 0 && (args[0] == "chat" || args[0] == "trace") {

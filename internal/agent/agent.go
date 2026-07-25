@@ -27,10 +27,10 @@ type Config struct {
 
 // Step records one tool execution in a turn (used by RunTrace / the trace CLI).
 type Step struct {
-	Name   string
-	Args   string
-	Result string
-	Err    string
+	Name   string `json:"name"`
+	Args   string `json:"args"`
+	Result string `json:"result"`
+	Err    string `json:"err,omitempty"`
 }
 
 // Result is the full outcome of a turn: the final reply, the tool trace, and the

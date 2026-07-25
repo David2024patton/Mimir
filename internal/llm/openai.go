@@ -118,6 +118,19 @@ func toOATools(schemas []ToolSchema) []oaTool {
 	return out
 }
 
+// stripThink removes a <think>...</think> block from a model reply so the visible
+// answer (and stored memory) is clean. Reasoning models (e.g. Qwen3) wrap their
+// chain-of-thought in these tags; the answer follows the closing tag.
+func stripThink(s string) string {
+	if i := strings.Index(s, "<think>"); i >= 0 {
+		if j := strings.Index(s[i:], "</think>"); j >= 0 {
+			return strings.TrimSpace(s[i+j+len("</think>"):])
+		}
+		return strings.TrimSpace(s[:i])
+	}
+	return s
+}
+
 func (p *OpenAIProvider) post(ctx context.Context, req GenerateRequest) (*http.Response, error) {
 	body, err := json.Marshal(oaRequest{
 		Model:    p.model(req.Model),
@@ -163,7 +176,7 @@ func (p *OpenAIProvider) Generate(ctx context.Context, req GenerateRequest) (Gen
 	for _, tc := range ch.Message.ToolCalls {
 		calls = append(calls, ToolCall{ID: tc.ID, Name: tc.Function.Name, Arguments: tc.Function.Arguments})
 	}
-	return GenerateResponse{Content: ch.Message.Content, ToolCalls: calls, FinishReason: ch.FinishReason}, nil
+	return GenerateResponse{Content: stripThink(ch.Message.Content), ToolCalls: calls, FinishReason: ch.FinishReason}, nil
 }
 
 // Stream returns a channel of token deltas, ending with a Done event.

@@ -158,6 +158,18 @@ func (m *MemoryStore) Relate(ctx context.Context, s Synapse) error { return nil 
 // Remember hardens an engram (no-op until the graph store lands).
 func (m *MemoryStore) Remember(ctx context.Context, e Engram) error { return nil }
 
+// All returns every neuron (for the /memory endpoint + tests).
+func (m *MemoryStore) All() []Neuron {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]Neuron, 0, len(m.neurons))
+	for _, n := range m.neurons {
+		out = append(out, n)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
+}
+
 // tokens extracts lowercase alphanumeric words of length >= 4 for lexical recall.
 func tokens(s string) []string {
 	var out []string

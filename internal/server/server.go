@@ -1,83 +1,88 @@
+// Package server is Mímir's live HTTP interface: it lets a browser (or any client)
+// talk to the brain. GET / serves the polished book-spine UI (E70 / F53); the same
+// wire backs it. Endpoints: GET / (the page), POST /chat, GET /memory, GET /health.
 package server
 
 import (
+	_ "embed"
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"strings"
 
-	"github.com/David2024patton/Mimir/internal/config"
+	"github.com/David2024patton/Mimir/internal/agent"
+	"github.com/David2024patton/Mimir/internal/cortex"
 )
 
-// Serve starts the daemon's HTTP + WebSocket API and serves the GUI (E12.1).
-func Serve(cfg *config.Config) error {
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-	})
-
-	// TODO(E12.1): REST handlers (projects/sessions/cortex/config/auth/tasks/sandboxes)
-	// and a WebSocket hub for token/tool/lifecycle/status events.
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprint(w, indexHTML)
-	})
-
-	addr := fmt.Sprintf(":%d", cfg.Port)
-	fmt.Printf("Mimir GUI: http://localhost:%d\n", cfg.Port)
-	return http.ListenAndServe(addr, mux)
+// Deps wires the server to a live agent + the Cortex store it reads/writes.
+type Deps struct {
+	Agent *agent.Agent
+	Store *cortex.MemoryStore
+	Addr  string
 }
 
-const indexHTML = `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mimir</title>
-  <style>
-    :root { color-scheme: dark; }
-    body { margin: 0; font-family: system-ui, sans-serif; background: #0e1116; color: #e6e6e6; }
-    .topbar { display:flex; align-items:center; gap:12px; padding:10px 16px; background:#161b22; border-bottom:1px solid #30363d; }
-    .brand { font-weight: 700; }
-    .layout { display: grid; grid-template-columns: 220px 1fr 360px 56px; height: calc(100vh - 45px); }
-    .nav { background:#161b22; border-right:1px solid #30363d; padding:12px; }
-    .nav div { padding:6px 4px; color:#8b949e; }
-    .workspace { padding:16px; overflow:auto; }
-    .chat { background:#161b22; border-left:1px solid #30363d; padding:12px; }
-    .rail { background:#0d1117; border-left:1px solid #30363d; }
-    h1 { font-size: 18px; }
-    .muted { color:#8b949e; font-size: 13px; }
-  </style>
-</head>
-<body>
-  <div class="topbar">
-    <span class="brand">Mimir</span>
-    <span class="muted">project &#9662;</span>
-    <span class="muted">agent &#9662;</span>
-    <span style="flex:1"></span>
-    <span class="muted" id="status">connecting&hellip;</span>
-  </div>
-  <div class="layout">
-    <nav class="nav">
-      <div>Projects</div><div>Cortex</div><div>Sessions</div>
-      <div>Agents</div><div>Skills</div><div>Settings</div>
-    </nav>
-    <main class="workspace">
-      <h1>The agent that remembers.</h1>
-      <p class="muted">Walking skeleton: daemon + GUI shell (5-region layout).
-      The Cortex, agent loop, and tools land next.</p>
-    </main>
-    <aside class="chat">
-      <strong>Chat</strong>
-      <p class="muted">Streaming + tool calls + approvals + to-do list (E12.3).</p>
-    </aside>
-    <div class="rail"></div>
-  </div>
-  <script>
-    fetch('/api/health').then(r=>r.json()).then(d=>{
-      document.getElementById('status').textContent='daemon: '+d.status;
-    });
-  </script>
-</body>
-</html>`
+// Serve runs the HTTP server until it errors.
+func Serve(d Deps) error {
+	addr := d.Addr
+	if addr == "" {
+		addr = ":8420"
+	}
+	return http.ListenAndServe(addr, Handler(d.Agent, d.Store))
+}
+
+// Handler builds the HTTP handler (exposed for tests).
+func Handler(ag *agent.Agent, st *cortex.MemoryStore) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]string{"status": "ok"})
+	})
+	mux.HandleFunc("/memory", func(w http.ResponseWriter, r *http.Request) {
+		ns := st.All()
+		writeJSON(w, map[string]any{"count": len(ns), "neurons": ns})
+	})
+	mux.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST only", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			Prompt string `json:"prompt"`
+			Mode   string `json:"mode"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		res, err := ag.RunFull(r.Context(), strings.TrimSpace(req.Prompt))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, map[string]any{
+			"reply":    res.Reply,
+			"trace":    res.Trace,
+			"recalled": res.Recalled,
+		})
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(uiHTML)
+	})
+	return mux
+}
+
+func writeJSON(w http.ResponseWriter, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+// uiHTML is the polished book-spine UI (E70 / F53): vertical spines, panels that
+// open/close by clicking a spine, two side by side, drag & drop reorder - wired
+// live to /chat, /memory, /health. Embedded so the binary stays single and
+// dependency-free (no build step, no CDN).
+//
+//go:embed ui.html
+var uiHTML []byte

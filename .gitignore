@@ -50,3 +50,6 @@ demo-note.txt
 *.sqlite
 *.sqlite3
 surreal_data/
+
+# Mímir runtime memory (the file-backed Cortex; local data, regenerated)
+.mimir/
