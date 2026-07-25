@@ -19,9 +19,10 @@ const version = "0.1.0-dev"
 const usage = `Mímir - the agent that remembers
 
 Usage:
-  mimir                       show status (provider wired or not)
-  mimir "your prompt"         run one turn against the configured provider
+  mimir                       show status (provider + tools wired or not)
+  mimir "your prompt"         run one turn (final reply only)
   mimir chat "your prompt"    same as above
+  mimir trace "your prompt"   run one turn and print every tool call (observe the agent act)
   mimir version               print version
 
 Provider config (environment):
@@ -40,13 +41,12 @@ func main() {
 		case "-h", "--help", "help":
 			fmt.Println(usage)
 			return
-		case "chat":
-			args = args[1:]
 		}
 	}
 
+	cwd, _ := os.Getwd()
 	store := cortex.NewMemoryStore()
-	toolReg := tools.NewRegistry()
+	toolReg := tools.Default(cwd)
 
 	var provider llm.Provider
 	model := ""
@@ -61,10 +61,34 @@ func main() {
 		Provider: provider, Tools: toolReg, Cortex: store, Model: model,
 	})
 
-	if prompt := strings.TrimSpace(strings.Join(args, " ")); prompt != "" {
+	mode := "chat"
+	if len(args) > 0 && (args[0] == "chat" || args[0] == "trace") {
+		mode = args[0]
+		args = args[1:]
+	}
+	prompt := strings.TrimSpace(strings.Join(args, " "))
+
+	if prompt != "" {
 		if provider == nil {
 			fmt.Fprintln(os.Stderr, "no provider configured: set MIMIR_BASE_URL (+ MIMIR_API_KEY, MIMIR_MODEL) to run a prompt")
 			os.Exit(2)
+		}
+		if mode == "trace" {
+			reply, trace, err := a.RunTrace(context.Background(), prompt)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				os.Exit(1)
+			}
+			for i, s := range trace {
+				fmt.Printf("[step %d] tool=%s args=%s\n", i+1, s.Name, s.Args)
+				fmt.Printf("          -> %s\n", strings.TrimSpace(s.Result))
+				if s.Err != "" {
+					fmt.Printf("          !! %s\n", s.Err)
+				}
+			}
+			fmt.Println("---")
+			fmt.Println(reply)
+			return
 		}
 		reply, err := a.Run(context.Background(), prompt)
 		if err != nil {
@@ -76,11 +100,15 @@ func main() {
 	}
 
 	fmt.Printf("Mímir %s - the agent that remembers\n", version)
+	names := make([]string, 0, len(toolReg.All()))
+	for _, t := range toolReg.All() {
+		names = append(names, t.Name())
+	}
+	fmt.Println("tools:", strings.Join(names, ", "))
 	if provider == nil {
-		fmt.Println("wired: agent + Cortex + tools ready (no provider configured)")
-		fmt.Println("set MIMIR_BASE_URL + MIMIR_API_KEY (+ MIMIR_MODEL), then: mimir \"your prompt\"")
+		fmt.Println("provider: (none configured)")
+		fmt.Println("set MIMIR_BASE_URL + MIMIR_API_KEY (+ MIMIR_MODEL), then: mimir \"your prompt\"  or  mimir trace \"...\"")
 		return
 	}
 	fmt.Println("provider:", provider.ID(), "· model:", model)
-	fmt.Println("run: mimir \"your prompt\"")
 }

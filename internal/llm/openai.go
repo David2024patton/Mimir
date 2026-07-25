@@ -25,9 +25,29 @@ type OpenAIProvider struct {
 
 func (p *OpenAIProvider) ID() string { return p.IDStr }
 
+type oaFunction struct {
+	Name        string `json:"name"`
+	Arguments   string `json:"arguments"`
+	Description string `json:"description,omitempty"`
+	Parameters  any    `json:"parameters,omitempty"`
+}
+
+type oaToolCall struct {
+	ID       string     `json:"id"`
+	Type     string     `json:"type"`
+	Function oaFunction `json:"function"`
+}
+
+type oaTool struct {
+	Type     string     `json:"type"`
+	Function oaFunction `json:"function"`
+}
+
 type oaMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string       `json:"role"`
+	Content    string       `json:"content"`
+	ToolCalls  []oaToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string       `json:"tool_call_id,omitempty"`
 }
 
 type oaChoice struct {
@@ -39,6 +59,7 @@ type oaChoice struct {
 type oaRequest struct {
 	Model    string      `json:"model"`
 	Messages []oaMessage `json:"messages"`
+	Tools    []oaTool    `json:"tools,omitempty"`
 	Stream   bool        `json:"stream"`
 }
 
@@ -68,7 +89,31 @@ func (p *OpenAIProvider) model(m string) string {
 func toOpenAI(messages []Message) []oaMessage {
 	out := make([]oaMessage, len(messages))
 	for i, m := range messages {
-		out[i] = oaMessage{Role: m.Role, Content: m.Content}
+		om := oaMessage{Role: m.Role, Content: m.Content, ToolCallID: m.ToolCallID}
+		for _, tc := range m.ToolCalls {
+			om.ToolCalls = append(om.ToolCalls, oaToolCall{
+				ID: tc.ID, Type: "function",
+				Function: oaFunction{Name: tc.Name, Arguments: tc.Arguments},
+			})
+		}
+		out[i] = om
+	}
+	return out
+}
+
+func toOATools(schemas []ToolSchema) []oaTool {
+	if len(schemas) == 0 {
+		return nil
+	}
+	out := make([]oaTool, len(schemas))
+	for i, s := range schemas {
+		params := s.Parameters
+		if params == nil {
+			params = map[string]any{"type": "object"}
+		}
+		out[i] = oaTool{Type: "function", Function: oaFunction{
+			Name: s.Name, Description: s.Description, Parameters: params,
+		}}
 	}
 	return out
 }
@@ -77,6 +122,7 @@ func (p *OpenAIProvider) post(ctx context.Context, req GenerateRequest) (*http.R
 	body, err := json.Marshal(oaRequest{
 		Model:    p.model(req.Model),
 		Messages: toOpenAI(req.Messages),
+		Tools:    toOATools(req.Tools),
 		Stream:   req.Stream,
 	})
 	if err != nil {
@@ -93,26 +139,31 @@ func (p *OpenAIProvider) post(ctx context.Context, req GenerateRequest) (*http.R
 	return p.httpClient().Do(httpReq)
 }
 
-// Generate returns a complete (non-streamed) reply.
-func (p *OpenAIProvider) Generate(ctx context.Context, req GenerateRequest) (string, error) {
+// Generate returns a complete (non-streamed) reply, including any tool calls.
+func (p *OpenAIProvider) Generate(ctx context.Context, req GenerateRequest) (GenerateResponse, error) {
 	req.Stream = false
 	resp, err := p.post(ctx, req)
 	if err != nil {
-		return "", err
+		return GenerateResponse{}, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("provider %s: HTTP %d: %s", p.IDStr, resp.StatusCode, string(b))
+		return GenerateResponse{}, fmt.Errorf("provider %s: HTTP %d: %s", p.IDStr, resp.StatusCode, string(b))
 	}
 	var r oaResponse
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return "", err
+		return GenerateResponse{}, err
 	}
 	if len(r.Choices) == 0 {
-		return "", fmt.Errorf("provider %s: empty choices", p.IDStr)
+		return GenerateResponse{}, fmt.Errorf("provider %s: empty choices", p.IDStr)
 	}
-	return r.Choices[0].Message.Content, nil
+	ch := r.Choices[0]
+	var calls []ToolCall
+	for _, tc := range ch.Message.ToolCalls {
+		calls = append(calls, ToolCall{ID: tc.ID, Name: tc.Function.Name, Arguments: tc.Function.Arguments})
+	}
+	return GenerateResponse{Content: ch.Message.Content, ToolCalls: calls, FinishReason: ch.FinishReason}, nil
 }
 
 // Stream returns a channel of token deltas, ending with a Done event.

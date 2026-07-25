@@ -46,3 +46,20 @@ go test ./internal/agent -run TestLiveRun -v
   defect - but the network path still counts as "exercised." Fall back to a local Ollama
   model to get a clean pass that isolates the code from the credential.
 - `go vet ./...` must also be clean after every change.
+
+## Tool loop (when you add/change tools or the loop)
+
+- **Deterministic (offline):** `go test ./internal/agent -run TestRunToolLoop -v` - a fake
+  model asks to run `bash`, the loop runs the real tool, feeds the result back, and the
+  model's final reply is returned. `TestRunUnknownTool` proves a bad tool name degrades
+  gracefully. These never need network or keys.
+- **Live:** `MIMIR_LIVE_TOOL=1 MIMIR_LIVE_BASE_URL=http://localhost:11434/v1
+  MIMIR_LIVE_MODEL=qwen3:8b go test ./internal/agent -run TestLiveToolCall -v` - a real
+  model drives a real tool end-to-end. Needs a tool-capable model (qwen3:8b works; tiny
+  models usually won't tool-call, so this is gated off by default).
+- **CLI trace (watch it act):** `mimir trace "your prompt"` prints each tool call
+  (name + args + result) then the final reply - the human-observable proof and a useful
+  transparency/observability feature (F60).
+
+A tool feature is not done until `TestRunToolLoop` passes (offline) AND a live tool test
+or `mimir trace` shows a real model calling a real tool.

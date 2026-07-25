@@ -6,15 +6,39 @@ import "context"
 
 // Message is one turn in a conversation.
 type Message struct {
-	Role    string // system | user | assistant | tool
-	Content string
+	Role       string     // system | user | assistant | tool
+	Content    string
+	ToolCalls  []ToolCall // assistant messages may carry tool calls
+	ToolCallID string     // tool-role messages reference the call id
+}
+
+// ToolCall is a model-issued tool invocation.
+type ToolCall struct {
+	ID        string
+	Name      string
+	Arguments string // raw JSON object string
+}
+
+// ToolSchema describes a tool to the model.
+type ToolSchema struct {
+	Name        string
+	Description string
+	Parameters  any // a JSON Schema object
 }
 
 // GenerateRequest is a provider-agnostic completion request.
 type GenerateRequest struct {
 	Model    string
 	Messages []Message
+	Tools    []ToolSchema
 	Stream   bool
+}
+
+// GenerateResponse is a provider-agnostic completion response.
+type GenerateResponse struct {
+	Content      string
+	ToolCalls    []ToolCall
+	FinishReason string
 }
 
 // StreamEvent is one chunk of a streamed response.
@@ -29,8 +53,8 @@ type StreamEvent struct {
 type Provider interface {
 	// ID returns the provider id (e.g. "ollama", "openai").
 	ID() string
-	// Generate returns a full (non-streamed) completion.
-	Generate(ctx context.Context, req GenerateRequest) (string, error)
+	// Generate returns a full (non-streamed) completion, including any tool calls.
+	Generate(ctx context.Context, req GenerateRequest) (GenerateResponse, error)
 	// Stream returns a channel of streamed chunks.
 	Stream(ctx context.Context, req GenerateRequest) (<-chan StreamEvent, error)
 }

@@ -7,6 +7,7 @@ func Default(workDir string) *Registry {
 	r.Register(&ShellTool{WorkDir: workDir})
 	r.Register(&ReadFileTool{})
 	r.Register(&WriteFileTool{})
+	r.Register(&EditBlockTool{})
 	r.Register(&ListDirectoryTool{})
 	r.Register(&TodoTool{Store: NewTodoStore()})
 	r.Register(&QuestionTool{})

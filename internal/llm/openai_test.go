@@ -39,8 +39,49 @@ func TestOpenAIProviderGenerate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Generate: %v", err)
 	}
-	if got != "hello from fake" {
-		t.Errorf("got %q", got)
+	if got.Content != "hello from fake" {
+		t.Errorf("content = %q", got.Content)
+	}
+	if len(got.ToolCalls) != 0 {
+		t.Errorf("unexpected tool calls: %+v", got.ToolCalls)
+	}
+}
+
+func TestOpenAIProviderToolCall(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req oaRequest
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if len(req.Tools) == 0 {
+			t.Error("expected tools in request")
+		}
+		_ = json.NewEncoder(w).Encode(oaResponse{
+			Choices: []oaChoice{{
+				FinishReason: "tool_calls",
+				Message: oaMessage{
+					Role: "assistant",
+					ToolCalls: []oaToolCall{{
+						ID: "call_1", Type: "function",
+						Function: oaFunction{Name: "bash", Arguments: `{"command":"echo hi"}`},
+					}},
+				},
+			}},
+		})
+	}))
+	defer srv.Close()
+
+	p := &OpenAIProvider{IDStr: "fake", BaseURL: srv.URL + "/v1", APIKey: "k", Model: "m"}
+	resp, err := p.Generate(context.Background(), GenerateRequest{
+		Messages: []Message{{Role: "user", Content: "run it"}},
+		Tools:    []ToolSchema{{Name: "bash", Description: "run", Parameters: map[string]any{"type": "object"}}},
+	})
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	if len(resp.ToolCalls) != 1 || resp.ToolCalls[0].Name != "bash" {
+		t.Fatalf("tool calls = %+v", resp.ToolCalls)
+	}
+	if resp.ToolCalls[0].Arguments != `{"command":"echo hi"}` {
+		t.Errorf("arguments = %q", resp.ToolCalls[0].Arguments)
 	}
 }
 

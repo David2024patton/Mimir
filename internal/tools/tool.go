@@ -10,6 +10,8 @@ type Tool interface {
 	Name() string
 	// Description explains the tool to the model.
 	Description() string
+	// Parameters returns the tool's JSON Schema (an object schema).
+	Parameters() any
 	// Run executes the tool with the given arguments and returns its output.
 	Run(ctx context.Context, args map[string]any) (string, error)
 }
