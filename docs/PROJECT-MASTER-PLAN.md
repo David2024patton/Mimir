@@ -1076,6 +1076,26 @@ Record what the agent did and replay it.
 - F71.3 Graceful degradation: network features (cloud models, marketplace) degrade
   gracefully; the core works offline.
 - F71.4 Air-gapped: works in fully air-gapped environments (no internet at all).
+
+### F72. Competitive Analysis Workflow [Differentiator - marketing & positioning]
+A built-in workflow/agent that runs competitive intelligence: find the top competitors,
+analyze how they do it, and use the insights to do it better. Feeds marketing,
+positioning, and site design. (This very process - studying opencode, Kiro, Cursor,
+etc. - is the workflow productized.)
+- F72.1 Competitor discovery: find the top N competitors (web search + the agent's
+  knowledge) for the product's category.
+- F72.2 Site crawl & analysis: crawl each competitor's site (browser automation /
+  computer use), click through the nav, take screenshots, analyze layout, features,
+  pricing, design, and messaging.
+- F72.3 Structured reports: produce a competitive analysis report per competitor
+  (overview, products/pricing, features, design patterns, positioning, strengths,
+  weaknesses/gaps).
+- F72.4 Gap analysis: compare against Mímir, identify gaps and "how we do it better."
+- F72.5 Marketing/site insights: feed the analysis into marketing copy, positioning, and
+  site design (what to emulate, what to differentiate).
+- F72.6 Store in the Cortex: competitive analysis becomes knowledge in the Cortex,
+  queryable and updatable.
+- F72.7 Periodic refresh: re-run the analysis periodically to track competitor changes.
 - F42.8 Paid listings: creators set a price (one-time or subscription) for skills/hooks/
   MCP/personas/scrapers/workflows (the Apify-Actor-Store model for agent components).
 - F42.9 Revenue share + payouts: e.g. 80/20 (creator/Mímir); creator dashboard with
@@ -1432,6 +1452,7 @@ platform/backend that earns.
 | E86 | Multi-Agent Debate & Self-Reflection (debate, self-critique, ensemble voting) | F69 | E9 | M |
 | E87 | Real-Time Collaboration (multi-user, shared sessions + Cortex, presence, conflict resolution) | F70 | E12 | L |
 | E88 | Offline Mode (fully local, offline detection, graceful degradation, air-gapped) | F71 | E41 | M |
+| E89 | Competitive Analysis Workflow (competitor discovery, site crawl + screenshots, structured reports, gap analysis, marketing/site insights, stored in Cortex) | F72 | E48, E6 | M |
 
 ---
 
@@ -1449,7 +1470,7 @@ Outputs go to `E:\agent-hub\_bmad-output\planning-artifacts\` and
 | 4 | Winston (Architect) | `bmad-architecture` | Architecture doc (stack, structure, ADRs) |
 | 5 | Winston (Architect) | `bmad-check-implementation-readiness` | Gate: is the PRD+arch ready to build? |
 | 6 | Sally (UX) | `bmad-ux` | UX/UI spec for the TUI (and later GUI) |
-| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E88 broken into stories |
+| 7 | John (PM) | `bmad-create-epics-and-stories` | Epics E1-E89 broken into stories |
 | 8 | Amelia (Dev) | `bmad-sprint-planning` | Sprint 1 plan (start with E1) |
 | 9 | Amelia (Dev) | `bmad-create-story` then `bmad-dev-story` | Implement story by story |
 | 10 | Amelia (Dev) | `bmad-code-review` | Review each completed story |
