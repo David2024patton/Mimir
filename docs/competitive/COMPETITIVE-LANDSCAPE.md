@@ -4,7 +4,9 @@
 **Date:** 2026-07-23
 **Competitors analyzed:** OpenCode, Kiro, Devin, Cursor, Windsurf, CodeRabbit, Zencoder,
 Mintlify, Paralect, Blitzy, Air (JetBrains), Merget, Qoder, Telerik
-**Companion:** `opencode.md` (deep dive), `PROJECT-MASTER-PLAN.md`
+**Companion:** `opencode.md` (deep dive + authenticated dashboard),
+`COMPETITIVE-LANDSCAPE-2.md` (16 more: Copilot, Codex, Cline, Roo, Q, Tabnine, Cody/Amp,
+Replit, Augment, Trae, Factory, Poolside, Aider, Bolt, Lovable, Continue).
 
 ---
 

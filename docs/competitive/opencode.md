@@ -115,5 +115,38 @@ Hero (headline + subline + ONE CTA + price + reassurance line)
 
 ## TODO (next pass)
 - Walk /docs, /data, /enterprise, /download, /changelog, /brand.
-- Log in and walk the dashboard/Zen/Go authenticated layout.
 - Screenshot each page for the design reference.
+
+---
+
+## 10. Authenticated Dashboard (walked Jul 2026, logged in)
+
+Workspace URL pattern: `opencode.ai/workspace/wrk_<id>`. Left nav (vertical text links):
+**Zen · Go · Usage · API Keys · Members · Billing · Settings**. Top bar: workspace
+switcher ("Default") + account email (top-right).
+
+### Zen tab (model management)
+- Header: "Reliable optimized models for coding agents." + **Current balance $X.XX** (top-right).
+- **Models table**: columns `MODEL` (name + provider logo + provider name) and `ENABLED`
+  (green toggle per model). ~50 models listed (Anthropic Claude family, OpenAI GPT-5.x +
+  Codex variants, Google Gemini 3.x, DeepSeek V4, GLM 5.x, Kimi K2.x, Qwen3.x, Grok 4.5,
+  MiniMax M2/M3, plus free "Stealth" models like Big Pickle, MiMo, Nemotron, Laguna).
+  Admins toggle which models workspace members can use.
+- **Bring Your Own Key** section below: rows per provider (OpenAI / Anthropic / Google
+  Gemini) with a `Configure` button to paste your own key.
+
+### Usage tab (the cost/usage view - key reference for Mímir's F52 dashboard)
+- **Cost** section: "Usage costs broken down by model." Month picker (‹ July 2026 ›) +
+  `All Models` + `All Keys` filter dropdowns. (Chart area; "No usage data" if empty.)
+- **Usage History** table: columns `DATE · MODEL · INPUT · OUTPUT · COST · SESSION`.
+  Per-request rows (e.g. glm-5.2, 229164 input / 594 output, Go ($0.3233), session id).
+  Paginated.
+
+### Takeaways for Mímir's dashboard (F52)
+- opencode's layout is clean and minimal (monospace, lots of whitespace, green toggles).
+- Their Usage view is per-request chronological. **Mímir's improvement:** aggregate by
+  model and **sort most-tokens-used to least** (the user's explicit ask), plus a total +
+  cost estimate, plus cloud-vs-local tagging.
+- The BYOK section is a great pattern: list providers with a `Configure` button so users
+  can drop in their own keys next to the managed gateway. Mímir should mirror this.
+- Balance top-right + per-model enable toggles = a tight, scannable admin surface.
