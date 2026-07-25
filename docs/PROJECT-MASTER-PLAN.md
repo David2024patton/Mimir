@@ -1,7 +1,8 @@
 # Mímir - Project Master Plan
 
-Product name: **Mímir** (domain mimirmind.com - reserved pending build completion).
-Status: Concept complete; entering BMAD workflow (Product Brief next).
+Product name: **Mímir** (LOCKED 2026-07-23; domain mimirmind.com reserved pending build).
+Status: BMAD planning complete; **build started** - Go walking skeleton + dependency-free
+OpenAI-compatible provider + recall→infer→remember loop (tested). Sprint 1 in progress.
 Date: 2026-07-23
 
 ---
