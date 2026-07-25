@@ -98,7 +98,8 @@ func (s *Sidecar) Start(ctx context.Context) error {
 	}
 	data := "memory"
 	if s.DataPath != "" && s.DataPath != "memory" {
-		data = "file:" + s.DataPath
+		// SurrealDB v3 dropped the file:// scheme; SurrealKV is the embedded store.
+		data = "surrealkv://" + s.DataPath
 	}
 	s.cmd = exec.Command(s.BinPath, "start", "--user", s.User, "--pass", s.Pass, "--bind", s.Addr, data)
 	if err := s.cmd.Start(); err != nil {
