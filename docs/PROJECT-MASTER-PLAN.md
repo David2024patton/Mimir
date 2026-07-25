@@ -1644,6 +1644,18 @@ moment is the product.
 
 ---
 
+## 13. Testing Policy (standing rule)
+
+**After every build and every feature, run a live test against a real model - not only
+unit tests.** See `docs/TESTING-POLICY.md`. Three tiers: (1) `go test ./...` (offline,
+always green, fake-server wire tests); (2) the env-gated live test
+`go test ./internal/agent -run TestLiveRun -v` (skipped unless `MIMIR_LIVE_BASE_URL` is
+set, so it never breaks offline/CI); (3) CLI smoke `go run ./cmd/mimir "prompt"`. A
+feature is not done until the offline suite AND a live test pass, and `go vet` is clean.
+The live test reads keys from the environment and never prints them.
+
+---
+
 ## Appendix A: Reference URLs
 - OpenClaw (PRIMARY architectural reference): https://github.com/openclaw/openclaw , https://docs.openclaw.ai , https://openclawlab.com/en/docs/deep-dive/framework-focus/ai-five-kit/
 - opencode: https://opencode.ai/ (source: https://github.com/anomalyco/opencode)
