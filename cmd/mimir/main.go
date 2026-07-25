@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/David2024patton/Mimir/internal/agent"
@@ -19,17 +20,21 @@ const version = "0.1.0-dev"
 const usage = `Mímir - the agent that remembers
 
 Usage:
-  mimir                       show status (provider + tools wired or not)
+  mimir                       show status (provider + tools + memory file)
   mimir "your prompt"         run one turn (final reply only)
   mimir chat "your prompt"    same as above
-  mimir trace "your prompt"   run one turn and print every tool call (observe the agent act)
+  mimir trace "your prompt"   run one turn and print recalled memory + every tool call
   mimir version               print version
 
 Provider config (environment):
   MIMIR_BASE_URL    OpenAI-compatible base URL, e.g. https://api.openai.com/v1
   MIMIR_API_KEY     bearer key (optional for local servers)
   MIMIR_MODEL       model id (optional)
-  MIMIR_PROVIDER_ID provider id label (default: openai-compatible)`
+  MIMIR_PROVIDER_ID provider id label (default: openai-compatible)
+
+Memory (the Cortex) persists across runs to a JSON file:
+  MIMIR_HOME        memory dir (default: ./.mimir in the working directory)
+  MIMIR_CORTEX      full path to the cortex file (default: <MIMIR_HOME>/cortex.json)`
 
 func main() {
 	args := os.Args[1:]
@@ -45,8 +50,21 @@ func main() {
 	}
 
 	cwd, _ := os.Getwd()
-	store := cortex.NewMemoryStore()
 	toolReg := tools.Default(cwd)
+
+	home := os.Getenv("MIMIR_HOME")
+	if home == "" {
+		home = filepath.Join(cwd, ".mimir")
+	}
+	cpath := os.Getenv("MIMIR_CORTEX")
+	if cpath == "" {
+		cpath = filepath.Join(home, "cortex.json")
+	}
+	store, err := cortex.NewMemoryStoreAt(cpath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "cortex error:", err)
+		os.Exit(1)
+	}
 
 	var provider llm.Provider
 	model := ""
@@ -74,12 +92,15 @@ func main() {
 			os.Exit(2)
 		}
 		if mode == "trace" {
-			reply, trace, err := a.RunTrace(context.Background(), prompt)
+			res, err := a.RunFull(context.Background(), prompt)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "error:", err)
 				os.Exit(1)
 			}
-			for i, s := range trace {
+			for _, c := range res.Recalled {
+				fmt.Printf("  [memory] %s\n", strings.Join(strings.Fields(c), " "))
+			}
+			for i, s := range res.Trace {
 				fmt.Printf("[step %d] tool=%s args=%s\n", i+1, s.Name, s.Args)
 				fmt.Printf("          -> %s\n", strings.TrimSpace(s.Result))
 				if s.Err != "" {
@@ -87,7 +108,7 @@ func main() {
 				}
 			}
 			fmt.Println("---")
-			fmt.Println(reply)
+			fmt.Println(res.Reply)
 			return
 		}
 		reply, err := a.Run(context.Background(), prompt)
@@ -105,6 +126,7 @@ func main() {
 		names = append(names, t.Name())
 	}
 	fmt.Println("tools:", strings.Join(names, ", "))
+	fmt.Println("memory:", cpath)
 	if provider == nil {
 		fmt.Println("provider: (none configured)")
 		fmt.Println("set MIMIR_BASE_URL + MIMIR_API_KEY (+ MIMIR_MODEL), then: mimir \"your prompt\"  or  mimir trace \"...\"")

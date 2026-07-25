@@ -63,3 +63,15 @@ go test ./internal/agent -run TestLiveRun -v
 
 A tool feature is not done until `TestRunToolLoop` passes (offline) AND a live tool test
 or `mimir trace` shows a real model calling a real tool.
+
+## Cross-run memory (the namesake feature)
+
+- **Offline:** `go test ./internal/agent -run TestCrossRunMemory -v` - run 1 (fake model)
+  writes a memory to a file-backed Cortex; a fresh store reopened from the same file
+  (simulating a restart) recalls it on run 2. Proves memory survives across runs with no
+  network. `go test ./internal/cortex/...` proves the store persists + the lexical recall.
+- **Live:** `MIMIR_LIVE_MEMORY=1 MIMIR_LIVE_BASE_URL=... go test ./internal/agent -run TestLiveCrossRunMemory -v` - same, with a real model writing the memory.
+- **CLI demo:** `demo.ps1` step 5 plants a code in run 1 and shows the `[memory]` recall
+  line in run 2.
+- Memory persists to `.mimir/cortex.json` (override with `MIMIR_CORTEX` / `MIMIR_HOME`).
+  SurrealDB (E6.2) upgrades this to vector + graph recall; the file store is the base.

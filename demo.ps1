@@ -45,10 +45,23 @@ if (Test-Path $note) {
 }
 Note "Note: edit_block is exact-match. If a model mangles non-ASCII chars while copying, the error now echoes the real file content so the model can self-correct and retry."
 
+Step 5 "MEMORY ACROSS RUNS - run 1 plants a code on disk, run 2 recalls it"
+$cortex = Join-Path $here ".mimir\cortex.json"
+Remove-Item $cortex -Force -ErrorAction SilentlyContinue
+Note "run 1: plant the launch code KIWI55 (stored to .mimir\cortex.json)."
+& $exe trace "Remember this exactly: the launch code is KIWI55. Reply OK." | Out-Null
+Note "run 2: ask for the code; the [memory] line proves it was recalled from disk."
+$out2 = & $exe trace "What is the launch code KIWI55? Answer from memory." 2>&1 | Out-String
+if ($out2 -match '\[memory\][^\r\n]*KIWI55') {
+    Write-Host "    [VERIFIED] run 2 recalled run 1's memory from disk (cross-run memory works)." -ForegroundColor Green
+} else {
+    Note "[observed] recall line not matched this run. run 2 output:"
+    ($out2 -split "`n") | Where-Object { $_ -match 'memory|KIWI|step|---|DONE' } | ForEach-Object { Note $_ }
+}
 Remove-Item $note -Force -ErrorAction SilentlyContinue
+Remove-Item $cortex -Force -ErrorAction SilentlyContinue
 Write-Host ""
 Write-Host "=== demo complete ===" -ForegroundColor Green
-Note "Honest note: memory (the Cortex) is currently in-memory, so it resets between separate"
-Note "runs of mimir.exe. Within ONE trace/chat call the recall->act->remember loop is live."
-Note "Cross-run memory (remembering between sessions) is the next build step: swap in SurrealDB."
+Note "Memory now persists across runs in .mimir/cortex.json (the file-backed Cortex)."
+Note "SurrealDB (next) upgrades this to vector + graph recall; the file store is the dependency-free base."
 Note "Ad-hoc use anytime:  test-mimir `"your prompt`"   or   test-mimir trace `"...`""

@@ -33,6 +33,14 @@ type Step struct {
 	Err    string
 }
 
+// Result is the full outcome of a turn: the final reply, the tool trace, and the
+// memories that were recalled into the prompt (so memory is observable/testable).
+type Result struct {
+	Reply    string
+	Trace    []Step
+	Recalled []string
+}
+
 // Agent runs the gather -> infer -> act -> verify loop.
 type Agent struct {
 	cfg Config
@@ -99,22 +107,32 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step
 	return last, trace, nil
 }
 
-// Run executes one conversational turn: recall memory, run the tool loop, remember
-// the exchange, and return the final text reply.
+// Run executes one conversational turn and returns the final text reply.
 func (a *Agent) Run(ctx context.Context, input string) (string, error) {
-	reply, _, err := a.runTurn(ctx, input)
-	return reply, err
+	r, err := a.runTurn(ctx, input)
+	return r.Reply, err
 }
 
 // RunTrace is like Run but also returns the trace of tool executions.
 func (a *Agent) RunTrace(ctx context.Context, input string) (string, []Step, error) {
+	r, err := a.runTurn(ctx, input)
+	return r.Reply, r.Trace, err
+}
+
+// RunFull returns the complete Result, including the memories recalled into the
+// prompt - used by the trace CLI and the cross-run memory tests.
+func (a *Agent) RunFull(ctx context.Context, input string) (Result, error) {
 	return a.runTurn(ctx, input)
 }
 
-func (a *Agent) runTurn(ctx context.Context, input string) (string, []Step, error) {
+func (a *Agent) runTurn(ctx context.Context, input string) (Result, error) {
 	memories, err := a.cfg.Cortex.Search(ctx, input, 5)
 	if err != nil {
-		return "", nil, err
+		return Result{}, err
+	}
+	recalled := make([]string, len(memories))
+	for i, m := range memories {
+		recalled[i] = m.Content
 	}
 	msgs := []llm.Message{
 		{Role: "system", Content: systemPrompt(memories, a.schemas())},
@@ -122,13 +140,13 @@ func (a *Agent) runTurn(ctx context.Context, input string) (string, []Step, erro
 	}
 	reply, trace, err := a.runLoop(ctx, msgs)
 	if err != nil {
-		return "", trace, err
+		return Result{Trace: trace, Recalled: recalled}, err
 	}
 	_, _ = a.cfg.Cortex.PutNeuron(ctx, cortex.Neuron{
 		Kind: cortex.KindMemory, Layer: "experience", Title: "exchange",
 		Content: input + "\n" + reply, Decay: 1.0,
 	})
-	return reply, trace, nil
+	return Result{Reply: reply, Trace: trace, Recalled: recalled}, nil
 }
 
 // systemPrompt assembles the system prompt with recalled memory + a tool hint.

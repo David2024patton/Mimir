@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -94,4 +95,52 @@ func TestLiveToolCall(t *testing.T) {
 		t.Fatalf("the live model did not call the bash tool (reply was %q); pick a tool-capable model via MIMIR_LIVE_MODEL", reply)
 	}
 	t.Logf("live tool loop OK; reply=%q trace steps=%d", reply, len(trace))
+}
+
+// TestLiveCrossRunMemory proves cross-run memory with a REAL model: run 1 writes a
+// memory to a file-backed Cortex; a fresh store reopened from the same file recalls it
+// on run 2. Asserts on Recalled (deterministic regardless of the model's wording).
+func TestLiveCrossRunMemory(t *testing.T) {
+	if os.Getenv("MIMIR_LIVE_MEMORY") == "" {
+		t.Skip("set MIMIR_LIVE_MEMORY=1 (+ MIMIR_LIVE_BASE_URL + model) to run the live cross-run memory test")
+	}
+	base := os.Getenv("MIMIR_LIVE_BASE_URL")
+	if base == "" {
+		t.Skip("MIMIR_LIVE_MEMORY=1 but MIMIR_LIVE_BASE_URL is unset")
+	}
+	model := os.Getenv("MIMIR_LIVE_MODEL")
+	if model == "" {
+		model = "qwen3:8b"
+	}
+	p := filepath.Join(t.TempDir(), "cortex.json")
+	mk := func() *Agent {
+		st, err := cortex.NewMemoryStoreAt(p)
+		if err != nil {
+			t.Fatalf("store: %v", err)
+		}
+		return New(Config{
+			Provider: &llm.OpenAIProvider{
+				IDStr: "live", BaseURL: base, APIKey: os.Getenv("MIMIR_LIVE_API_KEY"), Model: model,
+			},
+			Tools: tools.NewRegistry(), Cortex: st, Model: model,
+		})
+	}
+
+	if _, err := mk().Run(context.Background(), "Remember this exactly: the launch code is KIWI55. Reply OK."); err != nil {
+		t.Fatalf("run1: %v", err)
+	}
+	res, err := mk().RunFull(context.Background(), "What is the launch code KIWI55? Answer from memory.")
+	if err != nil {
+		t.Fatalf("run2: %v", err)
+	}
+	found := false
+	for _, c := range res.Recalled {
+		if strings.Contains(c, "KIWI55") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("run 2 did not recall run 1's memory from disk; recalled=%v", res.Recalled)
+	}
+	t.Logf("live cross-run memory OK; recalled %d memory(ies)", len(res.Recalled))
 }
