@@ -242,6 +242,16 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .thinking-line .pulse{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 6px var(--teal)}50%{opacity:.35;box-shadow:0 0 2px var(--teal)}}
 
+/* choice buttons (F2.4 interactive questions) */
+.choices{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.choice-btn{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--panel2);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:.2s;text-align:left;font-size:13px;color:var(--text)}
+.choice-btn:hover{border-color:var(--teal);background:color-mix(in srgb,var(--teal) 8%, var(--panel2));transform:translateX(4px);box-shadow:0 0 12px color-mix(in srgb,var(--teal) 15%, transparent)}
+.choice-btn:active{transform:translateX(2px)}
+.choice-btn .clabel{font-family:var(--mono);font-weight:700;color:var(--teal);font-size:12px;flex:0 0 24px}
+.choice-btn .ctext{flex:1}
+.choice-btn.selected{border-color:var(--teal);background:color-mix(in srgb,var(--teal) 15%, var(--panel2));pointer-events:none}
+.choice-btn.selected .clabel{color:var(--lime)}
+
 /* composer */
 .composer{border-top:1px solid var(--border);padding:10px 14px 14px;background:var(--bg2)}
 .comp-row{display:flex;align-items:center;gap:7px}
@@ -590,10 +600,38 @@ function renderSessionHistory(messages){
 
 function appendAssistant(text){
   var b=el('chatBody');
+  var rendered = renderChoices(esc(text));
   b.insertAdjacentHTML('beforeend','<div class="msg agent">'+agentHeader()+
-    '<div class="bubble">'+esc(text)+'</div></div>');
+    '<div class="bubble">'+rendered+'</div></div>');
   applyGlow();
   scrollDown();
+}
+
+/* ===== CHOICE RENDERING (F2.4) ===== */
+/* Format: [choice]\nA) option\nB) option\n[/choice] */
+function renderChoices(text){
+  return text.replace(/\[choice\]([\s\S]*?)\[\/choice\]/g, function(_, inner){
+    var lines=inner.trim().split('\n');
+    var btns='';
+    lines.forEach(function(line){
+      line=line.trim();
+      if(!line) return;
+      var m=line.match(/^([A-Za-z])\)\s*(.+)/);
+      if(m){
+        btns+='<button class="choice-btn" onclick="pickChoice(this,\''+esc(m[2])+'\')">'+
+          '<span class="clabel">'+esc(m[1])+')'+'</span>'+
+          '<span class="ctext">'+esc(m[2])+'</span></button>';
+      }
+    });
+    return '<div class="choices">'+btns+'</div>';
+  });
+}
+function pickChoice(btn, text){
+  var all=btn.parentElement.querySelectorAll('.choice-btn');
+  all.forEach(function(b){b.classList.add('selected');b.onclick=null;});
+  btn.style.borderColor='var(--lime)';
+  el('input').value=text;
+  send();
 }
 
 function deleteSession(id){
@@ -780,6 +818,7 @@ function doSend(p){
   var toolRow=msg.querySelector('.tool-row');
   var thinking=bubble.querySelector('.thinking-line');
   var replySpan=null;
+  var fullText='';
   scrollDown();
 
   function onEvent(e){
@@ -789,12 +828,21 @@ function doSend(p){
       bubble.insertBefore(mc, thinking||replySpan||null);
     } else if(e.type==='token'){
       if(thinking){ thinking.remove(); thinking=null; }
-      if(!replySpan){ replySpan=document.createElement('span'); replySpan.className='reply-text'; bubble.appendChild(replySpan); }
-      replySpan.textContent+=e.text;
+      fullText+=e.text;
+      if(fullText.indexOf('[choice]')>=0){
+        if(!replySpan){ replySpan=document.createElement('span'); replySpan.className='reply-text'; bubble.appendChild(replySpan); }
+        replySpan.innerHTML=renderChoices(esc(fullText));
+      } else {
+        if(!replySpan){ replySpan=document.createElement('span'); replySpan.className='reply-text'; bubble.appendChild(replySpan); }
+        replySpan.textContent=fullText;
+      }
     } else if(e.type==='tool'){
       if(showTrace){ toolRow.appendChild(toolChip(e.step)); }
     } else if(e.type==='done'){
       if(thinking){ thinking.remove(); thinking=null; }
+      if(replySpan && fullText.indexOf('[choice]')>=0){
+        replySpan.innerHTML=renderChoices(esc(fullText));
+      }
       applyGlow();
       refreshMemory();
       refreshUsage();
