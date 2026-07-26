@@ -187,6 +187,49 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--teal) 18%, transparent),0 0 20px color-mix(in srgb,var(--teal) 14%, transparent),inset 0 0 14px color-mix(in srgb,var(--teal) 5%, transparent)}
   50%{box-shadow:0 0 0 1px color-mix(in srgb,var(--teal) 34%, transparent),0 0 30px color-mix(in srgb,var(--teal) 25%, transparent),inset 0 0 18px color-mix(in srgb,var(--teal) 9%, transparent)}
 }
+
+/* glow style: snake - rotating gradient border */
+.msg.agent .bubble.glow-snake{border:none;background:var(--panel);position:relative;z-index:0}
+.msg.agent .bubble.glow-snake::before{content:"";position:absolute;inset:-2px;border-radius:13px;background:conic-gradient(from var(--snake-angle,0deg),transparent 0%,var(--teal) 15%,transparent 30%,var(--ember) 50%,transparent 65%,var(--blue) 85%,transparent 100%);z-index:-1;animation:snakeSpin 3s linear infinite}
+.msg.agent .bubble.glow-snake::after{content:"";position:absolute;inset:0;border-radius:11px;background:var(--panel);z-index:-1}
+@keyframes snakeSpin{to{--snake-angle:360deg}}
+@property --snake-angle{syntax:"<angle>";initial-value:0deg;inherits:false}
+
+/* glow style: ripple - expanding rings */
+.msg.agent .bubble.glow-ripple{box-shadow:0 0 0 0 color-mix(in srgb,var(--teal) 30%, transparent);animation:ripplePulse 2.4s ease-out infinite}
+@keyframes ripplePulse{
+  0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--teal) 40%, transparent),0 0 0 0 color-mix(in srgb,var(--teal) 20%, transparent)}
+  50%{box-shadow:0 0 0 8px transparent,0 0 0 0 color-mix(in srgb,var(--teal) 15%, transparent)}
+  100%{box-shadow:0 0 0 14px transparent,0 0 0 8px transparent}
+}
+
+/* glow style: neon - sharp flicker */
+.msg.agent .bubble.glow-neon{border-color:var(--teal);box-shadow:0 0 7px var(--teal),0 0 14px color-mix(in srgb,var(--teal) 50%, transparent),inset 0 0 7px color-mix(in srgb,var(--teal) 15%, transparent);animation:neonFlicker 1.8s ease-in-out infinite}
+@keyframes neonFlicker{
+  0%,100%{box-shadow:0 0 7px var(--teal),0 0 14px color-mix(in srgb,var(--teal) 50%, transparent),inset 0 0 7px color-mix(in srgb,var(--teal) 15%, transparent)}
+  41%{box-shadow:0 0 4px var(--teal),0 0 8px color-mix(in srgb,var(--teal) 30%, transparent),inset 0 0 4px color-mix(in srgb,var(--teal) 8%, transparent)}
+  42%{box-shadow:0 0 12px var(--teal),0 0 28px color-mix(in srgb,var(--teal) 65%, transparent),inset 0 0 12px color-mix(in srgb,var(--teal) 22%, transparent)}
+  43%{box-shadow:0 0 5px var(--teal),0 0 10px color-mix(in srgb,var(--teal) 35%, transparent),inset 0 0 5px color-mix(in srgb,var(--teal) 10%, transparent)}
+  80%{box-shadow:0 0 9px var(--teal),0 0 20px color-mix(in srgb,var(--teal) 55%, transparent),inset 0 0 9px color-mix(in srgb,var(--teal) 18%, transparent)}
+}
+
+/* glow style: aurora - color-shifting */
+.msg.agent .bubble.glow-aurora{border:none;background:var(--panel);position:relative;z-index:0;animation:auroraShift 6s ease-in-out infinite}
+.msg.agent .bubble.glow-aurora::before{content:"";position:absolute;inset:-3px;border-radius:14px;background:linear-gradient(135deg,var(--teal),var(--purple),var(--ember),var(--blue),var(--teal));background-size:300% 300%;z-index:-1;animation:auroraGradient 6s ease-in-out infinite;filter:blur(4px);opacity:.6}
+.msg.agent .bubble.glow-aurora::after{content:"";position:absolute;inset:0;border-radius:11px;background:var(--panel);z-index:-1}
+@keyframes auroraGradient{
+  0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}
+}
+
+/* glow style: breathe - slow organic pulse */
+.msg.agent .bubble.glow-breathe{animation:breatheGlow 4s ease-in-out infinite}
+@keyframes breatheGlow{
+  0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--teal) 10%, transparent),0 0 10px color-mix(in srgb,var(--teal) 8%, transparent)}
+  50%{box-shadow:0 0 0 2px color-mix(in srgb,var(--teal) 30%, transparent),0 0 25px color-mix(in srgb,var(--teal) 20%, transparent),0 0 50px color-mix(in srgb,var(--teal) 8%, transparent)}
+}
+
+/* glow style: off */
+.msg.agent .bubble.glow-off{animation:none;box-shadow:none}
 .memchip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--teal);background:color-mix(in srgb,var(--teal) 10%, transparent);border:1px solid color-mix(in srgb,var(--teal) 30%, transparent);border-radius:8px;padding:4px 9px;margin:0 6px 6px 0}
 .memchip .mk{font-weight:700;text-transform:uppercase;font-size:9.5px;letter-spacing:.05em}
 .toolcall{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:8px 11px;margin-top:8px;font-size:12.5px}
@@ -339,6 +382,7 @@ body.chat-open .chat-backdrop{opacity:1;pointer-events:auto}
 
     <div class="chat">
       <div class="chat-h">Session <span style="color:var(--dim);font-weight:400;font-size:12px" id="sessionTitle">· new conversation</span>
+        <span class="mempill" id="glowPill" onclick="cycleGlow()" title="Click to cycle chat glow style" style="cursor:pointer;margin-left:6px">Pulse</span>
         <span class="mempill" id="memPill">0 memories</span>
         <button class="chat-close" onclick="toggleChat()" title="Close chat">✕</button>
       </div>
@@ -400,6 +444,22 @@ var healthOK = false;
 var sending = false;
 var showTrace = true;
 var mode = 'chat';
+
+/* ===== GLOW STYLE (F2.3 chat animation) ===== */
+var glowStyles = ['pulse','snake','ripple','neon','aurora','breathe','off'];
+var glowLabels = {pulse:'Pulse',snake:'Snake',ripple:'Ripple',neon:'Neon',aurora:'Aurora',breathe:'Breathe',off:'Off'};
+var glowIdx = parseInt(localStorage.getItem('mimir-glow')||'0',10);
+if(glowIdx<0||glowIdx>=glowStyles.length) glowIdx=0;
+function applyGlow(){
+  var s=glowStyles[glowIdx];
+  document.querySelectorAll('.msg.agent .bubble').forEach(function(b){
+    b.className=b.className.replace(/ glow-\w+/g,'');
+    if(s!=='pulse') b.classList.add('glow-'+s);
+  });
+  var pill=el('glowPill');
+  if(pill) pill.textContent=glowLabels[s];
+}
+function cycleGlow(){ glowIdx=(glowIdx+1)%glowStyles.length; localStorage.setItem('mimir-glow',glowIdx); applyGlow(); }
 
 /* ===== SESSION STATE (F2.2) ===== */
 var currentSessionId = null;
@@ -522,6 +582,7 @@ function appendAssistant(text){
   var b=el('chatBody');
   b.insertAdjacentHTML('beforeend','<div class="msg agent">'+agentHeader()+
     '<div class="bubble">'+esc(text)+'</div></div>');
+  applyGlow();
   scrollDown();
 }
 
@@ -658,6 +719,7 @@ function welcome(){
   var b=el('chatBody');
   b.innerHTML='<div class="msg agent">'+agentHeader()+
     '<div class="bubble">I am Mímir - the agent that remembers. Tell me something and I will recall it across every session. Ask me to run a command and I will use my tools. Everything I learn lives in the Cortex on the left.</div></div>';
+  applyGlow();
 }
 
 function appendUser(text){
@@ -723,6 +785,7 @@ function doSend(p){
       if(showTrace){ toolRow.appendChild(toolChip(e.step)); }
     } else if(e.type==='done'){
       if(thinking){ thinking.remove(); thinking=null; }
+      applyGlow();
       refreshMemory();
       refreshUsage();
       refreshSessions();
@@ -763,7 +826,7 @@ function doSend(p){
 }
 
 /* ===== boot ===== */
-renderSpines(); renderPanels(); welcome(); refreshMemory(); refreshUsage(); refreshSessions(); checkHealth(false);
+renderSpines(); renderPanels(); welcome(); refreshMemory(); refreshUsage(); refreshSessions(); checkHealth(false); applyGlow();
 setInterval(function(){checkHealth(false); refreshUsage();},15000);
 </script>
 </body>
