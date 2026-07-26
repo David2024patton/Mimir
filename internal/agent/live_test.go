@@ -39,7 +39,7 @@ func TestLiveRun(t *testing.T) {
 		Tools: tools.NewRegistry(), Cortex: store, Model: model,
 	})
 
-	reply, err := a.Run(context.Background(), "Say hello in one short word.")
+	reply, err := a.Run(context.Background(), "Say hello in one short word.", nil)
 	if err != nil {
 		t.Fatalf("live Run: %v", err)
 	}
@@ -77,8 +77,7 @@ func TestLiveToolCall(t *testing.T) {
 		Tools: tools.Default(t.TempDir()), Cortex: cortex.NewMemoryStore(), Model: model,
 	})
 
-	reply, trace, err := a.RunTrace(context.Background(),
-		"You have a bash tool. Use the bash tool to run exactly this command: echo MIMIR_TOOL_LIVE. Then reply with the single word DONE.")
+	reply, trace, err := a.RunTrace(context.Background(), "You have a bash tool. Use the bash tool to run exactly this command: echo MIMIR_TOOL_LIVE. Then reply with the single word DONE.", nil)
 	if err != nil {
 		t.Fatalf("live RunTrace: %v", err)
 	}
@@ -126,10 +125,10 @@ func TestLiveCrossRunMemory(t *testing.T) {
 		})
 	}
 
-	if _, err := mk().Run(context.Background(), "Remember this exactly: the launch code is KIWI55. Reply OK."); err != nil {
+	if _, err := mk().Run(context.Background(), "Remember this exactly: the launch code is KIWI55. Reply OK.", nil); err != nil {
 		t.Fatalf("run1: %v", err)
 	}
-	res, err := mk().RunFull(context.Background(), "What is the launch code KIWI55? Answer from memory.")
+	res, err := mk().RunFull(context.Background(), "What is the launch code KIWI55? Answer from memory.", nil)
 	if err != nil {
 		t.Fatalf("run2: %v", err)
 	}

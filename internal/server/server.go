@@ -139,14 +139,24 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions *cortex.SessionStore, us
 			return
 		}
 		var req struct {
-			Prompt string `json:"prompt"`
-			Mode   string `json:"mode"`
+			Prompt    string `json:"prompt"`
+			Mode      string `json:"mode"`
+			SessionID string `json:"session_id"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		res, err := ag.RunFull(r.Context(), strings.TrimSpace(req.Prompt))
+		var history []llm.Message
+		if sessions != nil && req.SessionID != "" {
+			sess, err := sessions.GetSession(r.Context(), req.SessionID)
+			if err == nil && len(sess.Messages) > 0 {
+				for _, m := range sess.Messages {
+					history = append(history, llm.Message{Role: m.Role, Content: m.Content})
+				}
+			}
+		}
+		res, err := ag.RunFull(r.Context(), strings.TrimSpace(req.Prompt), history)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -180,8 +190,16 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions *cortex.SessionStore, us
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
 		
-		// Save user message to session if session_id provided
+		// Load conversation history for multi-turn context
+		var history []llm.Message
 		if sessions != nil && req.SessionID != "" {
+			sess, err := sessions.GetSession(r.Context(), req.SessionID)
+			if err == nil && len(sess.Messages) > 0 {
+				for _, m := range sess.Messages {
+					history = append(history, llm.Message{Role: m.Role, Content: m.Content})
+				}
+			}
+			// Save user message to session
 			_ = sessions.AppendMessage(r.Context(), req.SessionID, cortex.Message{
 				Role:    "user",
 				Content: req.Prompt,
@@ -189,7 +207,7 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions *cortex.SessionStore, us
 		}
 		
 		var assistantReply string
-		err := ag.RunStream(r.Context(), strings.TrimSpace(req.Prompt), func(e agent.Event) {
+		err := ag.RunStream(r.Context(), strings.TrimSpace(req.Prompt), history, func(e agent.Event) {
 			b, err := json.Marshal(e)
 			if err != nil {
 				return

@@ -197,7 +197,7 @@ func main() {
 			os.Exit(2)
 		}
 		if mode == "trace" {
-			res, err := a.RunFull(context.Background(), prompt)
+			res, err := a.RunFull(context.Background(), prompt, nil)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "error:", err)
 				os.Exit(1)
@@ -216,7 +216,7 @@ func main() {
 			fmt.Println(res.Reply)
 			return
 		}
-		reply, err := a.Run(context.Background(), prompt)
+		reply, err := a.Run(context.Background(), prompt, nil)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)

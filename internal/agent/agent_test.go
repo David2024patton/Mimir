@@ -53,7 +53,7 @@ func TestAgentRunRecallAndRemember(t *testing.T) {
 		Model:    "m",
 	})
 
-	reply, err := a.Run(context.Background(), "format my code please")
+	reply, err := a.Run(context.Background(), "format my code please", nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}

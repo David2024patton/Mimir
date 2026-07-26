@@ -131,21 +131,21 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step
 }
 
 // Run executes one conversational turn and returns the final text reply.
-func (a *Agent) Run(ctx context.Context, input string) (string, error) {
-	r, err := a.runTurn(ctx, input)
+func (a *Agent) Run(ctx context.Context, input string, history []llm.Message) (string, error) {
+	r, err := a.runTurn(ctx, input, history)
 	return r.Reply, err
 }
 
 // RunTrace is like Run but also returns the trace of tool executions.
-func (a *Agent) RunTrace(ctx context.Context, input string) (string, []Step, error) {
-	r, err := a.runTurn(ctx, input)
+func (a *Agent) RunTrace(ctx context.Context, input string, history []llm.Message) (string, []Step, error) {
+	r, err := a.runTurn(ctx, input, history)
 	return r.Reply, r.Trace, err
 }
 
 // RunFull returns the complete Result, including the memories recalled into the
 // prompt - used by the trace CLI and the cross-run memory tests.
-func (a *Agent) RunFull(ctx context.Context, input string) (Result, error) {
-	return a.runTurn(ctx, input)
+func (a *Agent) RunFull(ctx context.Context, input string, history []llm.Message) (Result, error) {
+	return a.runTurn(ctx, input, history)
 }
 
 // RunStream runs one conversational turn while streaming updates to emit as they
@@ -153,7 +153,8 @@ func (a *Agent) RunFull(ctx context.Context, input string) (Result, error) {
 // a final done event carrying the full reply (F2.1 streaming + tool calling). It
 // mirrors RunFull's recall -> infer -> act -> remember cycle, but the answer streams
 // token by token instead of arriving all at once. The doom-loop guard caps steps.
-func (a *Agent) RunStream(ctx context.Context, input string, emit func(Event)) error {
+// history is the prior conversation messages (from the session) for multi-turn context.
+func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Message, emit func(Event)) error {
 	memories, err := a.cfg.Cortex.Search(ctx, input, 5)
 	if err != nil {
 		emit(Event{Type: EventError, Err: err.Error()})
@@ -164,8 +165,9 @@ func (a *Agent) RunStream(ctx context.Context, input string, emit func(Event)) e
 	}
 	msgs := []llm.Message{
 		{Role: "system", Content: systemPrompt(memories, a.schemas())},
-		{Role: "user", Content: input},
 	}
+	msgs = append(msgs, history...)
+	msgs = append(msgs, llm.Message{Role: "user", Content: input})
 	schemas := a.schemas()
 	var finalReply string
 	for step := 0; step < maxToolSteps; step++ {
@@ -228,7 +230,7 @@ func (a *Agent) RunStream(ctx context.Context, input string, emit func(Event)) e
 	return nil
 }
 
-func (a *Agent) runTurn(ctx context.Context, input string) (Result, error) {
+func (a *Agent) runTurn(ctx context.Context, input string, history []llm.Message) (Result, error) {
 	memories, err := a.cfg.Cortex.Search(ctx, input, 5)
 	if err != nil {
 		return Result{}, err
@@ -239,8 +241,9 @@ func (a *Agent) runTurn(ctx context.Context, input string) (Result, error) {
 	}
 	msgs := []llm.Message{
 		{Role: "system", Content: systemPrompt(memories, a.schemas())},
-		{Role: "user", Content: input},
 	}
+	msgs = append(msgs, history...)
+	msgs = append(msgs, llm.Message{Role: "user", Content: input})
 	reply, trace, err := a.runLoop(ctx, msgs)
 	if err != nil {
 		return Result{Trace: trace, Recalled: recalled}, err
@@ -250,7 +253,7 @@ func (a *Agent) runTurn(ctx context.Context, input string) (Result, error) {
 
 // systemPrompt assembles the system prompt with recalled memory + a tool hint.
 func systemPrompt(memories []cortex.Neuron, schemas []llm.ToolSchema) string {
-	p := "You are Mímir, an agent that remembers. Use what you recall."
+	p := "You are Mímir, an agent that remembers. Use what you recall. You have access to the full conversation history - reference earlier messages when relevant."
 	if len(memories) > 0 {
 		p += "\n\nRelevant memory:"
 		for _, m := range memories {
@@ -264,5 +267,6 @@ func systemPrompt(memories []cortex.Neuron, schemas []llm.ToolSchema) string {
 		}
 		p += "\n\nYou have these tools - call them when useful: " + strings.Join(names, ", ") + "."
 	}
+	p += "\n\nWhen presenting multiple-choice questions or options, use this exact format so the UI renders clickable buttons:\n[choice]\nA) option text\nB) option text\nC) option text\n[/choice]\nAlways use this format for multiple-choice answers - never just list them as plain text."
 	return p
 }

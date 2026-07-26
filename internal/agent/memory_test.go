@@ -47,7 +47,7 @@ func TestCrossRunMemory(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	res, err := mk().RunFull(context.Background(), "tell me about KIWI55")
+	res, err := mk().RunFull(context.Background(), "tell me about KIWI55", nil)
 	if err != nil {
 		t.Fatalf("run2: %v", err)
 	}

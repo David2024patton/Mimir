@@ -46,7 +46,7 @@ func TestRunToolLoop(t *testing.T) {
 		Cortex: cortex.NewMemoryStore(), Model: "m",
 	})
 
-	reply, trace, err := a.RunTrace(context.Background(), "do it")
+	reply, trace, err := a.RunTrace(context.Background(), "do it", nil)
 	if err != nil {
 		t.Fatalf("RunTrace: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestRunUnknownTool(t *testing.T) {
 		Provider: &oneCallProvider{call: llm.ToolCall{ID: "x", Name: "nope", Arguments: `{}`}},
 		Tools:    tools.Default(t.TempDir()), Cortex: cortex.NewMemoryStore(), Model: "m",
 	})
-	reply, trace, err := a.RunTrace(context.Background(), "go")
+	reply, trace, err := a.RunTrace(context.Background(), "go", nil)
 	if err != nil {
 		t.Fatalf("RunTrace: %v", err)
 	}

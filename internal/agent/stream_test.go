@@ -54,7 +54,7 @@ func TestRunStream(t *testing.T) {
 	})
 
 	var events []Event
-	if err := a.RunStream(context.Background(), "tell me about MANGO77 please", func(e Event) {
+	if err := a.RunStream(context.Background(), "tell me about MANGO77 please", nil, func(e Event) {
 		events = append(events, e)
 	}); err != nil {
 		t.Fatalf("RunStream: %v", err)
