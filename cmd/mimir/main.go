@@ -59,8 +59,9 @@ func isLocalURL(u string) bool {
 // buildCortex creates the Cortex store for the configured backend. MIMIR_CORTEX_BACKEND
 // selects it: "surreal" starts a managed SurrealDB sidecar with an Ollama embedder for
 // hybrid vector + full-text recall (E6); anything else (default) uses the file-backed
-// store. The returned cleanup stops the sidecar, if one was started.
-func buildCortex(home string) (cortex.Store, string, func(), error) {
+// store. The returned cleanup stops the sidecar, if one was started. For SurrealDB,
+// it also returns a SessionStore for F2.2 conversation persistence.
+func buildCortex(home string) (cortex.Store, *cortex.SessionStore, string, func(), error) {
 	noop := func() {}
 	if strings.EqualFold(os.Getenv("MIMIR_CORTEX_BACKEND"), "surreal") {
 		addr := os.Getenv("MIMIR_SURREAL_ADDR")
@@ -75,7 +76,7 @@ func buildCortex(home string) (cortex.Store, string, func(), error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
 		if err := sc.Start(ctx); err != nil {
-			return nil, "", noop, fmt.Errorf("surreal sidecar: %w", err)
+			return nil, nil, "", noop, fmt.Errorf("surreal sidecar: %w", err)
 		}
 		embedURL := os.Getenv("MIMIR_EMBED_URL")
 		if embedURL == "" {
@@ -101,10 +102,16 @@ func buildCortex(home string) (cortex.Store, string, func(), error) {
 		})
 		if err != nil {
 			sc.Stop()
-			return nil, "", noop, fmt.Errorf("surreal store: %w", err)
+			return nil, nil, "", noop, fmt.Errorf("surreal store: %w", err)
+		}
+		// Create session store for F2.2 conversation persistence
+		sessStore := cortex.NewSessionStore(store.Client())
+		if err := sessStore.EnsureSessionsTable(context.Background()); err != nil {
+			sc.Stop()
+			return nil, nil, "", noop, fmt.Errorf("sessions table: %w", err)
 		}
 		desc := fmt.Sprintf("SurrealDB %s (embed %s, dim %d)", sc.HTTPAddr(), embedModel, dim)
-		return store, desc, sc.Stop, nil
+		return store, sessStore, desc, sc.Stop, nil
 	}
 	cpath := os.Getenv("MIMIR_CORTEX")
 	if cpath == "" {
@@ -112,9 +119,9 @@ func buildCortex(home string) (cortex.Store, string, func(), error) {
 	}
 	store, err := cortex.NewMemoryStoreAt(cpath)
 	if err != nil {
-		return nil, "", noop, err
+		return nil, nil, "", noop, err
 	}
-	return store, "file-backed " + cpath, noop, nil
+	return store, nil, "file-backed " + cpath, noop, nil
 }
 
 func main() {
@@ -137,7 +144,7 @@ func main() {
 	if home == "" {
 		home = filepath.Join(cwd, ".mimir")
 	}
-	store, storeDesc, cleanup, err := buildCortex(home)
+	store, sessStore, storeDesc, cleanup, err := buildCortex(home)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "cortex error:", err)
 		os.Exit(1)
@@ -170,7 +177,7 @@ func main() {
 			}
 		}
 		fmt.Println("Mímir serving the live UI at http://localhost" + addr + "/  (Ctrl+C to stop)")
-		if err := server.Serve(server.Deps{Agent: a, Store: store, Usage: tracker, Addr: addr}); err != nil {
+		if err := server.Serve(server.Deps{Agent: a, Store: store, Sessions: sessStore, Usage: tracker, Addr: addr}); err != nil {
 			fmt.Fprintln(os.Stderr, "serve:", err)
 			os.Exit(1)
 		}

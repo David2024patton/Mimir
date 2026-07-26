@@ -85,6 +85,11 @@ type SurrealStore struct {
 	embedder Embedder
 }
 
+// Client returns the underlying SurrealDB client (used by SessionStore for F2.2).
+func (s *SurrealStore) Client() *surrealClient {
+	return s.cli
+}
+
 // NewSurrealStore connects to SurrealDB and ensures the schema exists.
 func NewSurrealStore(ctx context.Context, cfg SurrealConfig) (*SurrealStore, error) {
 	if cfg.Addr == "" {
