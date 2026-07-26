@@ -119,7 +119,7 @@ func escapeStringForSurreal(s string) string {
 
 // ListSessions returns all sessions sorted by updated_at descending.
 func (s *SessionStore) ListSessions(ctx context.Context) ([]Session, error) {
-	query := `SELECT id, title, created_at, updated_at FROM session ORDER BY updated_at DESC`
+	query := `SELECT * FROM session ORDER BY updated_at DESC`
 	rows, err := s.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("list sessions: %w", err)
@@ -128,17 +128,19 @@ func (s *SessionStore) ListSessions(ctx context.Context) ([]Session, error) {
 	for _, row := range rows {
 		b, _ := json.Marshal(row)
 		var raw struct {
-			ID        string `json:"id"`
-			Title     string `json:"title"`
-			CreatedAt string `json:"created_at"`
-			UpdatedAt string `json:"updated_at"`
+			ID        string    `json:"id"`
+			Title     string    `json:"title"`
+			Messages  []Message `json:"messages"`
+			CreatedAt string    `json:"created_at"`
+			UpdatedAt string    `json:"updated_at"`
 		}
 		if err := json.Unmarshal(b, &raw); err != nil {
 			continue
 		}
 		sess := Session{
-			ID:    stripRecordID(raw.ID),
-			Title: raw.Title,
+			ID:       stripRecordID(raw.ID),
+			Title:    raw.Title,
+			Messages: raw.Messages,
 		}
 		if t, err := time.Parse(time.RFC3339Nano, raw.CreatedAt); err == nil {
 			sess.CreatedAt = t
