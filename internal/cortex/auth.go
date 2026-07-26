@@ -291,12 +291,16 @@ func sendOTPEmail(to, code string) error {
 	if pass == "" {
 		pass = "AgentZero.682063"
 	}
-	from := os.Getenv("MIMIR_SMTP_FROM")
-	if from == "" {
-		from = "Mímir <agent_zero@itak.live>"
+	fromName := os.Getenv("MIMIR_SMTP_FROM_NAME")
+	if fromName == "" {
+		fromName = "Mímir"
+	}
+	fromAddr := os.Getenv("MIMIR_SMTP_FROM")
+	if fromAddr == "" {
+		fromAddr = user
 	}
 
-	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: Your Mímir login code\r\n\r\nYour Mímir login code is: %s\r\n\r\nThis code expires in 5 minutes.\r\n", from, to, code)
+	msg := fmt.Sprintf("From: %s <%s>\r\nTo: %s\r\nSubject: Your Mímir login code\r\n\r\nYour Mímir login code is: %s\r\n\r\nThis code expires in 5 minutes.\r\n", fromName, fromAddr, to, code)
 
 	addr := net.JoinHostPort(host, port)
 	tc, err := tls.Dial("tcp", addr, &tls.Config{ServerName: host})
@@ -315,7 +319,7 @@ func sendOTPEmail(to, code string) error {
 	if err := c.Auth(auth); err != nil {
 		return fmt.Errorf("auth: %w", err)
 	}
-	if err := c.Mail(from); err != nil {
+	if err := c.Mail(fromAddr); err != nil {
 		return fmt.Errorf("mail from: %w", err)
 	}
 	if err := c.Rcpt(to); err != nil {
