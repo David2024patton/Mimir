@@ -1,0 +1,11 @@
+# Norse Memory
+
+## Design Philosophy
+
+Memory is not linear. It branches, loops, connects, and decays - then reconstitutes from fragments into something new. Norse Memory embraces the idea that knowledge is living architecture: structured yet organic, ancient yet always becoming. Every composition should feel like a diagram of thought itself - a system of interconnected nodes where meaning emerges from relationship, not from any single element. The craftsmanship must be immaculate, every curve and junction placed with the precision of a master calligrapher working in iron.
+
+The visual language draws from two wells: the stark geometric clarity of Norse knotwork (endless lines that weave over and under, never breaking) and the clinical precision of neural network diagrams (nodes, edges, signal paths). Forms interlock like the ribs of a Viking longship - structural beauty born from function. Negative space is not empty; it is the silence between thoughts, the pause where memory consolidates. Every element earns its place through structural necessity. Colors are few and deliberate: deep midnight tones against warm amber or copper, like firelight on ancient metal.
+
+Typography is treated as architecture, not decoration. Letterforms are geometric, monospaced or near-monospaced, carrying the weight of carved runes while maintaining contemporary precision. Text appears sparingly - a name, a glyph, a coordinate. It anchors the composition like a cartographer's label on an unexplored territory. The overall impression should be of something meticulously crafted over countless hours, the product of deep expertise where every pixel, every stroke, every spatial relationship has been labored over with obsessive care.
+
+Scale and rhythm follow the logic of concentric rings - the way memory radiates outward from a core experience, connecting to adjacent memories, gradually fading at the periphery. The center is dense and deliberate; the edges breathe. This creates a natural focal hierarchy without relying on traditional size-based emphasis. The result is an artifact that could be a scientific diagram, a brand mark, or a fragment of an imaginary codex - ambiguous in category but undeniable in craft.
