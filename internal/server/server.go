@@ -1,12 +1,9 @@
-// Package server is Mímir's live HTTP interface: it lets a browser (or any client)
-// talk to the brain. GET / serves the polished book-spine UI (E70 / F53); the same
-// wire backs it. Endpoints: GET / (the page), POST /chat, POST /chat/stream (SSE,
-// F2.1), GET /memory, GET /usage (E69), GET /health, POST /sessions (F2.2).
 package server
 
 import (
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -15,48 +12,54 @@ import (
 	"github.com/David2024patton/Mimir/internal/llm"
 )
 
-// Deps wires the server to a live agent + the Cortex store it reads/writes.
 type Deps struct {
 	Agent    *agent.Agent
 	Store    cortex.Store
-	Sessions *cortex.SessionStore // F2.2: conversation history
+	Sessions cortex.SessionStore
+	Auth     *cortex.AuthStore
 	Usage    *llm.Tracker
 	Addr     string
 }
 
-// Serve runs the HTTP server until it errors.
 func Serve(d Deps) error {
 	addr := d.Addr
 	if addr == "" {
 		addr = ":8420"
 	}
-	return http.ListenAndServe(addr, Handler(d.Agent, d.Store, d.Sessions, d.Usage))
+	return http.ListenAndServe(addr, Handler(d.Agent, d.Store, d.Sessions, d.Auth, d.Usage))
 }
 
-// Handler builds the HTTP handler (exposed for tests).
-func Handler(ag *agent.Agent, st cortex.Store, sessions *cortex.SessionStore, usage *llm.Tracker) http.Handler {
+func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, auth *cortex.AuthStore, usage *llm.Tracker) http.Handler {
 	mux := http.NewServeMux()
+
+	// Public
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"status": "ok"})
 	})
-	mux.HandleFunc("/sessions", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/auth/send-code", sendCodeHandler(auth))
+	mux.HandleFunc("/auth/verify-code", verifyCodeHandler(auth))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(uiHTML)
+	})
+
+	// Protected API routes (built as a sub-mux then wrapped with auth)
+	api := http.NewServeMux()
+	api.HandleFunc("/sessions", func(w http.ResponseWriter, r *http.Request) {
+		userID := userIDFromContext(r.Context())
 		switch r.Method {
 		case http.MethodGet:
-			if sessions == nil {
-				writeJSON(w, map[string]any{"sessions": []any{}})
-				return
-			}
-			list, err := sessions.ListSessions(r.Context())
+			list, err := sessions.ListSessions(r.Context(), userID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			writeJSON(w, map[string]any{"sessions": list})
 		case http.MethodPost:
-			if sessions == nil {
-				http.Error(w, "sessions not available", http.StatusServiceUnavailable)
-				return
-			}
 			var req struct {
 				Title string `json:"title"`
 			}
@@ -67,7 +70,7 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions *cortex.SessionStore, us
 			if req.Title == "" {
 				req.Title = "New Conversation"
 			}
-			sess, err := sessions.CreateSession(r.Context(), req.Title)
+			sess, err := sessions.CreateSession(r.Context(), req.Title, userID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -77,11 +80,7 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions *cortex.SessionStore, us
 			http.Error(w, "GET or POST only", http.StatusMethodNotAllowed)
 		}
 	})
-	mux.HandleFunc("/sessions/", func(w http.ResponseWriter, r *http.Request) {
-		if sessions == nil {
-			http.Error(w, "sessions not available", http.StatusServiceUnavailable)
-			return
-		}
+	api.HandleFunc("/sessions/", func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/sessions/")
 		if id == "" {
 			http.Error(w, "session id required", http.StatusBadRequest)
@@ -118,11 +117,11 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions *cortex.SessionStore, us
 			http.Error(w, "GET, PUT, or DELETE only", http.StatusMethodNotAllowed)
 		}
 	})
-	mux.HandleFunc("/memory", func(w http.ResponseWriter, r *http.Request) {
-		ns := st.All()
-		writeJSON(w, map[string]any{"count": len(ns), "neurons": ns})
+	api.HandleFunc("/auth/me", meHandler(auth))
+	api.HandleFunc("/memory", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{"neurons": st.All()})
 	})
-	mux.HandleFunc("/usage", func(w http.ResponseWriter, r *http.Request) {
+	api.HandleFunc("/usage", func(w http.ResponseWriter, r *http.Request) {
 		models := []llm.ModelUsage{}
 		total := 0
 		if usage != nil {
@@ -133,7 +132,7 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions *cortex.SessionStore, us
 		}
 		writeJSON(w, map[string]any{"total_tokens": total, "models": models})
 	})
-	mux.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
+	api.HandleFunc("/chat", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST only", http.StatusMethodNotAllowed)
 			return
@@ -148,12 +147,18 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions *cortex.SessionStore, us
 			return
 		}
 		var history []llm.Message
-		if sessions != nil && req.SessionID != "" {
+		if req.SessionID != "" {
 			sess, err := sessions.GetSession(r.Context(), req.SessionID)
 			if err == nil && len(sess.Messages) > 0 {
 				for _, m := range sess.Messages {
 					history = append(history, llm.Message{Role: m.Role, Content: m.Content})
 				}
+			}
+			if err := sessions.AppendMessage(r.Context(), req.SessionID, cortex.Message{
+				Role: "user", Content: req.Prompt,
+			}); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 		}
 		res, err := ag.RunFull(r.Context(), strings.TrimSpace(req.Prompt), history)
@@ -161,13 +166,21 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions *cortex.SessionStore, us
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		if req.SessionID != "" && res.Reply != "" {
+			if err := sessions.AppendMessage(r.Context(), req.SessionID, cortex.Message{
+				Role: "assistant", Content: res.Reply,
+			}); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
 		writeJSON(w, map[string]any{
 			"reply":    res.Reply,
 			"trace":    res.Trace,
 			"recalled": res.Recalled,
 		})
 	})
-	mux.HandleFunc("/chat/stream", func(w http.ResponseWriter, r *http.Request) {
+	api.HandleFunc("/chat/stream", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST only", http.StatusMethodNotAllowed)
 			return
@@ -189,23 +202,19 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions *cortex.SessionStore, us
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
-		
-		// Load conversation history for multi-turn context
 		var history []llm.Message
-		if sessions != nil && req.SessionID != "" {
+		if req.SessionID != "" {
 			sess, err := sessions.GetSession(r.Context(), req.SessionID)
 			if err == nil && len(sess.Messages) > 0 {
 				for _, m := range sess.Messages {
 					history = append(history, llm.Message{Role: m.Role, Content: m.Content})
 				}
 			}
-			// Save user message to session
 			_ = sessions.AppendMessage(r.Context(), req.SessionID, cortex.Message{
 				Role:    "user",
 				Content: req.Prompt,
 			})
 		}
-		
 		var assistantReply string
 		err := ag.RunStream(r.Context(), strings.TrimSpace(req.Prompt), history, func(e agent.Event) {
 			b, err := json.Marshal(e)
@@ -218,28 +227,27 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions *cortex.SessionStore, us
 				assistantReply = e.Reply
 			}
 		})
-		
-		// Save assistant reply to session if session_id provided
-		if sessions != nil && req.SessionID != "" && assistantReply != "" {
+		if req.SessionID != "" && assistantReply != "" {
 			_ = sessions.AppendMessage(r.Context(), req.SessionID, cortex.Message{
 				Role:    "assistant",
 				Content: assistantReply,
 			})
 		}
-		
 		if err != nil {
-			_, _ = w.Write([]byte("data: " + `{"type":"error","err":"` + err.Error() + `"}` + "\n\n"))
+			_, _ = w.Write([]byte(fmt.Sprintf("data: {\"type\":\"error\",\"err\":%q}\n\n", err.Error())))
 			flusher.Flush()
 		}
 	})
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write(uiHTML)
-	})
+
+	// Wrap the api mux with auth middleware and register on main mux
+	mux.Handle("/sessions", authMiddleware(auth)(api))
+	mux.Handle("/sessions/", authMiddleware(auth)(api))
+	mux.Handle("/auth/me", authMiddleware(auth)(api))
+	mux.Handle("/memory", authMiddleware(auth)(api))
+	mux.Handle("/usage", authMiddleware(auth)(api))
+	mux.Handle("/chat", authMiddleware(auth)(api))
+	mux.Handle("/chat/stream", authMiddleware(auth)(api))
+
 	return mux
 }
 
@@ -248,10 +256,5 @@ func writeJSON(w http.ResponseWriter, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// uiHTML is the polished book-spine UI (E70 / F53): vertical spines, panels that
-// open/close by clicking a spine, two side by side, drag & drop reorder - wired
-// live to /chat, /memory, /health. Embedded so the binary stays single and
-// dependency-free (no build step, no CDN).
-//
 //go:embed ui.html
 var uiHTML []byte

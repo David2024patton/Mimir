@@ -55,30 +55,53 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* BODY LAYOUT: sessions | icon rail | spines | panels | chat | hotrail */
 .body{display:grid;grid-template-columns:220px 56px 44px 1fr 380px 56px;overflow:hidden;transition:grid-template-columns .28s cubic-bezier(.4,0,.2,1)}
 @media (min-width:1025px){
-  .body.rail-collapsed{grid-template-columns:220px 0px 44px 1fr 380px 56px}
+  .body.nav-compact{grid-template-columns:56px 0px 44px 1fr 420px 56px}
 }
 
 /* SESSION SIDEBAR (F2.2) */
-.sessions{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sessions{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .28s cubic-bezier(.4,0,.2,1);min-width:0}
+.body.nav-compact .sessions{width:56px}
 .sessions-h{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
-.sessions-h .stitle{font-family:var(--disp);font-weight:600;font-size:13px;color:var(--muted)}
-.sessions-h .new-btn{margin-left:auto;width:26px;height:26px;display:grid;place-items:center;border-radius:7px;background:var(--panel);border:1px solid var(--border);color:var(--teal);font-size:14px;cursor:pointer;transition:.15s}
+.body.nav-compact .sessions-h{padding:12px 0;justify-content:center}
+.sessions-h .stitle{font-family:var(--disp);font-weight:600;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;white-space:nowrap}
+.body.nav-compact .sessions-h .stitle{display:none}
+.sessions-h .new-btn{margin-left:auto;width:26px;height:26px;display:grid;place-items:center;border-radius:7px;background:var(--panel);border:1px solid var(--border);color:var(--teal);font-size:14px;cursor:pointer;transition:.15s;flex:0 0 26px}
+.body.nav-compact .sessions-h .new-btn{margin-left:0}
 .sessions-h .new-btn:hover{background:var(--panel2);border-color:var(--teal-d)}
 .sessions-list{flex:1;overflow-y:auto;padding:8px}
+.body.nav-compact .sessions-list{padding:8px 4px}
 .sessions-list::-webkit-scrollbar{width:6px}
 .sessions-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
-.session-item{padding:10px 12px;border-radius:8px;cursor:pointer;transition:.15s;margin-bottom:4px;border:1px solid transparent}
+.session-item{padding:10px 12px;border-radius:8px;cursor:pointer;transition:.15s;margin-bottom:4px;border:1px solid transparent;position:relative;display:flex;flex-direction:column;gap:2px}
+.body.nav-compact .session-item{padding:10px 0;align-items:center}
 .session-item:hover{background:var(--panel);border-color:var(--border)}
 .session-item.active{background:var(--panel2);border-color:color-mix(in srgb,var(--teal) 40%, transparent)}
-.session-item .sname{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.session-item .stime{font-size:11px;color:var(--dim);margin-top:3px}
-.session-item .scount{font-size:11px;color:var(--dim);margin-top:2px}
-.session-empty{color:var(--dim);font-size:12px;text-align:center;padding:20px 10px;line-height:1.6}
+.session-item .sname{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.body.nav-compact .session-item .sname{display:none}
+.session-item .stime{font-size:11px;color:var(--dim);margin-top:2px}
+.body.nav-compact .session-item .stime{display:none}
+.session-item .scount{font-size:11px;color:var(--dim);margin-top:1px}
+.body.nav-compact .session-item .scount{display:none}
+/* session action buttons (delete, rename, pin) - appear on hover */
+.session-actions{display:none;position:absolute;top:4px;right:4px;gap:3px}
+.session-item:hover .session-actions{display:flex}
+.session-actions .act{width:22px;height:22px;display:grid;place-items:center;border-radius:5px;font-size:11px;color:var(--dim);cursor:pointer;transition:.15s;background:var(--panel3);border:1px solid var(--border)}
+.session-actions .act:hover{color:var(--text)}
+.session-actions .act-del:hover{color:var(--red);border-color:var(--red)}
+.session-actions .act-rename:hover{color:var(--teal);border-color:var(--teal)}
+.session-actions .act-pin:hover{color:var(--ember);border-color:var(--ember)}
+.body.nav-compact .session-actions{display:none !important}
+/* compact session icon (shown only when nav-compact) */
+.session-compact-icon{display:none;width:34px;height:34px;border-radius:8px;place-items:center;font-size:16px;background:var(--panel);color:var(--muted)}
+.body.nav-compact .session-compact-icon{display:grid}
+.session-item.active .session-compact-icon{background:var(--panel2);color:var(--teal);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--teal) 35%, transparent)}
+/* inline rename input */
+.inline-rename{width:100%;background:var(--bg);border:1px solid var(--teal-d);border-radius:5px;color:var(--text);font:13px/1.4 var(--body);padding:3px 6px;outline:none}
+.body.nav-compact .inline-rename{display:none}
 
 /* LEFT ICON RAIL */
 .iconrail{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 0;overflow:hidden;min-width:0;transition:transform .28s cubic-bezier(.4,0,.2,1),opacity .22s ease}
-.body.rail-collapsed .iconrail{transform:translateX(-60px);opacity:0;border-right-color:transparent}
-.railtoggle{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;color:var(--muted);font-size:15px;cursor:pointer;transition:.15s;border:1px solid transparent;margin-bottom:4px}
+.railtoggle{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;color:var(--muted);font-size:15px;cursor:pointer;transition:.15s;border:1px solid transparent;margin-bottom:4px;flex:0 0 34px}
 .railtoggle:hover{background:var(--panel);color:var(--teal);border-color:var(--border)}
 .iconbtn{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;color:var(--muted);font-size:17px;transition:.15s;cursor:pointer}
 .iconbtn:hover{background:var(--panel);color:var(--text);transform:translateY(-1px)}
@@ -340,16 +363,38 @@ body.chat-open .chat-backdrop{opacity:1;pointer-events:auto}
   .brand{font-size:15px}
   .dash-total .big{font-size:30px}
 }
+/* AUTH OVERLAY */
+.auth-overlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(8px)}
+.auth-overlay.hidden{display:none}
+.auth-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:40px;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.auth-box h2{margin:0 0 6px;font-family:var(--disp);font-size:22px;font-weight:700}
+.auth-box p{margin:0 0 24px;color:var(--dim);font-size:13px}
+.auth-field{margin-bottom:16px}
+.auth-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.auth-field input{width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font:14px var(--body);outline:none;transition:.15s}
+.auth-field input:focus{border-color:var(--teal);box-shadow:0 0 0 3px color-mix(in srgb,var(--teal) 15%, transparent)}
+.auth-btn{width:100%;padding:11px;border-radius:9px;font-weight:600;font-size:14px;background:var(--teal);color:var(--bg);border:none;cursor:pointer;transition:.15s;margin-top:8px}
+.auth-btn:hover{opacity:.9;transform:translateY(-1px)}
+.auth-switch{text-align:center;margin-top:16px;font-size:13px;color:var(--dim)}
+.auth-switch a{color:var(--teal);cursor:pointer;text-decoration:none}
+.auth-switch a:hover{text-decoration:underline}
+.auth-error{color:var(--red);font-size:13px;margin-top:12px;text-align:center}
+.auth-user{display:flex;align-items:center;gap:8px;padding:4px 14px;border-radius:8px;cursor:pointer;transition:.15s;font-size:13px;color:var(--muted);background:var(--panel);border:1px solid var(--border)}
+.auth-user:hover{border-color:var(--border2);color:var(--text)}
+.auth-user .au-email{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="railtoggle" onclick="toggleRail()" title="Toggle navigation rail">☰</div>
+    <div class="railtoggle" id="railBtn" onclick="toggleRail()" title="Toggle navigation rail">✕</div>
     <div class="brand"><span class="mark"></span> Mímir</div>
     <div class="switcher">📁 <b>default</b> ▾</div>
     <div class="switcher agent">⚡ <b>Mímir</b> <span style="color:var(--dim)">· the rememberer</span> ▾</div>
     <div class="spacer"></div>
+    <div class="auth-user" id="authUserBtn" onclick="authLogout()" title="Click to sign out" style="display:none">
+      <span>👤</span><span class="au-email" id="authUserEmail"></span>
+    </div>
     <div class="swatches" title="Accent color">
       <span class="swatch active" style="--sw:#2dd4bf" onclick="setAccent(this,'#2dd4bf','#14b8a6')"></span>
       <span class="swatch" style="--sw:#fb923c" onclick="setAccent(this,'#fb923c','#f97316')"></span>
@@ -443,7 +488,150 @@ body.chat-open .chat-backdrop{opacity:1;pointer-events:auto}
 <button class="chat-fab" onclick="toggleChat()" title="Chat with Mímir">💬</button>
 <div class="toast" id="toast"></div>
 
+<!-- AUTH OVERLAY -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-box" id="authBox">
+    <h2 id="authTitle">Sign in to Mímir</h2>
+    <p id="authSub">Enter your email to receive a login code.</p>
+    <div id="authBody">
+      <div class="auth-field" id="emailField">
+        <label>Email</label>
+        <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" onkeydown="if(event.key==='Enter')authSendCode()">
+      </div>
+      <div class="auth-field" id="codeField" style="display:none">
+        <label>Login code</label>
+        <input type="text" id="authCode" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric" onkeydown="if(event.key==='Enter')authVerifyCode()">
+      </div>
+      <div class="auth-error" id="authError"></div>
+      <button class="auth-btn" id="authBtn" onclick="authSendCode()">Send code</button>
+    </div>
+    <div class="auth-switch" id="authSwitch">
+      <a id="authSwitchLink" onclick="authBackToEmail()" style="display:none">Use a different email</a>
+    </div>
+  </div>
+</div>
+
 <script>
+/* ===== AUTH (passwordless OTP) ===== */
+
+var authEmailSent = null;
+
+function authInit(){
+  var token = localStorage.getItem('mimir-token');
+  var email = localStorage.getItem('mimir-email');
+  if(token && email){
+    authSetUser(email);
+    return;
+  }
+  el('authOverlay').classList.remove('hidden');
+}
+
+function authSetUser(email){
+  localStorage.setItem('mimir-email', email);
+  el('authUserEmail').textContent = email;
+  el('authUserBtn').style.display = 'flex';
+}
+
+function authClearUser(){
+  localStorage.removeItem('mimir-token');
+  localStorage.removeItem('mimir-email');
+  el('authUserBtn').style.display = 'none';
+}
+
+function authSendCode(){
+  var email = el('authEmail').value.trim();
+  if(!email){ el('authError').textContent = 'Email is required.'; return; }
+  el('authError').textContent = '';
+  el('authBtn').disabled = true;
+  el('authBtn').textContent = 'Sending...';
+  fetch('/auth/send-code', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:email})})
+    .then(function(r){
+      if(!r.ok) return r.json().then(function(d){ throw new Error(d.error || 'Failed to send code'); });
+      return r.json();
+    })
+    .then(function(){
+      authEmailSent = email;
+      el('emailField').style.display = 'none';
+      el('codeField').style.display = 'block';
+      el('authTitle').textContent = 'Enter the code';
+      el('authSub').textContent = 'A 6-digit code was sent to ' + email;
+      el('authBtn').textContent = 'Verify';
+      el('authSwitchLink').style.display = 'inline';
+      el('authBtn').onclick = authVerifyCode;
+      el('authCode').focus();
+    })
+    .catch(function(e){ el('authError').textContent = e.message; })
+    .finally(function(){ el('authBtn').disabled = false; });
+}
+
+function authVerifyCode(){
+  var code = el('authCode').value.trim();
+  if(!code || code.length < 6){ el('authError').textContent = 'Enter the 6-digit code.'; return; }
+  el('authError').textContent = '';
+  el('authBtn').disabled = true;
+  el('authBtn').textContent = 'Verifying...';
+  fetch('/auth/verify-code', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:authEmailSent, code:code})})
+    .then(function(r){
+      if(!r.ok) return r.json().then(function(d){ throw new Error(d.error || 'Invalid code'); });
+      return r.json();
+    })
+    .then(function(d){
+      localStorage.setItem('mimir-token', d.token);
+      authSetUser(authEmailSent);
+      el('authOverlay').classList.add('hidden');
+      refreshSessions();
+      refreshMemory();
+    })
+    .catch(function(e){ el('authError').textContent = e.message; })
+    .finally(function(){ el('authBtn').disabled = false; });
+}
+
+function authBackToEmail(){
+  authEmailSent = null;
+  el('codeField').style.display = 'none';
+  el('emailField').style.display = 'block';
+  el('authTitle').textContent = 'Sign in to Mímir';
+  el('authSub').textContent = 'Enter your email to receive a login code.';
+  el('authBtn').textContent = 'Send code';
+  el('authSwitchLink').style.display = 'none';
+  el('authBtn').onclick = authSendCode;
+  el('authEmail').value = '';
+  el('authError').textContent = '';
+}
+
+function authLogout(){
+  authClearUser();
+  el('authOverlay').classList.remove('hidden');
+  authBackToEmail();
+  currentSessionId = null;
+  sessions = [];
+  el('chatBody').innerHTML = '';
+  el('sessionTitle').textContent = '· new conversation';
+  el('sessionList').innerHTML = '<div class="session-empty">Sign in to see your conversations.</div>';
+}
+
+function authHeaders(){
+  var h = {'Content-Type':'application/json'};
+  var token = localStorage.getItem('mimir-token');
+  if(token) h['Authorization'] = 'Bearer ' + token;
+  return h;
+}
+
+function authFetch(url, options){
+  options = options || {};
+  options.headers = options.headers || {};
+  var token = localStorage.getItem('mimir-token');
+  if(token) options.headers['Authorization'] = 'Bearer ' + token;
+  if(options.method !== 'GET' && !options.headers['Content-Type']) options.headers['Content-Type'] = 'application/json';
+  return fetch(url, options).then(function(r){
+    if(r.status === 401){
+      authClearUser();
+      el('authOverlay').classList.remove('hidden');
+      throw new Error('unauthorized');
+    }
+    return r;
+  });
+}
 function el(id){return document.getElementById(id)}
 function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]})}
 
@@ -488,7 +676,10 @@ function setMode(m){ mode=m; el('modeChat').classList.toggle('active',m==='chat'
   showTrace = (m==='trace'); el('tglTrace').classList.toggle('on',showTrace); }
 
 /* collapse / expand the left navigation rail */
-function toggleRail(){ document.querySelector('.body').classList.toggle('rail-collapsed'); }
+function toggleRail(){
+  document.querySelector('.body').classList.toggle('nav-compact');
+  el('railBtn').textContent = document.querySelector('.body').classList.contains('nav-compact') ? '☰' : '✕';
+}
 
 /* open / close the chat drawer (tablet & mobile) */
 function toggleChat(){ document.body.classList.toggle('chat-open'); }
@@ -513,7 +704,7 @@ function checkHealth(manual){
 
 /* ===== memory (live) ===== */
 function refreshMemory(){
-  return fetch('/memory').then(function(r){return r.json()}).then(function(d){
+  return authFetch('/memory').then(function(r){return r.json()}).then(function(d){
     memCache = d.neurons||[];
     el('memPill').textContent = memCache.length+(memCache.length===1?' memory':' memories');
     if(openPanels.indexOf('cortex')>=0 || openPanels.indexOf('dashboard')>=0) renderPanels();
@@ -521,7 +712,7 @@ function refreshMemory(){
 }
 
 function refreshUsage(){
-  return fetch('/usage').then(function(r){return r.json()}).then(function(d){
+  return authFetch('/usage').then(function(r){return r.json()}).then(function(d){
     usageCache = {total_tokens:d.total_tokens||0, models:d.models||[]};
     if(openPanels.indexOf('dashboard')>=0) renderPanels();
   }).catch(function(){});
@@ -529,7 +720,7 @@ function refreshUsage(){
 
 /* ===== SESSIONS (F2.2) ===== */
 function refreshSessions(){
-  return fetch('/sessions').then(function(r){return r.json()}).then(function(d){
+  return authFetch('/sessions').then(function(r){return r.json()}).then(function(d){
     sessions = d.sessions||[];
     renderSessionList();
   }).catch(function(){});
@@ -545,16 +736,23 @@ function renderSessionList(){
     var active = s.id===currentSessionId ? ' active' : '';
     var msgCount = (s.messages||[]).length;
     var time = s.updated_at ? new Date(s.updated_at).toLocaleDateString()+' '+new Date(s.updated_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
-    return '<div class="session-item'+active+'" onclick="loadSession(\''+s.id+'\')">'+
-      '<div class="sname">'+esc(s.title||'Untitled')+'</div>'+
+    var icon = '💬';
+    return '<div class="session-item'+active+'" data-id="'+s.id+'">'+
+      '<div class="session-compact-icon" onclick="loadSession(\''+s.id+'\')">'+icon+'</div>'+
+      '<div class="sname" ondblclick="startRename(\''+s.id+'\')" onclick="loadSession(\''+s.id+'\')">'+esc(s.title||'Untitled')+'</div>'+
       '<div class="stime">'+time+'</div>'+
       '<div class="scount">'+msgCount+' messages</div>'+
+      '<div class="session-actions">'+
+        '<span class="act act-pin" onclick="event.stopPropagation();pinSession(\''+s.id+'\',\''+esc(s.title||'Untitled')+'\')" title="Pin to hotrail">📌</span>'+
+        '<span class="act act-rename" onclick="event.stopPropagation();startRename(\''+s.id+'\')" title="Rename">✏️</span>'+
+        '<span class="act act-del" onclick="event.stopPropagation();deleteSession(\''+s.id+'\')" title="Delete">🗑</span>'+
+      '</div>'+
       '</div>';
   }).join('');
 }
 
 function newSession(){
-  fetch('/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:'New Conversation'})})
+  authFetch('/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:'New Conversation'})})
     .then(function(r){return r.json()})
     .then(function(s){
       currentSessionId = s.id;
@@ -567,7 +765,7 @@ function newSession(){
 }
 
 function loadSession(id){
-  fetch('/sessions/'+id)
+  authFetch('/sessions/'+id)
     .then(function(r){
       if(!r.ok) throw new Error('not found');
       return r.json();
@@ -635,12 +833,52 @@ function pickChoice(btn, text){
 }
 
 function deleteSession(id){
-  fetch('/sessions/'+id,{method:'DELETE'})
+  authFetch('/sessions/'+id,{method:'DELETE'})
     .then(function(){
       if(currentSessionId===id){currentSessionId=null;el('sessionTitle').textContent='· new conversation';welcome();}
       refreshSessions();
       toast('Conversation deleted');
     }).catch(function(){toast('Failed to delete session')});
+}
+
+/* ===== RENAME SESSION ===== */
+function startRename(id){
+  var items = document.querySelectorAll('.session-item');
+  var item = null;
+  items.forEach(function(i){if(i.getAttribute('data-id')===id)item=i;});
+  if(!item)return;
+  var nameEl = item.querySelector('.sname');
+  var current = nameEl.textContent;
+  nameEl.innerHTML = '<input class="inline-rename" id="renameInput" value="'+esc(current)+'" onkeydown="if(event.key===\'Enter\')saveRename(\''+id+'\')" onblur="saveRename(\''+id+'\')" autofocus>';
+  var inp = el('renameInput');
+  if(inp){inp.focus();inp.select();}
+}
+function saveRename(id){
+  var inp = el('renameInput');
+  if(!inp)return;
+  var title = inp.value.trim() || 'Untitled';
+  authFetch('/sessions/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title})})
+    .then(function(r){return r.json()})
+    .then(function(){
+      if(currentSessionId===id)el('sessionTitle').textContent='· '+title;
+      refreshSessions();
+      toast('Renamed to "'+title+'"');
+    }).catch(function(){toast('Failed to rename');refreshSessions();});
+}
+
+/* ===== PIN SESSION ===== */
+function pinSession(id, title){
+  var h = el('hotrail');
+  var existing = h.querySelector('.hot[data-pinned="'+id+'"]');
+  if(existing){toast('Already pinned');return;}
+  var dot = document.createElement('div');
+  dot.className = 'hot';
+  dot.setAttribute('data-pinned',id);
+  dot.innerHTML = '💬<span class="pin"></span>';
+  dot.title = title;
+  dot.onclick = function(){loadSession(id);};
+  h.insertBefore(dot, h.querySelector('.hot-add'));
+  toast('Pinned "'+title+'"');
 }
 
 /* ===== BOOK SPINES + PANELS (F53) ===== */
@@ -791,7 +1029,7 @@ function send(){
   
   // Auto-create session if none active
   if(!currentSessionId){
-    fetch('/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:p.substring(0,50)})})
+    authFetch('/sessions',{method:'POST',body:JSON.stringify({title:p.substring(0,50)})})
       .then(function(r){return r.json()})
       .then(function(s){
         currentSessionId = s.id;
@@ -853,7 +1091,7 @@ function doSend(p){
     }
   }
 
-  fetch('/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p,mode:mode,session_id:currentSessionId||''})})
+  authFetch('/chat/stream',{method:'POST',body:JSON.stringify({prompt:p,mode:mode,session_id:currentSessionId||''})})
     .then(function(r){
       if(!r.ok) return r.text().then(function(x){ throw new Error(x||('HTTP '+r.status)); });
       var reader=r.body.getReader();
@@ -884,15 +1122,22 @@ function doSend(p){
 }
 
 /* ===== boot ===== */
-renderSpines(); renderPanels(); refreshMemory(); refreshUsage(); checkHealth(false); applyGlow();
-var savedSession = localStorage.getItem('mimir-session');
-if(savedSession){
-  loadSession(savedSession);
+authInit();
+var token = localStorage.getItem('mimir-token');
+if(token){
+  renderSpines(); renderPanels(); refreshMemory(); refreshUsage(); checkHealth(false); applyGlow();
+  var savedSession = localStorage.getItem('mimir-session');
+  if(savedSession){
+    loadSession(savedSession);
+  } else {
+    welcome();
+    refreshSessions();
+  }
+  setInterval(function(){checkHealth(false); refreshUsage();},15000);
 } else {
   welcome();
-  refreshSessions();
+  el('sessionList').innerHTML = '<div class="session-empty">Sign in to see your conversations.</div>';
 }
-setInterval(function(){checkHealth(false); refreshUsage();},15000);
 </script>
 </body>
 </html>

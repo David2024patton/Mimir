@@ -1,0 +1,37 @@
+version: "3.9"
+
+# Production deployment for mimir.itak.live
+# Usage: docker compose -f docker-compose.prod.yml up -d
+# Requires .env file with MIMIR_SMTP_USER, MIMIR_SMTP_PASS, MIMIR_API_KEY
+
+services:
+  mimir:
+    image: davidrpatton25/mimir:latest
+    build: .
+    ports:
+      - "127.0.0.1:8420:8420"
+    environment:
+      MIMIR_CORTEX_BACKEND: surreal
+      MIMIR_SURREAL_DATA: /data/surreal
+      MIMIR_BASE_URL: ${MIMIR_BASE_URL:-http://host.docker.internal:11434/v1}
+      MIMIR_API_KEY: ${MIMIR_API_KEY}
+      MIMIR_MODEL: ${MIMIR_MODEL:-qwen3:8b}
+      MIMIR_EMBED_URL: ${MIMIR_EMBED_URL:-http://host.docker.internal:11434}
+      MIMIR_EMBED_MODEL: ${MIMIR_EMBED_MODEL:-nomic-embed-text}
+      MIMIR_ADMIN_EMAIL: ${MIMIR_ADMIN_EMAIL:-david@itak.live}
+      MIMIR_SMTP_HOST: ${MIMIR_SMTP_HOST:-smtp.titan.email}
+      MIMIR_SMTP_PORT: ${MIMIR_SMTP_PORT:-465}
+      MIMIR_SMTP_USER: ${MIMIR_SMTP_USER}
+      MIMIR_SMTP_PASS: ${MIMIR_SMTP_PASS}
+    volumes:
+      - mimir_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8420/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  mimir_data:

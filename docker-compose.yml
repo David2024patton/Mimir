@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  mimir:
+    build: .
+    ports:
+      - "8420:8420"
+    environment:
+      MIMIR_CORTEX_BACKEND: surreal
+      MIMIR_SURREAL_DATA: /data/surreal
+      MIMIR_BASE_URL: ${MIMIR_BASE_URL:-http://host.docker.internal:11434/v1}
+      MIMIR_API_KEY: ${MIMIR_API_KEY:-ollama}
+      MIMIR_MODEL: ${MIMIR_MODEL:-qwen3:8b}
+      MIMIR_EMBED_URL: ${MIMIR_EMBED_URL:-http://host.docker.internal:11434}
+      MIMIR_EMBED_MODEL: ${MIMIR_EMBED_MODEL:-nomic-embed-text}
+      MIMIR_ADMIN_EMAIL: ${MIMIR_ADMIN_EMAIL:-david@itak.live}
+      MIMIR_SMTP_HOST: ${MIMIR_SMTP_HOST:-smtp.titan.email}
+      MIMIR_SMTP_PORT: ${MIMIR_SMTP_PORT:-465}
+      MIMIR_SMTP_USER: ${MIMIR_SMTP_USER}
+      MIMIR_SMTP_PASS: ${MIMIR_SMTP_PASS}
+      MIMIR_SMTP_FROM: ${MIMIR_SMTP_FROM:-Mimir <agent_zero@itak.live>}
+    volumes:
+      - mimir_data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  mimir_data:

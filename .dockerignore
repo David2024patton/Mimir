@@ -1,0 +1,10 @@
+bin/
+.vscode/
+.git/
+.gitattributes
+.gitignore
+*.md
+*.log
+**/__pycache__/
+**/.DS_Store
+.mimir/

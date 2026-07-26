@@ -15,6 +15,7 @@ import (
 type Session struct {
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`
+	UserID    string    `json:"user_id"`
 	Messages  []Message `json:"messages"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -27,32 +28,53 @@ type Message struct {
 	Timestamp int64  `json:"timestamp"` // Unix nanos
 }
 
-// SessionStore manages conversation sessions in SurrealDB.
-type SessionStore struct {
+// SessionStore is the persistence interface for conversation threads.
+type SessionStore interface {
+	CreateSession(ctx context.Context, title, userID string) (*Session, error)
+	GetSession(ctx context.Context, id string) (*Session, error)
+	ListSessions(ctx context.Context, userID string) ([]Session, error)
+	AppendMessage(ctx context.Context, sessionID string, msg Message) error
+	DeleteSession(ctx context.Context, id string) error
+	UpdateTitle(ctx context.Context, id, title string) error
+}
+
+// surrealSessionStore manages conversation sessions in SurrealDB.
+type surrealSessionStore struct {
 	cli *surrealClient
 	ns  string
 	db  string
 }
 
 // NewSessionStore returns a session store wired to SurrealDB.
-func NewSessionStore(cli *surrealClient) *SessionStore {
-	return &SessionStore{cli: cli, ns: "mimir", db: "mimir"}
+func NewSessionStore(cli *surrealClient) *surrealSessionStore {
+	return &surrealSessionStore{cli: cli, ns: "mimir", db: "mimir"}
 }
 
 // Exec runs a SurrealQL statement against the session store's namespace/database.
-func (s *SessionStore) Exec(ctx context.Context, sql string) error {
-	_, err := s.cli.exec(ctx, s.ns, s.db, sql)
-	return err
+func (s *surrealSessionStore) Exec(ctx context.Context, sql string) error {
+	results, err := s.cli.exec(ctx, s.ns, s.db, sql)
+	if err != nil {
+		return err
+	}
+	for _, r := range results {
+		if r.Status == "ERR" {
+			return fmt.Errorf("surreal: %s", string(r.Result))
+		}
+	}
+	return nil
 }
 
 // Query runs a SurrealQL query and returns the results.
-func (s *SessionStore) Query(ctx context.Context, sql string) ([]map[string]any, error) {
+func (s *surrealSessionStore) Query(ctx context.Context, sql string) ([]map[string]any, error) {
 	results, err := s.cli.exec(ctx, s.ns, s.db, sql)
 	if err != nil {
 		return nil, err
 	}
 	var rows []map[string]any
 	for _, r := range results {
+		if r.Status == "ERR" {
+			return nil, fmt.Errorf("surreal: %s", string(r.Result))
+		}
 		var arr []map[string]any
 		if err := json.Unmarshal(r.Result, &arr); err != nil {
 			continue
@@ -63,7 +85,7 @@ func (s *SessionStore) Query(ctx context.Context, sql string) ([]map[string]any,
 }
 
 // EnsureSessionsTable creates the session table if it doesn't exist.
-func (s *SessionStore) EnsureSessionsTable(ctx context.Context) error {
+func (s *surrealSessionStore) EnsureSessionsTable(ctx context.Context) error {
 	query := `DEFINE TABLE IF NOT EXISTS session SCHEMAFULL`
 	if err := s.Exec(ctx, query); err != nil {
 		return fmt.Errorf("define session table: %w", err)
@@ -72,9 +94,29 @@ func (s *SessionStore) EnsureSessionsTable(ctx context.Context) error {
 	if err := s.Exec(ctx, query); err != nil {
 		return fmt.Errorf("define title field: %w", err)
 	}
+	query = `DEFINE FIELD IF NOT EXISTS user_id ON session TYPE record<user>`
+	if err := s.Exec(ctx, query); err != nil {
+		return fmt.Errorf("define user_id field: %w", err)
+	}
 	query = `DEFINE FIELD IF NOT EXISTS messages ON session TYPE array`
 	if err := s.Exec(ctx, query); err != nil {
 		return fmt.Errorf("define messages field: %w", err)
+	}
+	query = `DEFINE FIELD IF NOT EXISTS messages.* ON session TYPE object`
+	if err := s.Exec(ctx, query); err != nil {
+		return fmt.Errorf("define messages item: %w", err)
+	}
+	query = `DEFINE FIELD IF NOT EXISTS messages.*.role ON session TYPE string`
+	if err := s.Exec(ctx, query); err != nil {
+		return fmt.Errorf("define messages.role: %w", err)
+	}
+	query = `DEFINE FIELD IF NOT EXISTS messages.*.content ON session TYPE string`
+	if err := s.Exec(ctx, query); err != nil {
+		return fmt.Errorf("define messages.content: %w", err)
+	}
+	query = `DEFINE FIELD IF NOT EXISTS messages.*.timestamp ON session TYPE number`
+	if err := s.Exec(ctx, query); err != nil {
+		return fmt.Errorf("define messages.timestamp: %w", err)
 	}
 	query = `DEFINE FIELD IF NOT EXISTS created_at ON session TYPE datetime`
 	if err := s.Exec(ctx, query); err != nil {
@@ -92,20 +134,21 @@ func (s *SessionStore) EnsureSessionsTable(ctx context.Context) error {
 }
 
 // CreateSession creates a new session and returns it.
-func (s *SessionStore) CreateSession(ctx context.Context, title string) (*Session, error) {
+func (s *surrealSessionStore) CreateSession(ctx context.Context, title, userID string) (*Session, error) {
 	now := time.Now().UTC()
 	sessID := "s" + now.Format("20060102150405") + fmt.Sprintf("%09d", now.Nanosecond())
 	sess := &Session{
 		ID:        sessID,
 		Title:     title,
+		UserID:    userID,
 		Messages:  []Message{},
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
 	msgsJSON, _ := json.Marshal(sess.Messages)
 	query := fmt.Sprintf(
-		`CREATE session:%s SET title = %s, messages = %s, created_at = time::now(), updated_at = time::now()`,
-		sess.ID, escapeStringForSurreal(sess.Title), string(msgsJSON),
+		`CREATE session:%s SET title = %s, user_id = user:%s, messages = %s, created_at = time::now(), updated_at = time::now()`,
+		sess.ID, escapeStringForSurreal(sess.Title), userID, string(msgsJSON),
 	)
 	if err := s.Exec(ctx, query); err != nil {
 		return nil, fmt.Errorf("create session: %w", err)
@@ -118,8 +161,8 @@ func escapeStringForSurreal(s string) string {
 }
 
 // ListSessions returns all sessions sorted by updated_at descending.
-func (s *SessionStore) ListSessions(ctx context.Context) ([]Session, error) {
-	query := `SELECT * FROM session ORDER BY updated_at DESC`
+func (s *surrealSessionStore) ListSessions(ctx context.Context, userID string) ([]Session, error) {
+	query := fmt.Sprintf(`SELECT * FROM session WHERE user_id = user:%s ORDER BY updated_at DESC`, userID)
 	rows, err := s.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("list sessions: %w", err)
@@ -130,6 +173,7 @@ func (s *SessionStore) ListSessions(ctx context.Context) ([]Session, error) {
 		var raw struct {
 			ID        string    `json:"id"`
 			Title     string    `json:"title"`
+			UserID    string    `json:"user_id"`
 			Messages  []Message `json:"messages"`
 			CreatedAt string    `json:"created_at"`
 			UpdatedAt string    `json:"updated_at"`
@@ -138,8 +182,9 @@ func (s *SessionStore) ListSessions(ctx context.Context) ([]Session, error) {
 			continue
 		}
 		sess := Session{
-			ID:       stripRecordID(raw.ID),
+			ID:       StripRecordID(raw.ID),
 			Title:    raw.Title,
+			UserID:   StripRecordID(raw.UserID),
 			Messages: raw.Messages,
 		}
 		if t, err := time.Parse(time.RFC3339Nano, raw.CreatedAt); err == nil {
@@ -154,7 +199,7 @@ func (s *SessionStore) ListSessions(ctx context.Context) ([]Session, error) {
 }
 
 // stripRecordID removes the "table:" prefix SurrealDB adds to record IDs.
-func stripRecordID(id string) string {
+func StripRecordID(id string) string {
 	if i := strings.Index(id, ":"); i >= 0 {
 		return id[i+1:]
 	}
@@ -162,9 +207,9 @@ func stripRecordID(id string) string {
 }
 
 // GetSession returns a session with all its messages.
-func (s *SessionStore) GetSession(ctx context.Context, id string) (*Session, error) {
+func (s *surrealSessionStore) GetSession(ctx context.Context, id string) (*Session, error) {
 	// Strip table prefix if the caller passed a full record ID like "session:abc"
-	cleanID := stripRecordID(id)
+	cleanID := StripRecordID(id)
 	query := fmt.Sprintf(`SELECT * FROM session:%s`, cleanID)
 	rows, err := s.Query(ctx, query)
 	if err != nil {
@@ -175,18 +220,20 @@ func (s *SessionStore) GetSession(ctx context.Context, id string) (*Session, err
 	}
 	b, _ := json.Marshal(rows[0])
 	var raw struct {
-		ID        string   `json:"id"`
-		Title     string   `json:"title"`
+		ID        string    `json:"id"`
+		Title     string    `json:"title"`
+		UserID    string    `json:"user_id"`
 		Messages  []Message `json:"messages"`
-		CreatedAt string   `json:"created_at"`
-		UpdatedAt string   `json:"updated_at"`
+		CreatedAt string    `json:"created_at"`
+		UpdatedAt string    `json:"updated_at"`
 	}
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return nil, fmt.Errorf("unmarshal session: %w", err)
 	}
 	sess := &Session{
-		ID:       stripRecordID(raw.ID),
+		ID:       StripRecordID(raw.ID),
 		Title:    raw.Title,
+		UserID:   StripRecordID(raw.UserID),
 		Messages: raw.Messages,
 	}
 	if t, err := time.Parse(time.RFC3339Nano, raw.CreatedAt); err == nil {
@@ -199,7 +246,7 @@ func (s *SessionStore) GetSession(ctx context.Context, id string) (*Session, err
 }
 
 // AppendMessage adds a message to a session and updates the timestamp.
-func (s *SessionStore) AppendMessage(ctx context.Context, sessionID string, msg Message) error {
+func (s *surrealSessionStore) AppendMessage(ctx context.Context, sessionID string, msg Message) error {
 	msgJSON, _ := json.Marshal(msg)
 	query := fmt.Sprintf(
 		`UPDATE session:%s SET messages = array::append(messages, %s), updated_at = time::now()`,
@@ -212,7 +259,7 @@ func (s *SessionStore) AppendMessage(ctx context.Context, sessionID string, msg 
 }
 
 // DeleteSession removes a session.
-func (s *SessionStore) DeleteSession(ctx context.Context, id string) error {
+func (s *surrealSessionStore) DeleteSession(ctx context.Context, id string) error {
 	query := fmt.Sprintf(`DELETE session:%s`, id)
 	if err := s.Exec(ctx, query); err != nil {
 		return fmt.Errorf("delete session: %w", err)
@@ -221,7 +268,7 @@ func (s *SessionStore) DeleteSession(ctx context.Context, id string) error {
 }
 
 // UpdateTitle updates a session's title.
-func (s *SessionStore) UpdateTitle(ctx context.Context, id, title string) error {
+func (s *surrealSessionStore) UpdateTitle(ctx context.Context, id, title string) error {
 	query := fmt.Sprintf(`UPDATE session:%s SET title = '%s'`, id, title)
 	if err := s.Exec(ctx, query); err != nil {
 		return fmt.Errorf("update title: %w", err)

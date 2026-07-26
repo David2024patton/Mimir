@@ -61,7 +61,7 @@ func isLocalURL(u string) bool {
 // hybrid vector + full-text recall (E6); anything else (default) uses the file-backed
 // store. The returned cleanup stops the sidecar, if one was started. For SurrealDB,
 // it also returns a SessionStore for F2.2 conversation persistence.
-func buildCortex(home string) (cortex.Store, *cortex.SessionStore, string, func(), error) {
+func buildCortex(home string) (cortex.Store, cortex.SessionStore, *cortex.AuthStore, string, func(), error) {
 	noop := func() {}
 	if strings.EqualFold(os.Getenv("MIMIR_CORTEX_BACKEND"), "surreal") {
 		addr := os.Getenv("MIMIR_SURREAL_ADDR")
@@ -76,7 +76,7 @@ func buildCortex(home string) (cortex.Store, *cortex.SessionStore, string, func(
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
 		if err := sc.Start(ctx); err != nil {
-			return nil, nil, "", noop, fmt.Errorf("surreal sidecar: %w", err)
+			return nil, nil, nil, "", noop, fmt.Errorf("surreal sidecar: %w", err)
 		}
 		embedURL := os.Getenv("MIMIR_EMBED_URL")
 		if embedURL == "" {
@@ -102,16 +102,33 @@ func buildCortex(home string) (cortex.Store, *cortex.SessionStore, string, func(
 		})
 		if err != nil {
 			sc.Stop()
-			return nil, nil, "", noop, fmt.Errorf("surreal store: %w", err)
+			return nil, nil, nil, "", noop, fmt.Errorf("surreal store: %w", err)
 		}
+		cli := store.Client()
 		// Create session store for F2.2 conversation persistence
-		sessStore := cortex.NewSessionStore(store.Client())
+		sessStore := cortex.NewSessionStore(cli)
 		if err := sessStore.EnsureSessionsTable(context.Background()); err != nil {
 			sc.Stop()
-			return nil, nil, "", noop, fmt.Errorf("sessions table: %w", err)
+			return nil, nil, nil, "", noop, fmt.Errorf("sessions table: %w", err)
 		}
+		// Create auth store
+		authStore := cortex.NewAuthStore(cli)
+		if err := authStore.EnsureAuthTables(context.Background()); err != nil {
+			sc.Stop()
+			return nil, nil, nil, "", noop, fmt.Errorf("auth tables: %w", err)
+		}
+		// Seed super admin
+		adminEmail := os.Getenv("MIMIR_ADMIN_EMAIL")
+		if adminEmail == "" {
+			adminEmail = "david@itak.live"
+		}
+		if err := authStore.SeedAdmin(context.Background(), adminEmail); err != nil {
+			sc.Stop()
+			return nil, nil, nil, "", noop, fmt.Errorf("seed admin: %w", err)
+		}
+		fmt.Fprintf(os.Stderr, "auth: super admin %s seeded\n", adminEmail)
 		desc := fmt.Sprintf("SurrealDB %s (embed %s, dim %d)", sc.HTTPAddr(), embedModel, dim)
-		return store, sessStore, desc, sc.Stop, nil
+		return store, sessStore, authStore, desc, sc.Stop, nil
 	}
 	cpath := os.Getenv("MIMIR_CORTEX")
 	if cpath == "" {
@@ -119,9 +136,13 @@ func buildCortex(home string) (cortex.Store, *cortex.SessionStore, string, func(
 	}
 	store, err := cortex.NewMemoryStoreAt(cpath)
 	if err != nil {
-		return nil, nil, "", noop, err
+		return nil, nil, nil, "", noop, err
 	}
-	return store, nil, "file-backed " + cpath, noop, nil
+	sessStore, err := cortex.NewFileSessionStore(home)
+	if err != nil {
+		return nil, nil, nil, "", noop, fmt.Errorf("file session store: %w", err)
+	}
+	return store, sessStore, nil, "file-backed "+cpath, noop, nil
 }
 
 func main() {
@@ -144,7 +165,7 @@ func main() {
 	if home == "" {
 		home = filepath.Join(cwd, ".mimir")
 	}
-	store, sessStore, storeDesc, cleanup, err := buildCortex(home)
+	store, sessStore, authStore, storeDesc, cleanup, err := buildCortex(home)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "cortex error:", err)
 		os.Exit(1)
@@ -171,13 +192,15 @@ func main() {
 	if len(args) > 0 && args[0] == "serve" {
 		addr := ":8420"
 		for i := 1; i < len(args); i++ {
-			if args[i] == "--addr" && i+1 < len(args) {
+			if (args[i] == "--addr" || args[i] == "-addr") && i+1 < len(args) {
 				addr = args[i+1]
 				i++
+			} else if strings.HasPrefix(args[i], "--addr=") {
+				addr = strings.TrimPrefix(args[i], "--addr=")
 			}
 		}
 		fmt.Println("Mímir serving the live UI at http://localhost" + addr + "/  (Ctrl+C to stop)")
-		if err := server.Serve(server.Deps{Agent: a, Store: store, Sessions: sessStore, Usage: tracker, Addr: addr}); err != nil {
+		if err := server.Serve(server.Deps{Agent: a, Store: store, Sessions: sessStore, Auth: authStore, Usage: tracker, Addr: addr}); err != nil {
 			fmt.Fprintln(os.Stderr, "serve:", err)
 			os.Exit(1)
 		}
