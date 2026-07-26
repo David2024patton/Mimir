@@ -126,19 +126,44 @@ func (s *SessionStore) ListSessions(ctx context.Context) ([]Session, error) {
 	}
 	var sessions []Session
 	for _, row := range rows {
-		var sess Session
 		b, _ := json.Marshal(row)
-		if err := json.Unmarshal(b, &sess); err != nil {
+		var raw struct {
+			ID        string `json:"id"`
+			Title     string `json:"title"`
+			CreatedAt string `json:"created_at"`
+			UpdatedAt string `json:"updated_at"`
+		}
+		if err := json.Unmarshal(b, &raw); err != nil {
 			continue
+		}
+		sess := Session{
+			ID:    stripRecordID(raw.ID),
+			Title: raw.Title,
+		}
+		if t, err := time.Parse(time.RFC3339Nano, raw.CreatedAt); err == nil {
+			sess.CreatedAt = t
+		}
+		if t, err := time.Parse(time.RFC3339Nano, raw.UpdatedAt); err == nil {
+			sess.UpdatedAt = t
 		}
 		sessions = append(sessions, sess)
 	}
 	return sessions, nil
 }
 
+// stripRecordID removes the "table:" prefix SurrealDB adds to record IDs.
+func stripRecordID(id string) string {
+	if i := strings.Index(id, ":"); i >= 0 {
+		return id[i+1:]
+	}
+	return id
+}
+
 // GetSession returns a session with all its messages.
 func (s *SessionStore) GetSession(ctx context.Context, id string) (*Session, error) {
-	query := fmt.Sprintf(`SELECT * FROM session:%s`, id)
+	// Strip table prefix if the caller passed a full record ID like "session:abc"
+	cleanID := stripRecordID(id)
+	query := fmt.Sprintf(`SELECT * FROM session:%s`, cleanID)
 	rows, err := s.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("get session: %w", err)
@@ -147,11 +172,28 @@ func (s *SessionStore) GetSession(ctx context.Context, id string) (*Session, err
 		return nil, fmt.Errorf("session not found: %s", id)
 	}
 	b, _ := json.Marshal(rows[0])
-	var sess Session
-	if err := json.Unmarshal(b, &sess); err != nil {
+	var raw struct {
+		ID        string   `json:"id"`
+		Title     string   `json:"title"`
+		Messages  []Message `json:"messages"`
+		CreatedAt string   `json:"created_at"`
+		UpdatedAt string   `json:"updated_at"`
+	}
+	if err := json.Unmarshal(b, &raw); err != nil {
 		return nil, fmt.Errorf("unmarshal session: %w", err)
 	}
-	return &sess, nil
+	sess := &Session{
+		ID:       stripRecordID(raw.ID),
+		Title:    raw.Title,
+		Messages: raw.Messages,
+	}
+	if t, err := time.Parse(time.RFC3339Nano, raw.CreatedAt); err == nil {
+		sess.CreatedAt = t
+	}
+	if t, err := time.Parse(time.RFC3339Nano, raw.UpdatedAt); err == nil {
+		sess.UpdatedAt = t
+	}
+	return sess, nil
 }
 
 // AppendMessage adds a message to a session and updates the timestamp.

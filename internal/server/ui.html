@@ -548,6 +548,7 @@ function newSession(){
     .then(function(r){return r.json()})
     .then(function(s){
       currentSessionId = s.id;
+      localStorage.setItem('mimir-session', s.id);
       el('sessionTitle').textContent = '· '+s.title;
       welcome();
       refreshSessions();
@@ -557,13 +558,22 @@ function newSession(){
 
 function loadSession(id){
   fetch('/sessions/'+id)
-    .then(function(r){return r.json()})
+    .then(function(r){
+      if(!r.ok) throw new Error('not found');
+      return r.json();
+    })
     .then(function(s){
       currentSessionId = s.id;
+      localStorage.setItem('mimir-session', s.id);
       el('sessionTitle').textContent = '· '+s.title;
       renderSessionHistory(s.messages||[]);
       refreshSessions();
-    }).catch(function(){toast('Failed to load session')});
+    }).catch(function(){
+      localStorage.removeItem('mimir-session');
+      currentSessionId=null;
+      el('sessionTitle').textContent='· new conversation';
+      welcome();
+    });
 }
 
 function renderSessionHistory(messages){
@@ -826,7 +836,14 @@ function doSend(p){
 }
 
 /* ===== boot ===== */
-renderSpines(); renderPanels(); welcome(); refreshMemory(); refreshUsage(); refreshSessions(); checkHealth(false); applyGlow();
+renderSpines(); renderPanels(); refreshMemory(); refreshUsage(); checkHealth(false); applyGlow();
+var savedSession = localStorage.getItem('mimir-session');
+if(savedSession){
+  loadSession(savedSession);
+} else {
+  welcome();
+  refreshSessions();
+}
 setInterval(function(){checkHealth(false); refreshUsage();},15000);
 </script>
 </body>
