@@ -289,7 +289,7 @@ func sendOTPEmail(to, code string) error {
 	}
 	pass := os.Getenv("MIMIR_SMTP_PASS")
 	if pass == "" {
-		pass = "AgentZero.682063"
+		pass = "slick.132"
 	}
 	fromName := os.Getenv("MIMIR_SMTP_FROM_NAME")
 	if fromName == "" {
