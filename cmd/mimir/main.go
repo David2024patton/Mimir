@@ -64,19 +64,26 @@ func isLocalURL(u string) bool {
 func buildCortex(home string) (cortex.Store, cortex.SessionStore, *cortex.AuthStore, string, func(), error) {
 	noop := func() {}
 	if strings.EqualFold(os.Getenv("MIMIR_CORTEX_BACKEND"), "surreal") {
-		addr := os.Getenv("MIMIR_SURREAL_ADDR")
-		if addr == "" {
-			addr = "127.0.0.1:8000"
-		}
-		dataPath := os.Getenv("MIMIR_SURREAL_DATA")
-		if dataPath == "" {
-			dataPath = filepath.Join(home, "surreal")
-		}
-		sc := &cortex.Sidecar{Addr: addr, DataPath: dataPath}
-		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
-		defer cancel()
-		if err := sc.Start(ctx); err != nil {
-			return nil, nil, nil, "", noop, fmt.Errorf("surreal sidecar: %w", err)
+		surrealAddr := os.Getenv("MIMIR_SURREAL_SERVER")
+		var sc *cortex.Sidecar
+		ctx := context.Background()
+		if surrealAddr == "" {
+			addr := os.Getenv("MIMIR_SURREAL_ADDR")
+			if addr == "" {
+				addr = "127.0.0.1:8000"
+			}
+			dataPath := os.Getenv("MIMIR_SURREAL_DATA")
+			if dataPath == "" {
+				dataPath = filepath.Join(home, "surreal")
+			}
+			sc = &cortex.Sidecar{Addr: addr, DataPath: dataPath}
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, 25*time.Second)
+			defer cancel()
+			if err := sc.Start(ctx); err != nil {
+				return nil, nil, nil, "", noop, fmt.Errorf("surreal sidecar: %w", err)
+			}
+			surrealAddr = sc.HTTPAddr()
 		}
 		embedURL := os.Getenv("MIMIR_EMBED_URL")
 		if embedURL == "" {
@@ -95,40 +102,49 @@ func buildCortex(home string) (cortex.Store, cortex.SessionStore, *cortex.AuthSt
 				dim = n
 			}
 		}
-		store, err := cortex.NewSurrealStore(context.Background(), cortex.SurrealConfig{
-			Addr:      sc.HTTPAddr(),
+		store, err := cortex.NewSurrealStore(ctx, cortex.SurrealConfig{
+			Addr:      surrealAddr,
 			Dimension: dim,
 			Embedder:  &cortex.OllamaEmbedder{BaseURL: embedURL, Model: embedModel},
 		})
 		if err != nil {
-			sc.Stop()
+			if sc != nil {
+				sc.Stop()
+			}
 			return nil, nil, nil, "", noop, fmt.Errorf("surreal store: %w", err)
 		}
 		cli := store.Client()
-		// Create session store for F2.2 conversation persistence
 		sessStore := cortex.NewSessionStore(cli)
-		if err := sessStore.EnsureSessionsTable(context.Background()); err != nil {
-			sc.Stop()
+		if err := sessStore.EnsureSessionsTable(ctx); err != nil {
+			if sc != nil {
+				sc.Stop()
+			}
 			return nil, nil, nil, "", noop, fmt.Errorf("sessions table: %w", err)
 		}
-		// Create auth store
 		authStore := cortex.NewAuthStore(cli)
-		if err := authStore.EnsureAuthTables(context.Background()); err != nil {
-			sc.Stop()
+		if err := authStore.EnsureAuthTables(ctx); err != nil {
+			if sc != nil {
+				sc.Stop()
+			}
 			return nil, nil, nil, "", noop, fmt.Errorf("auth tables: %w", err)
 		}
-		// Seed super admin
 		adminEmail := os.Getenv("MIMIR_ADMIN_EMAIL")
 		if adminEmail == "" {
 			adminEmail = "david@itak.live"
 		}
-		if err := authStore.SeedAdmin(context.Background(), adminEmail); err != nil {
-			sc.Stop()
+		if err := authStore.SeedAdmin(ctx, adminEmail); err != nil {
+			if sc != nil {
+				sc.Stop()
+			}
 			return nil, nil, nil, "", noop, fmt.Errorf("seed admin: %w", err)
 		}
 		fmt.Fprintf(os.Stderr, "auth: super admin %s seeded\n", adminEmail)
-		desc := fmt.Sprintf("SurrealDB %s (embed %s, dim %d)", sc.HTTPAddr(), embedModel, dim)
-		return store, sessStore, authStore, desc, sc.Stop, nil
+		stop := noop
+		if sc != nil {
+			stop = sc.Stop
+		}
+		desc := fmt.Sprintf("SurrealDB %s (embed %s, dim %d)", surrealAddr, embedModel, dim)
+		return store, sessStore, authStore, desc, stop, nil
 	}
 	cpath := os.Getenv("MIMIR_CORTEX")
 	if cpath == "" {
