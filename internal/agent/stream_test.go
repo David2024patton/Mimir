@@ -95,7 +95,4 @@ func TestRunStream(t *testing.T) {
 	if !sawDone || doneReply != "all done" {
 		t.Errorf("done reply = %q, want %q", doneReply, "all done")
 	}
-	if all := store.All(); len(all) < 2 {
-		t.Errorf("expected the exchange to be persisted (>=2 neurons), got %d", len(all))
-	}
 }

@@ -14,8 +14,8 @@ import (
 )
 
 // TestAgentRunRecallAndRemember proves the full loop against a fake provider:
-// a seeded memory is recalled into the system prompt, the model reply is returned,
-// and the exchange is written back to the Cortex as a new neuron.
+// a seeded memory is recalled into the system prompt and the model reply is returned.
+// Exchanges are no longer auto-stored; they live in sessions (F2.2).
 func TestAgentRunRecallAndRemember(t *testing.T) {
 	var captured []struct {
 		Role    string `json:"role"`
@@ -62,16 +62,5 @@ func TestAgentRunRecallAndRemember(t *testing.T) {
 	}
 	if len(captured) == 0 || captured[0].Role != "system" || !strings.Contains(captured[0].Content, "use tabs") {
 		t.Errorf("expected recalled memory in system prompt, got %+v", captured)
-	}
-
-	remembered, _ := store.Search(context.Background(), "the answer", 5)
-	found := false
-	for _, n := range remembered {
-		if strings.Contains(n.Content, "the answer") {
-			found = true
-		}
-	}
-	if !found {
-		t.Error("expected the exchange to be remembered in the Cortex")
 	}
 }

@@ -200,10 +200,6 @@ func (a *Agent) RunStream(ctx context.Context, input string, emit func(Event)) e
 		finalReply = text
 		msgs = append(msgs, llm.Message{Role: "assistant", Content: text, ToolCalls: toolCalls})
 		if len(toolCalls) == 0 {
-			_, _ = a.cfg.Cortex.PutNeuron(ctx, cortex.Neuron{
-				Kind: cortex.KindMemory, Layer: "experience", Title: "exchange",
-				Content: input + "\n" + finalReply, Decay: 1.0,
-			})
 			emit(Event{Type: EventDone, Reply: finalReply})
 			return nil
 		}
@@ -249,10 +245,6 @@ func (a *Agent) runTurn(ctx context.Context, input string) (Result, error) {
 	if err != nil {
 		return Result{Trace: trace, Recalled: recalled}, err
 	}
-	_, _ = a.cfg.Cortex.PutNeuron(ctx, cortex.Neuron{
-		Kind: cortex.KindMemory, Layer: "experience", Title: "exchange",
-		Content: input + "\n" + reply, Decay: 1.0,
-	})
 	return Result{Reply: reply, Trace: trace, Recalled: recalled}, nil
 }
 

@@ -549,10 +549,10 @@ var openPanels=['cortex','dashboard'];
 
 var panelContent={
   cortex:function(){
-    if(!memCache.length) return '<div class="empty">The Cortex is empty. Talk to Mímir in the chat - every exchange is remembered here and recalled into future answers. Memory persists across runs in <span style="font-family:var(--mono)">.mimir/cortex.json</span>.</div>';
+    if(!memCache.length) return '<div class="empty">The Cortex is empty. Memories are facts and knowledge Mímir stores for recall across sessions. Unlike chat history (stored in sessions), memories are searchable knowledge that gets recalled when relevant.</div>';
     return memCache.slice().reverse().map(function(n){
       return '<div class="neuron"><span class="nkind '+esc(n.kind||'note')+'">'+esc(n.kind||'note')+'</span><div class="ncontent">'+esc(n.content)+'</div></div>';
-    }).join('');
+    }).join('')+'<div class="pnote">Memories are recalled by semantic search when relevant to your questions. Chat history lives in sessions (left sidebar).</div>';
   },
   dashboard:function(){
     var models = usageCache.models||[];
@@ -569,11 +569,12 @@ var panelContent={
     if(!rows) rows = '<div class="empty">No token usage yet. Chat with Mímir and per-model usage appears here.</div>';
     return '<div class="disp" style="font-size:16px;font-weight:600;margin-bottom:2px">Mímir</div>'+
       '<div style="color:var(--muted);font-size:12.5px;margin-bottom:10px">the agent that remembers</div>'+
-      '<div class="dash-total"><span class="big">'+total.toLocaleString()+'</span><span class="lbl">tokens used · '+memCache.length+' memories</span></div>'+
+      '<div class="dash-total"><span class="big">'+total.toLocaleString()+'</span><span class="lbl">tokens used</span></div>'+
       rows+
       '<div class="kv" style="margin-top:12px"><span class="k">Daemon</span><span class="v '+(healthOK?'ok':'')+'">'+(healthOK?'online':'checking...')+'</span></div>'+
       '<div class="kv"><span class="k">Sessions</span><span class="v">'+sessions.length+' conversations</span></div>'+
-      '<div class="pnote">Token usage by model (E69), sorted most-to-least. Local models (Ollama) cost $0; cloud cost is a rough estimate.</div>';
+      '<div class="kv"><span class="k">Memories</span><span class="v">'+memCache.length+' recalled</span></div>'+
+      '<div class="pnote">Token usage by model (E69), sorted most-to-least. Local models (Ollama) cost $0; cloud cost is a rough estimate. Sessions are conversation threads; memories are facts Mímir recalls across sessions.</div>';
   },
   tasks:function(){
     return '<span class="sampletag">SAMPLE · not live yet</span>'+

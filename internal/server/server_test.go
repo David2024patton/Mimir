@@ -31,6 +31,11 @@ func TestServerChatAndMemory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("store: %v", err)
 	}
+	// Seed a memory so /memory returns it
+	_, _ = store.PutNeuron(context.Background(), cortex.Neuron{
+		Kind: cortex.KindMemory, Layer: "fact",
+		Content: "seeded memory for test", Decay: 1,
+	})
 	ag := agent.New(agent.Config{
 		Provider: &fakeText{"WIRED"}, Tools: tools.NewRegistry(), Cortex: store, Model: "m",
 	})
@@ -67,7 +72,7 @@ func TestServerChatAndMemory(t *testing.T) {
 		t.Fatalf("decode memory: %v", err)
 	}
 	if mem.Count < 1 {
-		t.Errorf("memory count = %d, want >= 1 (the exchange should be persisted)", mem.Count)
+		t.Errorf("memory count = %d, want >= 1 (seeded memory should persist)", mem.Count)
 	}
 
 	hresp, err := http.Get(srv.URL + "/health")

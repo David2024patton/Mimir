@@ -23,9 +23,9 @@ func (p *textProvider) Stream(context.Context, llm.GenerateRequest) (<-chan llm.
 	return nil, nil
 }
 
-// TestCrossRunMemory proves memory survives across runs: run 1 (a fresh agent + store)
-// writes a memory to a file-backed Cortex; a second agent opening a NEW store from the
-// same file (simulating a process restart) recalls it on run 2. No network involved.
+// TestCrossRunMemory proves memory survives across runs: run 1 seeds a memory
+// into a file-backed Cortex; a second agent opening a NEW store from the same file
+// (simulating a process restart) recalls it on run 2. No network involved.
 func TestCrossRunMemory(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "cortex.json")
@@ -39,9 +39,14 @@ func TestCrossRunMemory(t *testing.T) {
 		})
 	}
 
-	if _, err := mk().Run(context.Background(), "remember the codeword KIWI55"); err != nil {
-		t.Fatalf("run1: %v", err)
+	st, _ := cortex.NewMemoryStoreAt(p)
+	if _, err := st.PutNeuron(context.Background(), cortex.Neuron{
+		Kind: cortex.KindMemory, Layer: "fact",
+		Content: "KIWI55 is a secret codeword", Decay: 1,
+	}); err != nil {
+		t.Fatalf("seed: %v", err)
 	}
+
 	res, err := mk().RunFull(context.Background(), "tell me about KIWI55")
 	if err != nil {
 		t.Fatalf("run2: %v", err)
