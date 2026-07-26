@@ -54,7 +54,9 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* BODY LAYOUT: icon rail | spines | panels | chat | hotrail (F53.5) */
 .body{display:grid;grid-template-columns:56px 44px 1fr 380px 56px;overflow:hidden;transition:grid-template-columns .28s cubic-bezier(.4,0,.2,1)}
-.body.rail-collapsed{grid-template-columns:0px 44px 1fr 380px 56px}
+@media (min-width:1025px){
+  .body.rail-collapsed{grid-template-columns:0px 44px 1fr 380px 56px}
+}
 
 /* LEFT ICON RAIL */
 .iconrail{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 0;overflow:hidden;min-width:0;transition:transform .28s cubic-bezier(.4,0,.2,1),opacity .22s ease}
@@ -67,9 +69,11 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .rail-sep{width:26px;height:1px;background:var(--border);margin:6px 0}
 .rail-bottom{margin-top:auto;display:flex;flex-direction:column;gap:4px;align-items:center}
 
-/* BOOK SPINES (F53.1, F53.2) */
-.spines{display:flex;flex-direction:column;gap:6px;padding:12px 6px;background:var(--bg2);border-right:1px solid var(--border)}
-.spine{writing-mode:vertical-rl;padding:14px 7px;background:var(--panel);border:1px solid var(--border);border-radius:9px;cursor:pointer;color:var(--muted);font-family:var(--disp);font-size:12px;font-weight:600;letter-spacing:.05em;transition:.18s;user-select:none;flex:1;display:flex;align-items:center;justify-content:center;min-height:52px}
+/* BOOK SPINES (F53.1, F53.2) - each spine sizes to its word; the rail scrolls if needed */
+.spines{display:flex;flex-direction:column;gap:6px;padding:12px 6px;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;overflow-x:hidden}
+.spines::-webkit-scrollbar{width:6px}
+.spines::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.spine{writing-mode:vertical-rl;padding:14px 7px;background:var(--panel);border:1px solid var(--border);border-radius:9px;cursor:pointer;color:var(--muted);font-family:var(--disp);font-size:12px;font-weight:600;letter-spacing:.05em;transition:.18s;user-select:none;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
 .spine:hover{color:var(--text);border-color:var(--border2);transform:translateX(3px)}
 .spine.open{background:linear-gradient(180deg,color-mix(in srgb,var(--teal) 20%, var(--panel)),var(--panel));color:var(--teal);border-color:color-mix(in srgb,var(--teal) 50%, transparent);transform:translateX(6px);box-shadow:0 0 16px color-mix(in srgb,var(--teal) 18%, transparent)}
 
@@ -222,6 +226,48 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .tgl::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--muted);transition:.2s}
 .tgl.on{background:color-mix(in srgb,var(--teal) 40%, transparent)}
 .tgl.on::after{left:19px;background:var(--teal)}
+
+/* ============ chat drawer + FAB (tablet / mobile) ============ */
+.chat-fab{display:none;position:fixed;right:18px;bottom:18px;width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--teal-d));color:#04201c;font-size:23px;cursor:pointer;z-index:60;border:none;place-items:center;box-shadow:0 8px 28px color-mix(in srgb,var(--teal) 45%, transparent);transition:transform .2s,box-shadow .2s}
+.chat-fab:hover{transform:translateY(-3px) scale(1.06);box-shadow:0 12px 34px color-mix(in srgb,var(--teal) 60%, transparent)}
+.chat-backdrop{position:fixed;inset:0;background:rgba(4,7,11,.62);backdrop-filter:blur(3px);z-index:55;opacity:0;pointer-events:none;transition:opacity .28s}
+body.chat-open .chat-backdrop{opacity:1;pointer-events:auto}
+.chat-close{display:none;margin-left:8px;width:28px;height:28px;place-items:center;border-radius:8px;color:var(--muted);cursor:pointer;transition:.15s;border:1px solid transparent;background:none;font-size:14px}
+.chat-close:hover{background:var(--panel3);color:var(--red)}
+
+/* ============ ULTRA-WIDE (>=1920px): roomier rails, chat, panels ============ */
+@media (min-width:1920px){
+  .body{grid-template-columns:64px 48px 1fr 420px 64px}
+  .spine{font-size:13px;padding:16px 8px}
+  .panel-b{padding:20px}
+  .iconbtn{width:42px;height:42px;font-size:19px}
+}
+
+/* ============ TABLET & below (<=1024px): rails hidden, chat becomes a drawer ============ */
+@media (max-width:1024px){
+  .body{grid-template-columns:44px 1fr}
+  .iconrail,.hotrail,.railtoggle,.rgbsync{display:none}
+  .chat{position:fixed;top:53px;right:0;bottom:0;width:min(380px,92vw);transform:translateX(105%);transition:transform .32s cubic-bezier(.4,0,.2,1);z-index:58;border-left:1px solid var(--border);box-shadow:-16px 0 48px rgba(0,0,0,.55)}
+  body.chat-open .chat{transform:translateX(0)}
+  .chat-fab{display:grid}
+  .chat-close{display:grid}
+}
+
+/* ============ MOBILE (<=768px): stacked layout, horizontal spines, full chat ============ */
+@media (max-width:768px){
+  .body{display:flex;flex-direction:column}
+  .spines{flex-direction:row;overflow-x:auto;overflow-y:hidden;border-right:none;border-bottom:1px solid var(--border);padding:9px 12px;gap:8px}
+  .spine{writing-mode:horizontal-tb;padding:8px 16px;font-size:12.5px}
+  .spine:hover{transform:translateY(-2px)}
+  .spine.open{transform:none}
+  .panels{flex:1;flex-direction:column;overflow-y:auto;min-height:0}
+  .panel{flex:0 0 auto;min-height:300px}
+  .chat{top:0;height:100vh;width:100vw}
+  #statusText,.swatches,.switcher{display:none}
+  .topbar{gap:10px;padding:0 12px}
+  .brand{font-size:15px}
+  .dash-total .big{font-size:30px}
+}
 </style>
 </head>
 <body>
@@ -265,6 +311,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
     <div class="chat">
       <div class="chat-h">Session <span style="color:var(--dim);font-weight:400;font-size:12px">· the agent that remembers</span>
         <span class="mempill" id="memPill">0 memories</span>
+        <button class="chat-close" onclick="toggleChat()" title="Close chat">✕</button>
       </div>
       <div class="chat-body" id="chatBody"></div>
       <div class="composer">
@@ -308,6 +355,8 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
     </div>
   </div>
 </div>
+<div class="chat-backdrop" onclick="toggleChat()"></div>
+<button class="chat-fab" onclick="toggleChat()" title="Chat with Mímir">💬</button>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -336,6 +385,9 @@ function setMode(m){ mode=m; el('modeChat').classList.toggle('active',m==='chat'
 
 /* collapse / expand the left navigation rail */
 function toggleRail(){ document.querySelector('.body').classList.toggle('rail-collapsed'); }
+
+/* open / close the chat drawer (tablet & mobile) */
+function toggleChat(){ document.body.classList.toggle('chat-open'); }
 
 /* ===== health (live) ===== */
 function checkHealth(manual){
