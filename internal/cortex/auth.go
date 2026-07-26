@@ -285,7 +285,7 @@ func sendOTPEmail(to, code string) error {
 	}
 	user := os.Getenv("MIMIR_SMTP_USER")
 	if user == "" {
-		user = "agent_zero@itak.live"
+		user = "mimir@itak.live"
 	}
 	pass := os.Getenv("MIMIR_SMTP_PASS")
 	if pass == "" {
