@@ -48,12 +48,19 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--dim)}
 .dot.ok{background:var(--lime);box-shadow:0 0 8px var(--lime)}
 .dot.bad{background:var(--red);box-shadow:0 0 8px var(--red)}
+.rgbsync{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);padding:5px 11px;border-radius:99px;border:1px solid var(--border);background:var(--panel)}
+.rgbsync .led{width:9px;height:9px;border-radius:50%;background:linear-gradient(90deg,#f87171,#fbbf24,#4ade80,#60a5fa,#a78bfa);animation:ledShift 3s linear infinite}
+@keyframes ledShift{to{filter:hue-rotate(360deg)}}
 
 /* BODY LAYOUT: icon rail | spines | panels | chat | hotrail (F53.5) */
-.body{display:grid;grid-template-columns:56px 44px 1fr 380px 56px;overflow:hidden}
+.body{display:grid;grid-template-columns:56px 44px 1fr 380px 56px;overflow:hidden;transition:grid-template-columns .28s cubic-bezier(.4,0,.2,1)}
+.body.rail-collapsed{grid-template-columns:0px 44px 1fr 380px 56px}
 
 /* LEFT ICON RAIL */
-.iconrail{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 0}
+.iconrail{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 0;overflow:hidden;min-width:0;transition:transform .28s cubic-bezier(.4,0,.2,1),opacity .22s ease}
+.body.rail-collapsed .iconrail{transform:translateX(-60px);opacity:0;border-right-color:transparent}
+.railtoggle{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;color:var(--muted);font-size:15px;cursor:pointer;transition:.15s;border:1px solid transparent;margin-bottom:4px}
+.railtoggle:hover{background:var(--panel);color:var(--teal);border-color:var(--border)}
 .iconbtn{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;color:var(--muted);font-size:17px;transition:.15s;cursor:pointer}
 .iconbtn:hover{background:var(--panel);color:var(--text);transform:translateY(-1px)}
 .iconbtn.active{background:var(--panel2);color:var(--teal);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--teal) 35%, transparent)}
@@ -220,9 +227,10 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 <body>
 <div class="app">
   <div class="topbar">
+    <div class="railtoggle" onclick="toggleRail()" title="Toggle navigation rail">☰</div>
     <div class="brand"><span class="mark"></span> Mímir</div>
-    <div class="switcher">project · <b>default</b></div>
-    <div class="switcher agent">agent · <b>Mímir</b></div>
+    <div class="switcher">📁 <b>default</b> ▾</div>
+    <div class="switcher agent">⚡ <b>Mímir</b> <span style="color:var(--dim)">· the rememberer</span> ▾</div>
     <div class="spacer"></div>
     <div class="swatches" title="Accent color">
       <span class="swatch active" style="--sw:#2dd4bf" onclick="setAccent(this,'#2dd4bf','#14b8a6')"></span>
@@ -234,19 +242,20 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
       <span class="reactor-core" id="reactorCore"></span>
       <span class="reactor-label" id="reactorLabel">connecting</span>
     </div>
+    <div class="rgbsync" title="RGB hardware sync - status-reactive (Corsair iCUE / Razer Chroma / OpenRGB)"><span class="led"></span> RGB sync</div>
     <div class="status"><span class="dot" id="statusDot"></span> <span id="statusText">daemon · checking</span></div>
   </div>
 
   <div class="body">
     <nav class="iconrail">
-      <div class="iconbtn active" title="Cortex (knowledge)" onclick="openSpine('cortex')">brain</div>
-      <div class="iconbtn" title="Dashboard" onclick="openSpine('dashboard')">dash</div>
-      <div class="iconbtn" title="Tasks" onclick="openSpine('tasks')">tasks</div>
-      <div class="iconbtn" title="Code" onclick="openSpine('code')">code</div>
+      <div class="iconbtn active" title="Cortex (knowledge)" onclick="openSpine('cortex')">🧠</div>
+      <div class="iconbtn" title="Dashboard" onclick="openSpine('dashboard')">📊</div>
+      <div class="iconbtn" title="Tasks" onclick="openSpine('tasks')">📋</div>
+      <div class="iconbtn" title="Code" onclick="openSpine('code')">💻</div>
       <div class="rail-sep"></div>
       <div class="rail-bottom">
-        <div class="iconbtn" title="Marketplace" onclick="openSpine('market')">mkt</div>
-        <div class="iconbtn" title="Settings" onclick="openSettings()">gear</div>
+        <div class="iconbtn" title="Marketplace" onclick="openSpine('market')">🧩</div>
+        <div class="iconbtn" title="Settings" onclick="openSettings()">⚙️</div>
       </div>
     </nav>
 
@@ -275,10 +284,10 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
     </div>
 
     <div class="hotrail">
-      <div class="hot" title="Cortex" onclick="openSpine('cortex')">brain<span class="pin"></span></div>
-      <div class="hot" title="Dashboard" onclick="openSpine('dashboard')">dash</div>
-      <div class="hot" title="Tasks" onclick="openSpine('tasks')">tasks</div>
-      <div class="hot" title="Settings" onclick="openSettings()">gear<span class="pin"></span></div>
+      <div class="hot" title="Cortex" onclick="openSpine('cortex')">🧠<span class="pin"></span></div>
+      <div class="hot" title="Dashboard" onclick="openSpine('dashboard')">📊</div>
+      <div class="hot" title="Ollama provider" onclick="toast('Ollama provider · localhost:11434')">🦙<span class="pin"></span></div>
+      <div class="hot" title="Settings" onclick="openSettings()">⚙️<span class="pin"></span></div>
       <div class="rail-sep"></div>
       <div class="hot hot-add" title="Pin a conversation, setting, or provider (F54)" onclick="toast('Pin something: a conversation, a setting, a provider link (F54)')">+</div>
     </div>
@@ -324,6 +333,9 @@ function closeSettings(){ el('settingsModal').classList.remove('open'); }
 function toggleTrace(e){ e.classList.toggle('on'); showTrace=e.classList.contains('on'); }
 function setMode(m){ mode=m; el('modeChat').classList.toggle('active',m==='chat'); el('modeTrace').classList.toggle('active',m==='trace');
   showTrace = (m==='trace'); el('tglTrace').classList.toggle('on',showTrace); }
+
+/* collapse / expand the left navigation rail */
+function toggleRail(){ document.querySelector('.body').classList.toggle('rail-collapsed'); }
 
 /* ===== health (live) ===== */
 function checkHealth(manual){

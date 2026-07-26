@@ -138,27 +138,27 @@ func (s *SurrealStore) init(ctx context.Context) error {
 	if _, err := s.cli.exec(ctx, s.ns, "", "DEFINE DATABASE IF NOT EXISTS "+s.db+";"); err != nil {
 		return fmt.Errorf("surreal: define database: %w", err)
 	}
-	schema := fmt.Sprintf(`DEFINE TABLE neuron SCHEMAFULL;
-DEFINE FIELD kind ON neuron TYPE string;
-DEFINE FIELD layer ON neuron TYPE string DEFAULT "";
-DEFINE FIELD title ON neuron TYPE string DEFAULT "";
-DEFINE FIELD content ON neuron TYPE string;
-DEFINE FIELD embedding ON neuron TYPE option<array<float>>;
-DEFINE FIELD decay ON neuron TYPE float DEFAULT 1.0;
-DEFINE FIELD access_count ON neuron TYPE int DEFAULT 0;
-DEFINE FIELD last_accessed ON neuron TYPE option<datetime>;
-DEFINE FIELD importance ON neuron TYPE string DEFAULT "medium";
-DEFINE FIELD created_at ON neuron TYPE datetime DEFAULT time::now();
-DEFINE INDEX neuron_hnsw ON neuron FIELDS embedding HNSW DIMENSION %d DIST COSINE;
-DEFINE ANALYZER ascii_an TOKENIZERS class, blank FILTERS lowercase, ascii;
-DEFINE INDEX neuron_fts ON neuron FIELDS content FULLTEXT ANALYZER ascii_an BM25;
-DEFINE TABLE synapse TYPE RELATION SCHEMAFULL;
-DEFINE FIELD kind ON synapse TYPE string;
-DEFINE FIELD weight ON synapse TYPE float DEFAULT 1.0;
-DEFINE TABLE engram SCHEMAFULL;
-DEFINE FIELD neuron ON engram TYPE record<neuron>;
-DEFINE FIELD strength ON engram TYPE float DEFAULT 1.0;
-DEFINE FIELD consolidated ON engram TYPE bool DEFAULT false;`, s.dim)
+	schema := fmt.Sprintf(`DEFINE TABLE IF NOT EXISTS neuron SCHEMAFULL;
+DEFINE FIELD IF NOT EXISTS kind ON neuron TYPE string;
+DEFINE FIELD IF NOT EXISTS layer ON neuron TYPE string DEFAULT "";
+DEFINE FIELD IF NOT EXISTS title ON neuron TYPE string DEFAULT "";
+DEFINE FIELD IF NOT EXISTS content ON neuron TYPE string;
+DEFINE FIELD IF NOT EXISTS embedding ON neuron TYPE option<array<float>>;
+DEFINE FIELD IF NOT EXISTS decay ON neuron TYPE float DEFAULT 1.0;
+DEFINE FIELD IF NOT EXISTS access_count ON neuron TYPE int DEFAULT 0;
+DEFINE FIELD IF NOT EXISTS last_accessed ON neuron TYPE option<datetime>;
+DEFINE FIELD IF NOT EXISTS importance ON neuron TYPE string DEFAULT "medium";
+DEFINE FIELD IF NOT EXISTS created_at ON neuron TYPE datetime DEFAULT time::now();
+DEFINE INDEX IF NOT EXISTS neuron_hnsw ON neuron FIELDS embedding HNSW DIMENSION %d DIST COSINE;
+DEFINE ANALYZER IF NOT EXISTS ascii_an TOKENIZERS class, blank FILTERS lowercase, ascii;
+DEFINE INDEX IF NOT EXISTS neuron_fts ON neuron FIELDS content FULLTEXT ANALYZER ascii_an BM25;
+DEFINE TABLE IF NOT EXISTS synapse TYPE RELATION SCHEMAFULL;
+DEFINE FIELD IF NOT EXISTS kind ON synapse TYPE string;
+DEFINE FIELD IF NOT EXISTS weight ON synapse TYPE float DEFAULT 1.0;
+DEFINE TABLE IF NOT EXISTS engram SCHEMAFULL;
+DEFINE FIELD IF NOT EXISTS neuron ON engram TYPE record<neuron>;
+DEFINE FIELD IF NOT EXISTS strength ON engram TYPE float DEFAULT 1.0;
+DEFINE FIELD IF NOT EXISTS consolidated ON engram TYPE bool DEFAULT false;`, s.dim)
 	results, err := s.cli.exec(ctx, s.ns, s.db, schema)
 	if err != nil {
 		return fmt.Errorf("surreal: schema: %w", err)
