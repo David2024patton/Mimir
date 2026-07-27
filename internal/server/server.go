@@ -38,11 +38,25 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 	})
 	mux.HandleFunc("/auth/send-code", sendCodeHandler(auth))
 	mux.HandleFunc("/auth/verify-code", verifyCodeHandler(auth))
+
+	// Landing page
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(landingHTML)
+	})
+
+	// Auth page
+	mux.HandleFunc("/auth", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(authHTML)
+	})
+
+	// App page (protected client-side via token redirect)
+	mux.HandleFunc("/app", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(uiHTML)
 	})
@@ -258,3 +272,9 @@ func writeJSON(w http.ResponseWriter, v any) {
 
 //go:embed ui.html
 var uiHTML []byte
+
+//go:embed landing.html
+var landingHTML []byte
+
+//go:embed auth.html
+var authHTML []byte

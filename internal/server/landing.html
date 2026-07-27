@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mimir - the agent that remembers</title>
+<style>
+:root{
+  --bg:#0b1018; --bg2:#0e1520; --panel:#121b28; --panel2:#17222f; --panel3:#1c2a3a;
+  --border:#22303f; --border2:#2d4054;
+  --text:#e8eef4; --muted:#93a3b3; --dim:#5d6d7d;
+  --teal:#2dd4bf; --teal-d:#14b8a6; --ember:#fb923c; --blue:#60a5fa; --lime:#a3e635;
+  --red:#f87171; --gold:#fbbf24; --purple:#a78bfa;
+  --disp:"Space Grotesk",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{color:var(--text);font:15px/1.6 var(--body);-webkit-font-smoothing:antialiased;background:var(--bg);overflow-x:hidden}
+a{color:var(--teal);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;gap:14px;padding:0 40px;height:64px;background:rgba(11,16,24,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav-brand{display:flex;align-items:center;gap:10px;font-family:var(--disp);font-weight:700;font-size:18px;color:var(--text)}
+.nav-logo{width:32px;height:32px;border-radius:8px;background:radial-gradient(circle at 30% 30%,var(--teal),var(--teal-d));box-shadow:0 0 16px color-mix(in srgb,var(--teal) 35%, transparent);display:grid;place-items:center}
+.nav-logo svg{width:18px;height:18px;color:#04201c}
+.nav-links{display:flex;align-items:center;gap:28px;margin-left:auto;font-size:14px}
+.nav-links a{color:var(--muted);transition:.15s}
+.nav-links a:hover{color:var(--text);text-decoration:none}
+.nav-cta{padding:8px 20px;border-radius:8px;background:var(--teal);color:#04201c;font-weight:600;font-size:14px;transition:.2s}
+.nav-cta:hover{box-shadow:0 4px 20px color-mix(in srgb,var(--teal) 40%, transparent);transform:translateY(-1px);text-decoration:none}
+
+/* HERO */
+.hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:120px 40px 80px;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;
+  background:
+    radial-gradient(1000px 600px at 50% 20%, color-mix(in srgb,var(--teal) 10%, transparent), transparent 55%),
+    radial-gradient(800px 500px at 20% 80%, color-mix(in srgb,var(--purple) 7%, transparent), transparent 50%),
+    radial-gradient(600px 400px at 80% 60%, color-mix(in srgb,var(--blue) 6%, transparent), transparent 45%);
+  pointer-events:none}
+.hero-content{position:relative;max-width:720px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:99px;background:color-mix(in srgb,var(--teal) 10%, transparent);border:1px solid color-mix(in srgb,var(--teal) 25%, transparent);font-size:13px;color:var(--teal);margin-bottom:28px;font-weight:500}
+.hero-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:heroPulse 2s ease-in-out infinite}
+@keyframes heroPulse{0%,100%{opacity:1;box-shadow:0 0 6px var(--teal)}50%{opacity:.4;box-shadow:0 0 2px var(--teal)}}
+.hero h1{font-family:var(--disp);font-size:clamp(40px,6vw,68px);font-weight:700;letter-spacing:-1.5px;line-height:1.1;margin-bottom:20px}
+.hero h1 .hl{background:linear-gradient(135deg,var(--teal),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{font-size:18px;color:var(--muted);max-width:540px;margin:0 auto 36px;line-height:1.7}
+.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn-primary{padding:14px 32px;border-radius:10px;background:linear-gradient(135deg,var(--teal),var(--teal-d));color:#04201c;font-weight:700;font-size:15px;border:none;cursor:pointer;transition:.2s;box-shadow:0 4px 24px color-mix(in srgb,var(--teal) 30%, transparent)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 36px color-mix(in srgb,var(--teal) 50%, transparent);text-decoration:none}
+.btn-secondary{padding:14px 32px;border-radius:10px;background:var(--panel);color:var(--text);font-weight:600;font-size:15px;border:1.5px solid var(--border);cursor:pointer;transition:.2s}
+.btn-secondary:hover{border-color:var(--teal);background:color-mix(in srgb,var(--teal) 8%, var(--panel));text-decoration:none}
+
+/* TERMINAL PREVIEW */
+.terminal{position:relative;max-width:680px;margin:60px auto 0;border-radius:14px;background:var(--panel);border:1px solid var(--border2);overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.5),0 0 0 1px color-mix(in srgb,var(--teal) 10%, transparent)}
+.terminal-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.terminal-dot{width:12px;height:12px;border-radius:50%}
+.terminal-dot.r{background:#ff5f56}.terminal-dot.y{background:#ffbd2e}.terminal-dot.g{background:#27c93f}
+.terminal-title{margin-left:8px;font-size:12px;color:var(--dim);font-family:var(--mono)}
+.terminal-body{padding:20px;font-family:var(--mono);font-size:13px;line-height:1.8;color:var(--muted);min-height:180px}
+.terminal-body .prompt{color:var(--teal)}
+.terminal-body .cmd{color:var(--text)}
+.terminal-body .out{color:var(--dim)}
+.terminal-body .mem{color:var(--purple);font-size:12px}
+
+/* FEATURES */
+.features{padding:100px 40px;max-width:1100px;margin:0 auto}
+.section-label{font-size:12px;font-weight:600;color:var(--teal);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;text-align:center}
+.section-title{font-family:var(--disp);font-size:clamp(28px,4vw,40px);font-weight:700;text-align:center;margin-bottom:16px;letter-spacing:-.5px}
+.section-sub{color:var(--muted);text-align:center;max-width:520px;margin:0 auto 56px;font-size:16px}
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
+.feature-card{padding:28px;border-radius:14px;background:var(--panel);border:1px solid var(--border);transition:.25s}
+.feature-card:hover{border-color:color-mix(in srgb,var(--teal) 40%, transparent);transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.feature-icon{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;font-size:22px;margin-bottom:16px;background:color-mix(in srgb,var(--teal) 10%, var(--bg2));border:1px solid color-mix(in srgb,var(--teal) 20%, transparent)}
+.feature-card h3{font-family:var(--disp);font-size:17px;font-weight:600;margin-bottom:8px}
+.feature-card p{color:var(--muted);font-size:14px;line-height:1.6}
+
+/* HOW IT WORKS */
+.how{padding:80px 40px 100px;max-width:900px;margin:0 auto}
+.steps{display:flex;flex-direction:column;gap:32px;counter-reset:step}
+.step{display:flex;gap:20px;align-items:flex-start}
+.step-num{width:40px;height:40px;border-radius:10px;background:color-mix(in srgb,var(--teal) 12%, var(--bg2));border:1.5px solid color-mix(in srgb,var(--teal) 30%, transparent);display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:15px;color:var(--teal);flex:0 0 40px}
+.step-text h3{font-family:var(--disp);font-size:16px;font-weight:600;margin-bottom:4px}
+.step-text p{color:var(--muted);font-size:14px}
+
+/* CTA */
+.cta{padding:80px 40px;text-align:center;position:relative}
+.cta::before{content:"";position:absolute;inset:0;background:radial-gradient(800px 400px at 50% 50%, color-mix(in srgb,var(--teal) 8%, transparent), transparent 60%);pointer-events:none}
+.cta-content{position:relative}
+.cta h2{font-family:var(--disp);font-size:clamp(28px,4vw,38px);font-weight:700;margin-bottom:16px;letter-spacing:-.5px}
+.cta p{color:var(--muted);margin-bottom:32px;font-size:16px}
+
+/* FOOTER */
+.footer{padding:32px 40px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--dim)}
+.footer a{color:var(--dim)}
+.footer a:hover{color:var(--teal)}
+.footer-links{display:flex;gap:20px}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .nav{padding:0 20px}
+  .nav-links{gap:16px}
+  .hero{padding:100px 20px 60px}
+  .features,.how,.cta{padding-left:20px;padding-right:20px}
+  .feature-grid{grid-template-columns:1fr}
+  .footer{flex-direction:column;gap:12px;text-align:center}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.2 6 .3.5.5 1.1.5 1.8 0 1.7-1.3 3-3 3h-2.6c-1.7 0-3-1.3-3-3 0-.7.2-1.3.5-1.8C6.3 13.7 5 11.5 5 9a7 7 0 0 1 7-7z"/><path d="M9 21h6"/><path d="M12 17v4"/></svg>
+    </div>
+    Mimir
+  </div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="/auth" class="nav-cta">Get started</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge"><span class="dot"></span> Local-first AI agent</div>
+    <h1>The agent that<br><span class="hl">remembers everything</span></h1>
+    <p>Mimir is a personal AI that stores facts, context, and knowledge across every session. Powered by Ollama. Your data never leaves your machine.</p>
+    <div class="hero-btns">
+      <a href="/auth" class="btn-primary">Start for free</a>
+      <a href="https://github.com/David2024patton/Mimir" class="btn-secondary" target="_blank">View on GitHub</a>
+    </div>
+
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="terminal-dot r"></div>
+        <div class="terminal-dot y"></div>
+        <div class="terminal-dot g"></div>
+        <div class="terminal-title">mimir - the rememberer</div>
+      </div>
+      <div class="terminal-body">
+        <div><span class="prompt">you:</span> <span class="cmd">My API key for OpenWeather is sk-abc123</span></div>
+        <div><span class="mem">+ memory stored</span></div>
+        <div style="margin-top:8px"><span class="prompt">you:</span> <span class="cmd">What's the weather in Tokyo?</span></div>
+        <div><span class="prompt">mimir:</span> <span class="out">Let me check using your OpenWeather key...</span></div>
+        <div><span class="out">Tokyo: 22C, partly cloudy. I remembered your API key from earlier.</span></div>
+        <div><span class="mem">+ memory recalled (API credential)</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="section-label">Capabilities</div>
+  <h2 class="section-title">Everything you need in an AI agent</h2>
+  <p class="section-sub">Mimir combines persistent memory, tool execution, and local inference into one cohesive agent.</p>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🧠</div>
+      <h3>Persistent Memory</h3>
+      <p>Facts, credentials, context - Mimir stores them in the Cortex and recalls them across every session. No more repeating yourself.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h3>Runs Locally</h3>
+      <p>Powered by Ollama on your own hardware. Your conversations, secrets, and data never touch the cloud.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔧</div>
+      <h3>Tool Calling</h3>
+      <p>Execute shell commands, edit files, query databases, and manage your workflow - all through natural conversation.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💬</div>
+      <h3>Session History</h3>
+      <p>Every conversation is saved and searchable. Pick up where you left off, or search for something you discussed weeks ago.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h3>Passwordless Auth</h3>
+      <p>Just enter your email and verify with a 6-digit code. No passwords to remember, no accounts to manage.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎨</div>
+      <h3>Book-Spine UI</h3>
+      <p>A unique panel-based interface with draggable spines, live cortex, and real-time dashboard. Designed for power users.</p>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="section-label">How it works</div>
+  <h2 class="section-title">Up and running in three steps</h2>
+  <p class="section-sub">No API keys, no cloud accounts, no subscriptions. Just you and your machine.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">
+        <h3>Deploy Mimir</h3>
+        <p>One Docker Compose command pulls Ollama, SurrealDB, and Mimir. Everything runs on your hardware.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        <h3>Sign in with your email</h3>
+        <p>No passwords. Enter your email, get a 6-digit code, and you're in. First-time users are auto-created.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">
+        <h3>Start talking</h3>
+        <p>Tell Mimir things - it remembers them. Ask it to run tools, manage files, or look up information. Everything lives in the Cortex.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="cta-content">
+    <h2>Ready to meet Mimir?</h2>
+    <p>Free. Local-first. No account required beyond your email.</p>
+    <a href="/auth" class="btn-primary">Get started now</a>
+  </div>
+</section>
+
+<footer class="footer">
+  <span>Mimir v0.1 - built with Go, Ollama, and SurrealDB</span>
+  <div class="footer-links">
+    <a href="https://github.com/David2024patton/Mimir" target="_blank">GitHub</a>
+    <a href="/auth">Sign in</a>
+  </div>
+</footer>
+
+</body>
+</html>

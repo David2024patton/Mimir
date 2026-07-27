@@ -363,57 +363,9 @@ body.chat-open .chat-backdrop{opacity:1;pointer-events:auto}
   .brand{font-size:15px}
   .dash-total .big{font-size:30px}
 }
-/* LOGIN PAGE */
-.login-page{position:fixed;inset:0;z-index:9999;display:flex;background:var(--bg);overflow:hidden}
-.login-page.hidden{display:none}
-.login-left{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;padding:40px}
-.login-left::before{content:"";position:absolute;inset:0;
-  background:
-    radial-gradient(800px 500px at 30% 20%, color-mix(in srgb,var(--teal) 12%, transparent), transparent 60%),
-    radial-gradient(600px 400px at 70% 80%, color-mix(in srgb,var(--purple) 8%, transparent), transparent 55%),
-    radial-gradient(500px 350px at 50% 50%, color-mix(in srgb,var(--blue) 6%, transparent), transparent 50%);
-  pointer-events:none}
-.login-card{position:relative;width:400px;max-width:90vw}
-.login-brand{display:flex;align-items:center;gap:14px;margin-bottom:40px}
-.login-logo{width:52px;height:52px;border-radius:14px;background:radial-gradient(circle at 30% 30%,var(--teal),var(--teal-d));box-shadow:0 0 24px color-mix(in srgb,var(--teal) 40%, transparent),0 0 48px color-mix(in srgb,var(--teal) 15%, transparent);display:grid;place-items:center}
-.login-logo svg{width:28px;height:28px;color:#04201c}
-.login-title{font-family:var(--disp);font-size:32px;font-weight:700;letter-spacing:-.5px}
-.login-tagline{font-size:14px;color:var(--dim);margin-top:4px}
-.login-form{margin-top:8px}
-.login-step{animation:loginFadeIn .3s ease}
-@keyframes loginFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.login-field{margin-bottom:20px}
-.login-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.6px}
-.login-field input{width:100%;padding:13px 16px;background:var(--panel);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font:15px var(--body);outline:none;transition:.2s}
-.login-field input::placeholder{color:var(--dim)}
-.login-field input:focus{border-color:var(--teal);box-shadow:0 0 0 3px color-mix(in srgb,var(--teal) 12%, transparent),0 0 20px color-mix(in srgb,var(--teal) 8%, transparent)}
-.login-btn{width:100%;padding:13px;border-radius:10px;font-weight:600;font-size:15px;background:linear-gradient(135deg,var(--teal),var(--teal-d));color:#04201c;border:none;cursor:pointer;transition:.2s;margin-top:4px;box-shadow:0 4px 20px color-mix(in srgb,var(--teal) 30%, transparent)}
-.login-btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px color-mix(in srgb,var(--teal) 45%, transparent)}
-.login-btn:active{transform:translateY(0)}
-.login-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.login-error{color:var(--red);font-size:13px;margin-top:14px;text-align:center;min-height:20px}
-.login-back{display:inline-flex;align-items:center;gap:6px;color:var(--dim);font-size:13px;cursor:pointer;margin-top:20px;transition:.15s;background:none;border:none}
-.login-back:hover{color:var(--teal)}
-.login-back svg{width:14px;height:14px}
-.login-right{width:480px;display:flex;flex-direction:column;justify-content:center;padding:60px;border-left:1px solid var(--border);position:relative;overflow:hidden}
-.login-right::before{content:"";position:absolute;inset:0;
-  background:
-    radial-gradient(500px 400px at 60% 30%, color-mix(in srgb,var(--teal) 10%, transparent), transparent 55%),
-    radial-gradient(400px 300px at 30% 70%, color-mix(in srgb,var(--ember) 8%, transparent), transparent 50%);
-  pointer-events:none}
-.login-features{position:relative;max-width:360px}
-.login-features h3{font-family:var(--disp);font-size:18px;font-weight:600;margin:0 0 24px;color:var(--text)}
-.login-feature{display:flex;gap:14px;margin-bottom:22px}
-.login-feature-icon{width:38px;height:38px;border-radius:10px;background:var(--panel);border:1px solid var(--border);display:grid;place-items:center;flex:0 0 38px;font-size:17px}
-.login-feature-text{font-size:13.5px;color:var(--muted);line-height:1.5}
-.login-feature-text b{color:var(--text);font-weight:600;display:block;margin-bottom:2px}
-.login-footer{position:absolute;bottom:24px;left:60px;right:60px;display:flex;justify-content:space-between;font-size:11px;color:var(--dim)}
-.login-footer a{color:var(--dim);text-decoration:none;transition:.15s}
-.login-footer a:hover{color:var(--teal)}
 .auth-user{display:flex;align-items:center;gap:8px;padding:4px 14px;border-radius:8px;cursor:pointer;transition:.15s;font-size:13px;color:var(--muted);background:var(--panel);border:1px solid var(--border)}
 .auth-user:hover{border-color:var(--border2);color:var(--text)}
 .auth-user .au-email{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media(max-width:900px){.login-right{display:none}}
 </style>
 </head>
 <body>
@@ -520,91 +472,13 @@ body.chat-open .chat-backdrop{opacity:1;pointer-events:auto}
 <button class="chat-fab" onclick="toggleChat()" title="Chat with Mímir">💬</button>
 <div class="toast" id="toast"></div>
 
-<!-- LOGIN PAGE -->
-<div class="login-page" id="authOverlay">
-  <div class="login-left">
-    <div class="login-card">
-      <div class="login-brand">
-        <div class="login-logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.3 4.7-3.2 6 .3.5.5 1.1.5 1.8 0 1.7-1.3 3-3 3h-2.6c-1.7 0-3-1.3-3-3 0-.7.2-1.3.5-1.8C6.3 13.7 5 11.5 5 9a7 7 0 0 1 7-7z"/><path d="M9 21h6"/><path d="M12 17v4"/></svg>
-        </div>
-        <div>
-          <div class="login-title">Mimir</div>
-          <div class="login-tagline">the agent that remembers</div>
-        </div>
-      </div>
-
-      <div class="login-form" id="loginForm">
-        <!-- Step 1: Email -->
-        <div class="login-step" id="loginStep1">
-          <div class="login-field">
-            <label>Email</label>
-            <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" onkeydown="if(event.key==='Enter')authSendCode()">
-          </div>
-          <button class="login-btn" id="authBtn" onclick="authSendCode()">Send login code</button>
-          <div class="login-error" id="authError"></div>
-        </div>
-
-        <!-- Step 2: Code -->
-        <div class="login-step" id="loginStep2" style="display:none">
-          <div class="login-field">
-            <label>Verification code</label>
-            <input type="text" id="authCode" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric" onkeydown="if(event.key==='Enter')authVerifyCode()">
-          </div>
-          <button class="login-btn" id="authBtnCode" onclick="authVerifyCode()">Verify &amp; sign in</button>
-          <div class="login-error" id="authError2"></div>
-          <button class="login-back" onclick="authBackToEmail()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
-            Use a different email
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="login-right">
-    <div class="login-features">
-      <h3>Why Mimir?</h3>
-      <div class="login-feature">
-        <div class="login-feature-icon">🧠</div>
-        <div class="login-feature-text"><b>Remembers everything</b>Facts, context, and knowledge persist across every session.</div>
-      </div>
-      <div class="login-feature">
-        <div class="login-feature-icon">⚡</div>
-        <div class="login-feature-text"><b>Runs locally</b>Powered by Ollama. Your data never leaves your machine.</div>
-      </div>
-      <div class="login-feature">
-        <div class="login-feature-icon">🔧</div>
-        <div class="login-feature-text"><b>Tool calling</b>Executes commands, edits files, and manages your workflow.</div>
-      </div>
-      <div class="login-feature">
-        <div class="login-feature-icon">💬</div>
-        <div class="login-feature-text"><b>Session memory</b>Conversations are saved and searchable.</div>
-      </div>
-    </div>
-    <div class="login-footer">
-      <span>Mimir v0.1</span>
-      <a href="https://github.com/David2024patton/Mimir" target="_blank">GitHub</a>
-    </div>
-  </div>
-</div>
-
 <script>
-/* ===== AUTH (passwordless OTP) ===== */
+/* ===== AUTH (delegates to /auth page) ===== */
 
-var authEmailSent = null;
-
-function authInit(){
+function authCheck(){
   var token = localStorage.getItem('mimir-token');
-  var email = localStorage.getItem('mimir-email');
-  if(token && email){
-    authSetUser(email);
-    document.querySelector('.app').style.display = '';
-    el('authOverlay').classList.add('hidden');
-    return;
-  }
-  document.querySelector('.app').style.display = 'none';
-  el('authOverlay').classList.remove('hidden');
+  if(!token){ window.location.href = '/auth'; return false; }
+  return true;
 }
 
 function authSetUser(email){
@@ -619,78 +493,9 @@ function authClearUser(){
   el('authUserBtn').style.display = 'none';
 }
 
-function authSendCode(){
-  var email = el('authEmail').value.trim();
-  if(!email){ el('authError').textContent = 'Email is required.'; return; }
-  el('authError').textContent = '';
-  el('authBtn').disabled = true;
-  el('authBtn').textContent = 'Sending...';
-  fetch('/auth/send-code', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:email})})
-    .then(function(r){
-      if(!r.ok) return r.json().then(function(d){ throw new Error(d.error || 'Failed to send code'); });
-      return r.json();
-    })
-    .then(function(){
-      authEmailSent = email;
-      el('loginStep1').style.display = 'none';
-      el('loginStep2').style.display = '';
-      el('authError2').textContent = '';
-      el('authCode').value = '';
-      el('authCode').focus();
-    })
-    .catch(function(e){ el('authError').textContent = e.message; })
-    .finally(function(){ el('authBtn').disabled = false; el('authBtn').textContent = 'Send login code'; });
-}
-
-function authVerifyCode(){
-  var code = el('authCode').value.trim();
-  if(!code || code.length < 6){ el('authError2').textContent = 'Enter the 6-digit code.'; return; }
-  el('authError2').textContent = '';
-  el('authBtnCode').disabled = true;
-  el('authBtnCode').textContent = 'Verifying...';
-  fetch('/auth/verify-code', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:authEmailSent, code:code})})
-    .then(function(r){
-      if(!r.ok) return r.json().then(function(d){ throw new Error(d.error || 'Invalid code'); });
-      return r.json();
-    })
-    .then(function(d){
-      localStorage.setItem('mimir-token', d.token);
-      authSetUser(authEmailSent);
-      el('authOverlay').classList.add('hidden');
-      document.querySelector('.app').style.display = '';
-      refreshSessions();
-      refreshMemory();
-    })
-    .catch(function(e){ el('authError2').textContent = e.message; })
-    .finally(function(){ el('authBtnCode').disabled = false; el('authBtnCode').textContent = 'Verify & sign in'; });
-}
-
-function authBackToEmail(){
-  authEmailSent = null;
-  el('loginStep2').style.display = 'none';
-  el('loginStep1').style.display = '';
-  el('authEmail').value = '';
-  el('authError').textContent = '';
-  el('authError2').textContent = '';
-}
-
 function authLogout(){
   authClearUser();
-  document.querySelector('.app').style.display = 'none';
-  el('authOverlay').classList.remove('hidden');
-  authBackToEmail();
-  currentSessionId = null;
-  sessions = [];
-  el('chatBody').innerHTML = '';
-  el('sessionTitle').textContent = '· new conversation';
-  el('sessionList').innerHTML = '<div class="session-empty">Sign in to see your conversations.</div>';
-}
-
-function authHeaders(){
-  var h = {'Content-Type':'application/json'};
-  var token = localStorage.getItem('mimir-token');
-  if(token) h['Authorization'] = 'Bearer ' + token;
-  return h;
+  window.location.href = '/auth';
 }
 
 function authFetch(url, options){
@@ -702,7 +507,7 @@ function authFetch(url, options){
   return fetch(url, options).then(function(r){
     if(r.status === 401){
       authClearUser();
-      el('authOverlay').classList.remove('hidden');
+      window.location.href = '/auth';
       throw new Error('unauthorized');
     }
     return r;
@@ -1198,19 +1003,18 @@ function doSend(p){
 }
 
 /* ===== boot ===== */
-authInit();
-var token = localStorage.getItem('mimir-token');
-if(token){
-  renderSpines(); renderPanels(); refreshMemory(); refreshUsage(); checkHealth(false); applyGlow();
-  var savedSession = localStorage.getItem('mimir-session');
-  if(savedSession){
-    loadSession(savedSession);
-  } else {
-    welcome();
-    refreshSessions();
-  }
-  setInterval(function(){checkHealth(false); refreshUsage();},15000);
+if(!authCheck()) throw 'redirect to /auth';
+var email = localStorage.getItem('mimir-email');
+if(email) authSetUser(email);
+renderSpines(); renderPanels(); refreshMemory(); refreshUsage(); checkHealth(false); applyGlow();
+var savedSession = localStorage.getItem('mimir-session');
+if(savedSession){
+  loadSession(savedSession);
+} else {
+  welcome();
+  refreshSessions();
 }
+setInterval(function(){checkHealth(false); refreshUsage();},15000);
 </script>
 </body>
 </html>
