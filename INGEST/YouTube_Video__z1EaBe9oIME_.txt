@@ -1,0 +1,421 @@
+Most people and companies think that the
+coding harness that you're given is the
+only one you get. You install cloud
+code, code x, or open code, you
+configure the model, you add a few
+memory files, maybe a few hooks, a few
+tools, and you think that's it. But in
+reality, that's only level one of
+harness engineering, and most people
+building with AI never get past it.
+Harness engineering is something I'm
+really passionate about, and I've worked
+with a lot of people and teams to show
+them how they can effectively use coding
+harnesses and even build their own. If
+you want to pursue a career as an AI
+engineer, or if you want to work with
+real customers, you do need to
+understand the three levels of harness
+engineering,
+>> [music]
+>> which we will cover in this video.
+You're really going to have a lot of
+fun, so enough talk, let's jump into
+this. If you find these topics
+interesting, too, then consider joining
+my community at Gentec Labs. We've got
+several classrooms on using coding
+agents to build really cool stuff, and
+every Thursday we've got deep dives
+where we actually discuss harness
+engineering for an hour and a half. So,
+if you do want to follow the entire
+session, you can find it in the
+classroom. And on Thursday, we're
+starting a brand new series where I
+teach you how to go from zero to hero
+with working with coding agents. We're
+also running a special at the moment
+that's $100 off your annual plan. I do
+hope to see you there. If you've been
+using AI for a while, you've probably
+heard the word agent so many times, but
+what exactly is an agent? Well, an agent
+is actually the model, like your large
+language model, and your harness. The
+model would be your large language model
+like Opus, Fable, GPT-6. Those are the
+actual models, which basically form the
+brain of the operation. The harness is
+the environment in which that LLM
+functions. The harness is a thing that
+allocates the rules that the agent needs
+to follow, and it assigns the tools that
+the agent should have access to, like,
+you know, the ability to write files,
+search for files, browse the web, open
+the browser, etc. The harness also
+enforces the checks that need to be
+executed, like running test feeds, lint,
+type check. You've probably seen these
+before. The harness can also expose
+things like hooks. These are [snorts]
+certain events that happen throughout
+the sort of agent's life cycle that we
+can hook into. Like, maybe the moment we
+send a prompt to an agent, we first want
+to run a custom script that will check
+that prompt for any sensitive
+information and will mask that
+information before it reaches the actual
+agent. Hooks can be used for tons of
+different things. And in fact, Claude
+recently released Claude Mods, and this
+allows you to kind of customize your
+Claude code experience, but under the
+hood, Claude Mods are basically using
+hooks. The harness also gives the agent
+access to memory files. This would be
+your
+solve.md,
+or even files within a docs folder. The
+harness can also control how to sandbox
+the agent. Like, for example, the agent
+should work within a very specific
+workspace, or it should only be allowed
+to create new work trees and feature
+branches, and never be allowed to change
+the main branch. So, hopefully you're
+starting to understand already that the
+harness is the thing that gives the
+capabilities to the agent and defines
+the environment
+that the agent is allowed to work in.
+So, very simply put, an agent is the
+model plus the harness. The harness
+exposes the instructions, the tools, the
+checks, and the memory that the agent
+has access to. Of course, this can be
+extended to additional capabilities like
+sub agents and workflows too, but that
+is all exposed by the harness. Now that
+we have high-level idea of what a
+harness is and what an agent is, it's
+time to discuss the three levels of
+harness engineering, which is the crux
+of this video. The first level is
+configuration. Now, this is where the
+majority of you watching this video are
+right now. This is where you use a
+coding harness that was built by the
+provider or some third-party tool. For
+example, if you're using Claude code,
+you are at this level. What you do in
+that instance is you kind of configure
+the harness to work however you want it
+to work. So, if you want the agent to
+follow very specific rules, you can
+update the agents.md file to give the
+agent those guidelines. Just to show you
+a quick example of what it actually
+looks like. In most projects, you will
+set the rules in the agents.md file. So,
+this is called a memory file. This means
+that any rules that we want the agent to
+follow whenever we create a new session,
+we can dump all of those rules into this
+file. And the next time we start a new
+Claude session, it will follow these
+rules. This does not just apply to
+Claude at all. The agents.md file is
+actually an open standard. Any coding
+harness that's worth using will honor
+this agents.md file. The basic rule of
+thumb with this file is if the agent
+starts doing something that you really
+don't like in the chat, add a rule to
+this file telling the agent to never do
+that again, or you can give it
+guidelines on how it's supposed to
+behave in the future. This file is also
+composable, which means you don't have
+to add everything into this same
+markdown file. It's going to get way too
+long. So, what you can do instead is
+break all the rules up and store them
+into separate files. A common convention
+is to create this docs folder, and you
+then split your markdown files up into
+smaller files, and you can then store
+them in a in a very structured way in
+this docs folder. And then in your main
+agents.md file, you can have an index
+similar to this, which links to all the
+sub files in the docs folder. Each of
+these files are nothing more than
+smaller markdown files with very
+specific instructions for this specific
+part of the app. Another tip I can give
+you with regards to memory files is if
+your sessions are starting to get way
+too long and you're about to hit your
+context window limit, what you can do is
+simply ask your agent to store the sort
+of progress of what's still needs to be
+done in separate files. Like I actually
+have to ask my agent to create this
+handoff document so that I could start a
+brand new session with a new agent and I
+could just pass this handoff document to
+that agent. Now, because of all the
+context we have available in these
+documents, that agent knew exactly what
+happened so far, what the project is
+about, and how to continue. Of course,
+you can configure the harness in many
+other ways as well. Like you could add
+hooks to the harness as well. If I just
+switch over to VS Code for a second,
+I've got this very simple demo set up
+for you.
+So, in this app, whenever we make a
+change to the application, our agent
+should write an entry to the change log.
+Now, I do not have any agents.md file
+here. Ideally, I should have one that
+instructs the agent to update the change
+log, but I can also enforce that
+behavior with hooks. Now, most harnesses
+actually allow you to hook into certain
+events. So, for example, when we send a
+prompt, we might want to interject, grab
+the prompt, do something with it before
+passing it to the agent. There are
+plenty of hooks available and one very
+valuable hook is the stop hook. Whenever
+the agent completes its work, we can
+actually fire off this stop hook and do
+something with the conversation. This
+script will check if the change log was
+updated and if it wasn't, it will
+actually tell Claude, "Hey, you need to
+go back and add an entry to the change
+log." Enforcing that behavior. So, you
+could do the same thing to check whether
+or not a PR was created or that a test
+suite was run. There's really a lot of
+things that you can enforce as part of
+the harness. This way you're not relying
+on the agent to remember to do
+something. Now, of course, configuring
+the harness is only level one. Level two
+is where we build custom harnesses. And
+trust me, building your own harness is
+in high demand right now. Certain
+organizations need the ability to
+control what the developers are allowed
+to do. Like enforcing policies, giving
+agents access to very tools, or actually
+limiting certain capabilities. I've
+worked with a lot of brands, and I've
+seen a ton of custom harnesses out
+there. Now, why on earth would you want
+to build your own harness, and not
+simply use the existing ones out there?
+And is it very hard to do? Is it
+something that someone with no technical
+experience can do? Firstly, let me tell
+you this. Anyone can build a harness. In
+fact, I've got a free course in my free
+community that teaches you how to build
+your own coding harness. And it's been
+so cool to see the results that people
+have come up with. I've seen a few very
+cool examples where only changing the
+harness actually took the same model and
+improved its outputs. Like for example,
+LangChain did this experiment a while
+back where they took GPT 5.2, and its
+exact same model with the same prompt,
+and they actually managed to get better
+results out of the model by using their
+own deep agent CLI tool, their own
+coding agent harness. They were able to
+get the output from a 53% round about to
+about 66%.
+Then there's this really popular post on
+X from Can Bulut, sorry for butchering
+your name, but he was able to get really
+good results, again, just by changing
+the harness. The coding harness, as he
+says here, was the bottleneck. He
+managed to push Grok code fast one from
+only 6.7% all the way to almost 70%
+simply by changing how the underlying
+tools work. Now, this is something I've
+got a ton of experience in. If you've
+been following my channel for a while,
+you'll know that I do like to cover open
+weight models. So, models that run on
+your own hardware. And I've been running
+these models in open code. I've been
+running them in closed code, DeepSeek,
+Harness, you name it. And I also covered
+the Pi Agent SDK as well. However, none
+of these harnesses were optimized for
+local models. Now, just to respect your
+time, I'm not going to go into all the
+details again. You can definitely check
+out my video on small coder. But
+basically, what happens is these
+harnesses, remember the harness is the
+thing that injects like the system
+prompt, the memory files, it makes the
+tools available. Those harnesses inject
+way too much context for these small
+models. Typically, your local models
+have a very tiny context window,
+especially on consumer grade hardware.
+If your entire context window is only
+like 32,000 tokens or 64,000 tokens, you
+cannot afford to inject closed code's
+30,000 tokens, which is just purely
+harness stuff, into the context window.
+So, I decided to create this small coder
+harness, which strips away anything an
+open weight model will never need. Open
+weight models that run on your own
+hardware will never need to run things
+like MCB tools or sub agents. And it
+should have a limited set of tools as
+well. And the system prompt should be
+tiny and just optimized for a specific
+function. And maybe if I can give you a
+really quick demo of what it looks like,
+it's just a normal CLI tool. There is a
+web-based version as well, of course.
+But this makes it really easy to pull in
+any model that you want. It
+automatically detects models from LM
+Studio and Ollama as well. And if you've
+ever tried to use open weight models
+with, you know, things like the by agent
+SDK or open code or even Claude code,
+there's a lot of configuration that
+needs to be done up front. But this
+harness, because it's custom and I can
+do whatever I want, makes it stupidly
+easy to detect models on your own
+hardware and it's really optimized for
+that model. All the tool definitions,
+the system prompt, everything this model
+needs only takes one 1,400 tokens. And
+if I actually run Claude right now,
+let's go to context. Before I've sent a
+single message to Claude, it's already
+taking up over 30,000 tokens of my
+context window. So, running an open
+weight model in this harness would
+simply not be practical. I've seen
+plenty of examples as well where
+organizations need custom harnesses and
+control what their developer experience
+should look like. So, for example, they
+do not necessarily want to be locked
+into only Claude. They might want to
+give their developers access to
+different providers like OpenAI as well.
+But the tools and the sort of experience
+needs to be consistent. So, if you build
+your own harness, that's really easy.
+You can change the providers, you can
+change the models, and it's all
+controlled within that custom harness.
+You can implement organizational
+policies. You can control what tools you
+are allowed to assign, what
+administrative rights there are. So, you
+can really do really cool stuff with
+custom harnesses. Now, once you learn
+how to build your own custom harness,
+it's definitely worth stepping up and
+looking at building orchestration
+harnesses. In an orchestration harness,
+you actually manage multiple coding
+harnesses. So, you could have a harness
+that facilitates long-running jobs and
+each job is executed by a specific
+coding agent or harness. So, AutoForge
+is one example of a long-running
+harness. You plan out all the features
+that you want. They go into a bit of a
+to-do [clears throat] board, and then
+the agent will run implementing these
+changes one at a time. And there could
+be hundreds of features, and it could
+take the agent, you know, not just hours
+or days, but even weeks to get through
+all of it. But the important thing is
+you don't have to sit there and babysit
+the agent. It can just do all of this
+work and test it on autopilot. Another
+example of an orchestration harness
+would be a software factory. Now, this
+is not really interesting to look at.
+I'll show you a really fun example in a
+second, but a software factory is
+basically where you've got this agent
+swarm. So, you'd have maybe 10 or 20
+coding agents all sitting in the
+background, and these agents could be a
+mix of agents. You might have Codex
+agents, you could have Claude Code
+agents, maybe even your own coding
+harness. These agents are just kind of
+waiting for work, and what the software
+factory will do is whenever you need to
+make a change to any of your projects,
+the software factory will allocate that
+task to one of your available coding
+agents. If all of the agents in your
+swarm are busy, the software factory
+will deal with it. It will actually wait
+until an agent becomes available before
+allocating the next task. I do have a
+dedicated video on building software
+factories, which I'll link to in the
+description of this video, too. And
+finally, no one said an agent harness
+should be boring. This is my coding
+agent swarm represented in 3D space. And
+these guys are working on an actual
+project. Each of these agents are
+running a coding harness. So, this could
+be Claude Code, it could be Codex. If I
+run to any of these monitors, I can
+actually see like this guy is actually
+running Claude Opus. So, this is using
+Claude Code, and some of them are using
+other coding harnesses as well. All
+represented in 3D space. And this also
+uses the scan band board and these are
+hooked up to actual GitHub issues.
+When I click on any of these, we can
+actually jump to the actual pull request
+sitting on GitHub. And just like with a
+long-running harness, we can assign as
+many tasks as we want. This could be
+hundreds of tasks. And these agents will
+keep working away in the background
+until everything was built, tested, and
+verified. And by the way, this project
+and all of my projects are open source
+and you can use them today. If this
+video helped you in any way, hit the
+like button and subscribe to my channel
+for more Agenty coding videos. I also
+hope that you'll join Agenty Labs and I
+hope to see you in the live sessions.
+Thank you for watching. I'll see you in
+the next one. Bye-bye.

@@ -1,0 +1,846 @@
+Directory structure:
+└── charmbracelet-glow/
+    ├── console_windows.go
+    ├── Dockerfile
+    ├── glow_test.go
+    ├── log.go
+    ├── man_cmd.go
+    ├── style.go
+    ├── Taskfile.yaml
+    ├── .editorconfig
+    ├── .golangci.yml
+    ├── .goreleaser.yml
+    ├── ui/
+    │   ├── config.go
+    │   ├── editor.go
+    │   ├── ignore_darwin.go
+    │   ├── ignore_general.go
+    │   ├── keys.go
+    │   ├── rawpaint_unix.go
+    │   ├── rawpaint_windows.go
+    │   ├── sort.go
+    │   └── ui_test.go
+    └── .github/
+        ├── dependabot.yml
+        ├── ISSUE_TEMPLATE/
+        │   ├── bug_report.md
+        │   ├── config.yml
+        │   └── feature_request.md
+        └── workflows/
+            ├── build.yml
+            ├── coverage.yml
+            ├── dependabot-sync.yml
+            ├── goreleaser.yml
+            ├── lint-sync.yml
+            └── lint.yml
+
+================================================
+FILE: console_windows.go
+================================================
+// +build windows
+
+package main
+
+import (
+	"os"
+
+	"golang.org/x/sys/windows"
+)
+
+// enableAnsiColors enables support for ANSI color sequences in Windows
+// default console. Note that this only works with Windows 10.
+func enableAnsiColors() {
+	stdout := windows.Handle(os.Stdout.Fd())
+	var originalMode uint32
+
+	windows.GetConsoleMode(stdout, &originalMode)
+	windows.SetConsoleMode(stdout, originalMode|windows.ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+}
+
+func init() {
+	enableAnsiColors()
+}
+
+
+
+================================================
+FILE: Dockerfile
+================================================
+FROM gcr.io/distroless/static
+COPY glow /usr/local/bin/glow
+ENTRYPOINT [ "/usr/local/bin/glow" ]
+
+
+
+================================================
+FILE: glow_test.go
+================================================
+package main
+
+import (
+	"testing"
+)
+
+func TestGlowFlags(t *testing.T) {
+	tt := []struct {
+		args  []string
+		check func() bool
+	}{
+		{
+			args: []string{"-p"},
+			check: func() bool {
+				return pager
+			},
+		},
+		{
+			args: []string{"-s", "light"},
+			check: func() bool {
+				return style == "light"
+			},
+		},
+		{
+			args: []string{"-w", "40"},
+			check: func() bool {
+				return width == 40
+			},
+		},
+	}
+
+	for _, v := range tt {
+		err := rootCmd.ParseFlags(v.args)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !v.check() {
+			t.Errorf("Parsing flag failed: %s", v.args)
+		}
+	}
+}
+
+
+
+================================================
+FILE: log.go
+================================================
+package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+
+	"github.com/charmbracelet/log"
+	gap "github.com/muesli/go-app-paths"
+)
+
+func getLogFilePath() (string, error) {
+	dir, err := gap.NewScope(gap.User, "glow").CacheDir()
+	if err != nil {
+		return "", fmt.Errorf("unable to get cache dir: %w", err)
+	}
+	return filepath.Join(dir, "glow.log"), nil
+}
+
+func setupLog() (func() error, error) {
+	log.SetOutput(io.Discard)
+	// Log to file, if set
+	logFile, err := getLogFilePath()
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil { //nolint:gosec
+		// log disabled
+		return func() error { return nil }, nil //nolint:nilerr
+	}
+	f, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644) //nolint:gosec
+	if err != nil {
+		// log disabled
+		return func() error { return nil }, nil //nolint:nilerr
+	}
+	log.SetOutput(f)
+	log.SetLevel(log.DebugLevel)
+	return f.Close, nil
+}
+
+
+
+================================================
+FILE: man_cmd.go
+================================================
+package main
+
+import (
+	"fmt"
+	"os"
+
+	mcobra "github.com/muesli/mango-cobra"
+	"github.com/muesli/roff"
+	"github.com/spf13/cobra"
+)
+
+var manCmd = &cobra.Command{
+	Use:                   "man",
+	Short:                 "Generates manpages",
+	SilenceUsage:          true,
+	DisableFlagsInUseLine: true,
+	Hidden:                true,
+	Args:                  cobra.NoArgs,
+	RunE: func(*cobra.Command, []string) error {
+		manPage, err := mcobra.NewManPage(1, rootCmd)
+		if err != nil {
+			return fmt.Errorf("unable to instantiate man page: %w", err)
+		}
+		if _, err := fmt.Fprint(os.Stdout, manPage.Build(roff.NewDocument())); err != nil {
+			return fmt.Errorf("unable to build man page: %w", err)
+		}
+		return nil
+	},
+}
+
+
+
+================================================
+FILE: style.go
+================================================
+package main
+
+import "charm.land/lipgloss/v2"
+
+var (
+	keyword = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#04B575")).
+		Render
+
+	paragraph = lipgloss.NewStyle().
+			Width(78).
+			Padding(0, 0, 0, 2).
+			Render
+)
+
+
+
+================================================
+FILE: Taskfile.yaml
+================================================
+# https://taskfile.dev
+
+version: '3'
+
+tasks:
+  lint:
+    desc: Run base linters
+    cmds:
+      - golangci-lint run
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./... {{.CLI_ARGS}}
+
+  log:
+    desc: Watch for glow logs
+    aliases: [tail]
+    cmds:
+      - cmd: tail -f ~/Library/Caches/glow/glow.log
+        platforms: [darwin]
+      - cmd: tail -f ~/.cache/glow/glow.log
+        platforms: [linux, windows]
+
+
+
+================================================
+FILE: .editorconfig
+================================================
+# https://editorconfig.org/
+
+root = true
+
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.go]
+indent_style = tab
+indent_size = 8
+
+[*.golden]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+
+
+================================================
+FILE: .golangci.yml
+================================================
+version: "2"
+run:
+  tests: false
+linters:
+  enable:
+    - bodyclose
+    - exhaustive
+    - goconst
+    - godot
+    - gomoddirectives
+    - goprintffuncname
+    - gosec
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - noctx
+    - nolintlint
+    - prealloc
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - tparallel
+    - unconvert
+    - unparam
+    - whitespace
+    - wrapcheck
+  exclusions:
+    rules:
+      - text: '(slog|log)\.\w+'
+        linters:
+          - noctx
+    generated: lax
+    presets:
+      - common-false-positives
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+
+
+
+================================================
+FILE: .goreleaser.yml
+================================================
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+
+version: 2
+
+includes:
+  - from_url:
+      url: charmbracelet/meta/main/goreleaser-glow.yaml
+
+variables:
+  description: "Render markdown on the CLI, with pizzazz!"
+  github_url: "https://github.com/charmbracelet/glow"
+  maintainer: "Christian Muehlhaeuser <muesli@charm.sh>"
+  brew_commit_author_name: "Christian Muehlhaeuser"
+  brew_commit_author_email: "muesli@charm.sh"
+
+
+
+================================================
+FILE: ui/config.go
+================================================
+package ui
+
+// Config contains TUI-specific configuration.
+type Config struct {
+	ShowAllFiles     bool
+	ShowLineNumbers  bool
+	Gopath           string `env:"GOPATH"`
+	HomeDir          string `env:"HOME"`
+	GlamourMaxWidth  uint
+	GlamourStyle     string `env:"GLAMOUR_STYLE"`
+	EnableMouse      bool
+	PreserveNewLines bool
+
+	// Working directory or file path
+	Path string
+
+	// For debugging the UI
+	GlamourEnabled bool `env:"GLOW_ENABLE_GLAMOUR" envDefault:"true"`
+}
+
+
+
+================================================
+FILE: ui/editor.go
+================================================
+package ui
+
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/editor"
+)
+
+type editorFinishedMsg struct{ err error }
+
+func openEditor(path string, lineno int) tea.Cmd {
+	cb := func(err error) tea.Msg {
+		return editorFinishedMsg{err}
+	}
+	cmd, err := editor.Cmd("Glow", path, editor.LineNumber(uint(lineno))) //nolint:gosec
+	if err != nil {
+		return func() tea.Msg { return cb(err) }
+	}
+	return tea.ExecProcess(cmd, cb)
+}
+
+
+
+================================================
+FILE: ui/ignore_darwin.go
+================================================
+//go:build darwin
+// +build darwin
+
+package ui
+
+import "path/filepath"
+
+func ignorePatterns(m commonModel) []string {
+	return []string{
+		filepath.Join(m.cfg.HomeDir, "Library"),
+		m.cfg.Gopath,
+		"node_modules",
+		".*",
+	}
+}
+
+
+
+================================================
+FILE: ui/ignore_general.go
+================================================
+//go:build !darwin
+// +build !darwin
+
+package ui
+
+func ignorePatterns(m commonModel) []string {
+	return []string{
+		m.cfg.Gopath,
+		"node_modules",
+		".*",
+	}
+}
+
+
+
+================================================
+FILE: ui/keys.go
+================================================
+package ui
+
+const (
+	keyEnter = "enter"
+	keyEsc   = "esc"
+)
+
+
+
+================================================
+FILE: ui/rawpaint_unix.go
+================================================
+//go:build !windows
+
+package ui
+
+import (
+	"os"
+	"os/signal"
+	"syscall"
+
+	"golang.org/x/term"
+)
+
+func openRawTerminal() (*os.File, *term.State, error) {
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return nil, nil, err
+	}
+	state, err := term.MakeRaw(int(tty.Fd()))
+	if err != nil {
+		_ = tty.Close()
+		return nil, nil, err
+	}
+	return tty, state, nil
+}
+
+func winchNotify(ch chan os.Signal) {
+	signal.Notify(ch, syscall.SIGWINCH)
+}
+
+func winchStop(ch chan os.Signal) {
+	signal.Stop(ch)
+}
+
+
+
+================================================
+FILE: ui/rawpaint_windows.go
+================================================
+package ui
+
+import (
+	"errors"
+	"os"
+
+	"golang.org/x/term"
+)
+
+func openRawTerminal() (*os.File, *term.State, error) {
+	return nil, nil, errors.New("raw terminal is not supported on windows")
+}
+
+func winchNotify(chan os.Signal) {}
+
+func winchStop(chan os.Signal) {}
+
+
+
+================================================
+FILE: ui/sort.go
+================================================
+package ui
+
+import (
+	"cmp"
+	"slices"
+)
+
+func sortMarkdowns(mds []*markdown) {
+	slices.SortStableFunc(mds, func(a, b *markdown) int {
+		return cmp.Compare(a.Note, b.Note)
+	})
+}
+
+
+
+================================================
+FILE: ui/ui_test.go
+================================================
+package ui
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestNewModelLoadsDocumentBody(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.md")
+	if err := os.WriteFile(path, []byte("# Hello\n\nSome text here.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	m := newModel(Config{Path: path}, "").(model)
+	if m.state != stateShowDocument {
+		t.Fatalf("expected stateShowDocument, got %s", m.state)
+	}
+	if !strings.Contains(m.pager.currentDocument.Body, "Some text") {
+		t.Errorf("expected document body to be loaded, got %q", m.pager.currentDocument.Body)
+	}
+}
+
+
+
+================================================
+FILE: .github/dependabot.yml
+================================================
+version: 2
+
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: github.com/charmbracelet/bubbletea/v2
+        versions:
+          - v2.0.0-beta1
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+
+
+================================================
+FILE: .github/ISSUE_TEMPLATE/bug_report.md
+================================================
+---
+name: Bug report
+about: Create a report to help us improve
+title: ''
+labels: ''
+assignees: ''
+
+---
+
+**Describe the bug**
+A clear and concise description of what the bug is.
+
+**Setup**
+Please complete the following information along with version numbers, if applicable.
+ - OS [e.g. Ubuntu, macOS]
+ - Shell [e.g. zsh, fish]
+ - Terminal Emulator [e.g. kitty, iterm]
+ - Terminal Multiplexer [e.g. tmux]
+ - Locale [e.g. en_US.UTF-8, zh_CN.UTF-8, etc.]
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Click on '....'
+3. Scroll down to '....'
+4. See error
+
+**Source Code**
+Please include source code if needed to reproduce the behavior. 
+
+**Expected behavior**
+A clear and concise description of what you expected to happen.
+
+**Screenshots**
+Add screenshots to help explain your problem.
+
+**Additional context**
+Add any other context about the problem here.
+
+
+
+================================================
+FILE: .github/ISSUE_TEMPLATE/config.yml
+================================================
+blank_issues_enabled: true
+contact_links:
+- name: Discord
+  url: https://charm.sh/discord
+  about: Chat on our Discord.
+
+
+
+================================================
+FILE: .github/ISSUE_TEMPLATE/feature_request.md
+================================================
+---
+name: Feature request
+about: Suggest an idea for this project
+title: ''
+labels: enhancement
+assignees: ''
+
+---
+
+**Is your feature request related to a problem? Please describe.**
+A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+
+**Describe the solution you'd like**
+A clear and concise description of what you want to happen.
+
+**Describe alternatives you've considered**
+A clear and concise description of any alternative solutions or features you've considered.
+
+**Additional context**
+Add any other context or screenshots about the feature request here.
+
+
+
+================================================
+FILE: .github/workflows/build.yml
+================================================
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+
+  snapshot:
+    uses: charmbracelet/meta/.github/workflows/snapshot.yml@main
+    secrets:
+      goreleaser_key: ${{ secrets.GORELEASER_KEY }}
+
+  govulncheck:
+    uses: charmbracelet/meta/.github/workflows/govulncheck.yml@main
+    with:
+      go-version: stable
+
+  semgrep:
+    uses: charmbracelet/meta/.github/workflows/semgrep.yml@main
+
+  ruleguard:
+    uses: charmbracelet/meta/.github/workflows/ruleguard.yml@main
+    with:
+      go-version: "1.26"
+
+
+
+================================================
+FILE: .github/workflows/coverage.yml
+================================================
+name: coverage
+on: [push, pull_request]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: "on"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: stable
+
+      - name: Coverage
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          go test -race -covermode atomic -coverprofile=profile.cov ./...
+          go install github.com/mattn/goveralls@latest
+          goveralls -coverprofile=profile.cov -service=github
+
+
+
+================================================
+FILE: .github/workflows/dependabot-sync.yml
+================================================
+name: dependabot-sync
+on:
+  schedule:
+    - cron: "0 0 * * 0" # every Sunday at midnight
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot-sync:
+    uses: charmbracelet/meta/.github/workflows/dependabot-sync.yml@main
+    with:
+      repo_name: ${{ github.event.repository.name }}
+    secrets:
+      gh_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+
+
+================================================
+FILE: .github/workflows/goreleaser.yml
+================================================
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: goreleaser
+
+on:
+  push:
+    tags:
+      - v*.*.*
+
+concurrency:
+  group: goreleaser
+  cancel-in-progress: true
+
+jobs:
+  goreleaser:
+    uses: charmbracelet/meta/.github/workflows/goreleaser.yml@main
+    secrets:
+      docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      docker_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      gh_pat: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      goreleaser_key: ${{ secrets.GORELEASER_KEY }}
+      fury_token: ${{ secrets.FURY_TOKEN }}
+      nfpm_gpg_key: ${{ secrets.NFPM_GPG_KEY }}
+      nfpm_passphrase: ${{ secrets.NFPM_PASSPHRASE }}
+      snapcraft_token: ${{ secrets.SNAPCRAFT_TOKEN }}
+
+
+
+================================================
+FILE: .github/workflows/lint-sync.yml
+================================================
+name: lint-sync
+on:
+  schedule:
+    - cron: "0 0 * * 0" # every sunday at midnight
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint-sync.yml@main
+
+
+
+================================================
+FILE: .github/workflows/lint.yml
+================================================
+name: lint
+on:
+  push:
+  pull_request:
+
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9.3.0
+        with:
+          # Optional: golangci-lint command line arguments.
+          args: --issues-exit-code=0
+          # Optional: show only new issues if it's a pull request. The default value is `false`.
+          only-new-issues: true
+
+

@@ -1,30 +1,44 @@
-// Package agent is the agent loop (F2): it drives a model provider and a tool
-// registry through the gather -> infer -> act -> verify cycle, consulting the
-// Cortex for memory.
 package agent
 
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/David2024patton/Mimir/internal/cortex"
+	"github.com/David2024patton/Mimir/internal/decision"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/sdlc"
 	"github.com/David2024patton/Mimir/internal/tools"
 )
 
 // maxToolSteps caps the infer->act loop so a misbehaving model can't spin forever
 // (doom-loop protection, F4.3).
-const maxToolSteps = 8
+const maxToolSteps = 20
+
+// Permission modes (inspired by smolcoder ro / edit / bypass).
+const (
+	ModeReadOnly = "ro"
+	ModeEdit     = "edit"
+	ModeBypass   = "bypass"
+)
 
 // Config wires an agent's dependencies.
 type Config struct {
-	Provider llm.Provider
-	Tools    *tools.Registry
-	Cortex   cortex.Store
-	Model    string
-	Usage    *llm.Tracker // optional: records token usage for the dashboard (E69)
-	Local    bool         // whether the provider is local (local tokens cost $0)
+	Provider     llm.Provider
+	Tools        *tools.Registry
+	Cortex       cortex.Store
+	Model        string
+	Usage        *llm.Tracker      // optional: records token usage for the dashboard (E69)
+	Decider      *decision.Decider // System-One Decision Engine (defaults to Liquid AI d1-omni-600M)
+	SDLC         *sdlc.Manager     // 7-Phase SDLC State Machine & Phase-Scoped Prompt Loader
+	Local        bool              // whether the provider is local (local tokens cost $0)
+	Mode         string            // "ro" | "edit" | "bypass" (default "edit")
+	Effort       string            // "" | "off" | "low" | "medium" | "high"
+	SmolPolicy   string            // "auto" (default) | "on" | "off"
+	ApprovalFunc func(toolName, rawArgs string) bool
 }
 
 // Step records one tool execution in a turn (used by RunTrace / the trace CLI).
@@ -48,6 +62,7 @@ const (
 	EventMemory = "memory" // recalled memory (Text = content)
 	EventToken  = "token"  // a delta of the model's reply (Text = delta)
 	EventTool   = "tool"   // a tool execution (Step)
+	EventSteer  = "steer"  // mid-turn user steering injected
 	EventDone   = "done"   // turn complete (Reply = final answer)
 	EventError  = "error"  // turn failed (Err)
 )
@@ -63,26 +78,288 @@ type Event struct {
 
 // Agent runs the gather -> infer -> act -> verify loop.
 type Agent struct {
-	cfg Config
+	mu      sync.RWMutex
+	cfg     Config
+	steerCh chan string
 }
 
 // New returns an Agent wired to the given dependencies.
 func New(cfg Config) *Agent {
-	return &Agent{cfg: cfg}
+	if cfg.Mode == "" {
+		cfg.Mode = ModeEdit
+	}
+	if cfg.SmolPolicy == "" {
+		cfg.SmolPolicy = SmolAuto
+	}
+	if cfg.Decider == nil {
+		cfg.Decider = decision.New("", "", decision.PrimaryDecisionModel)
+	}
+	if cfg.SDLC == nil {
+		if cfg.Tools != nil {
+			if st, ok := cfg.Tools.Get("sdlc"); ok {
+				if sdlcTool, ok := st.(*tools.SDLCTool); ok && sdlcTool.Manager != nil {
+					cfg.SDLC = sdlcTool.Manager
+				}
+			}
+		}
+		if cfg.SDLC == nil {
+			cfg.SDLC = sdlc.NewManager(".")
+		}
+	}
+	return &Agent{
+		cfg:     cfg,
+		steerCh: make(chan string, 16),
+	}
 }
 
-// schemas converts the registered tools into model-facing tool schemas.
+// Decider returns Mímir's built-in System-One Decision Engine (Liquid AI d1-omni-600M).
+func (a *Agent) Decider() *decision.Decider {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.Decider
+}
+
+// SDLC returns Mímir's 7-Phase SDLC State Machine & Phase-Scoped Prompt Loader.
+func (a *Agent) SDLC() *sdlc.Manager {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.SDLC
+}
+
+// SmolMode reports whether smolcoder tiny-model optimizations are currently active
+// (either forced on or auto-activated by DetectSmolModel).
+func (a *Agent) SmolMode() bool {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	switch a.cfg.SmolPolicy {
+	case SmolOn:
+		return true
+	case SmolOff:
+		return false
+	default:
+		pid := ""
+		if a.cfg.Provider != nil {
+			pid = a.cfg.Provider.ID()
+		}
+		return DetectSmolModel(pid, a.cfg.Model, a.cfg.Local)
+	}
+}
+
+// SmolPolicy returns the current SmolMode policy ("auto", "on", "off").
+func (a *Agent) SmolPolicy() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	if a.cfg.SmolPolicy == "" {
+		return SmolAuto
+	}
+	return a.cfg.SmolPolicy
+}
+
+// SetSmolPolicy sets the SmolMode policy ("auto", "on", "off").
+func (a *Agent) SetSmolPolicy(policy string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	switch strings.ToLower(strings.TrimSpace(policy)) {
+	case SmolOn:
+		a.cfg.SmolPolicy = SmolOn
+	case SmolOff:
+		a.cfg.SmolPolicy = SmolOff
+	default:
+		a.cfg.SmolPolicy = SmolAuto
+	}
+}
+
+// Mode returns the current permission mode ("ro", "edit", "bypass").
+func (a *Agent) Mode() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	if a.cfg.Mode == "" {
+		return ModeEdit
+	}
+	return a.cfg.Mode
+}
+
+// SetMode sets the active permission mode ("ro", "edit", "bypass").
+func (a *Agent) SetMode(mode string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	switch mode {
+	case ModeReadOnly, ModeEdit, ModeBypass:
+		a.cfg.Mode = mode
+	}
+}
+
+// CycleMode cycles permission modes: edit -> bypass -> ro -> edit (Shift+Tab in TUI).
+func (a *Agent) CycleMode() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	switch a.cfg.Mode {
+	case ModeReadOnly:
+		a.cfg.Mode = ModeEdit
+	case ModeEdit:
+		a.cfg.Mode = ModeBypass
+	default:
+		a.cfg.Mode = ModeReadOnly
+	}
+	return a.cfg.Mode
+}
+
+// Effort returns the current reasoning effort ("", "off", "low", "medium", "high").
+func (a *Agent) Effort() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.Effort
+}
+
+// SetEffort updates the reasoning effort level.
+func (a *Agent) SetEffort(effort string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.cfg.Effort = strings.ToLower(strings.TrimSpace(effort))
+}
+
+// SetProvider hot-swaps the active LLM provider and model at runtime.
+func (a *Agent) SetProvider(p llm.Provider, model string, local bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.cfg.Provider = p
+	a.cfg.Model = model
+	a.cfg.Local = local
+}
+
+// ModelInfo returns the current provider ID, model name, and local flag.
+func (a *Agent) ModelInfo() (string, string, bool) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	pid := "none"
+	if a.cfg.Provider != nil {
+		pid = a.cfg.Provider.ID()
+	}
+	return pid, a.cfg.Model, a.cfg.Local
+}
+
+// Steer queues a mid-turn user steering instruction to be injected cleanly at the
+// next joined tool boundary without aborting the turn (sausheong/harness pattern).
+func (a *Agent) Steer(msg string) {
+	msg = strings.TrimSpace(msg)
+	if msg == "" {
+		return
+	}
+	select {
+	case a.steerCh <- msg:
+	default:
+	}
+}
+
+func (a *Agent) drainSteer() []string {
+	var out []string
+	for {
+		select {
+		case m := <-a.steerCh:
+			out = append(out, m)
+		default:
+			return out
+		}
+	}
+}
+
+// schemas converts the registered tools visible in the current mode into model-facing tool schemas.
 func (a *Agent) schemas() []llm.ToolSchema {
-	if a.cfg.Tools == nil {
+	a.mu.RLock()
+	reg := a.cfg.Tools
+	mode := a.cfg.Mode
+	a.mu.RUnlock()
+	if reg == nil {
 		return nil
 	}
 	var out []llm.ToolSchema
-	for _, t := range a.cfg.Tools.All() {
+	for _, t := range reg.ForMode(mode) {
 		out = append(out, llm.ToolSchema{
 			Name: t.Name(), Description: t.Description(), Parameters: t.Parameters(),
 		})
 	}
 	return out
+}
+
+func (a *Agent) todoLines() []string {
+	a.mu.RLock()
+	reg := a.cfg.Tools
+	a.mu.RUnlock()
+	if reg == nil {
+		return nil
+	}
+	t, ok := reg.Get("todo")
+	if !ok {
+		return nil
+	}
+	tt, ok := t.(*tools.TodoTool)
+	if !ok || tt.Store == nil {
+		return nil
+	}
+	var lines []string
+	for _, item := range tt.Store.List() {
+		lines = append(lines, fmt.Sprintf("- #%d [%s] %s", item.ID, item.Status, item.Content))
+	}
+	return lines
+}
+
+func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
+	repairedArgs := llm.RepairJSON(tc.Arguments)
+	st := Step{Name: tc.Name, Args: repairedArgs}
+
+	a.mu.RLock()
+	reg := a.cfg.Tools
+	mode := a.cfg.Mode
+	approve := a.cfg.ApprovalFunc
+	a.mu.RUnlock()
+
+	if mode == ModeReadOnly && tools.IsWriteTool(tc.Name) {
+		st.Err = "blocked in read-only (ro) mode: switch to edit or bypass mode (Shift+Tab) to allow mutations"
+		st.Result = st.Err
+		return st
+	}
+	if mode == ModeEdit && approve != nil && tools.IsWriteTool(tc.Name) {
+		if !approve(tc.Name, repairedArgs) {
+			st.Err = "tool execution rejected by user"
+			st.Result = st.Err
+			return st
+		}
+	}
+
+	tool, ok := reg.Get(tc.Name)
+	if !ok {
+		st.Err = "unknown tool: " + tc.Name
+		st.Result = st.Err
+		return st
+	}
+	var args map[string]any
+	if repairedArgs != "" {
+		_ = json.Unmarshal([]byte(repairedArgs), &args)
+	}
+	r, err := tool.Run(ctx, args)
+	st.Result = r
+	if err != nil {
+		st.Err = err.Error()
+		if st.Result == "" {
+			st.Result = st.Err
+		}
+	}
+	return st
+}
+
+// buildPrompt selects smolSystemPrompt when SmolMode is active, or the standard
+// systemPrompt otherwise, and appends the persistent harness-owned Todo checklist.
+func (a *Agent) buildPrompt(memories []cortex.Neuron, schemas []llm.ToolSchema) string {
+	return a.buildPromptForInput("", memories, schemas)
+}
+
+func (a *Agent) buildPromptForInput(input string, memories []cortex.Neuron, schemas []llm.ToolSchema) string {
+	smol := a.SmolMode()
+	base := systemPrompt(memories, schemas)
+	if smol {
+		base = smolSystemPrompt(memories, schemas)
+	}
+	return base + BuildPhaseScopedRulesBlock(a.SDLC(), input) + FormatTodoChecklist(a.todoLines())
 }
 
 // runLoop drives the infer -> act cycle until the model returns text or the step
@@ -91,40 +368,49 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step
 	schemas := a.schemas()
 	var trace []Step
 	var last string
+	smol := a.SmolMode()
+	keepRecent := 4
+	if smol {
+		keepRecent = 2
+	}
 	for step := 0; step < maxToolSteps; step++ {
-		resp, err := a.cfg.Provider.Generate(ctx, llm.GenerateRequest{
-			Model: a.cfg.Model, Messages: msgs, Tools: schemas,
+		pruned := PruneHistoryPlaceholders(msgs, keepRecent)
+		a.mu.RLock()
+		prov := a.cfg.Provider
+		model := a.cfg.Model
+		local := a.cfg.Local
+		effort := a.cfg.Effort
+		usageTracker := a.cfg.Usage
+		a.mu.RUnlock()
+
+		// In SmolMode, automatically disable chain-of-thought on mechanical follow-up
+		// tool steps (step > 0) when effort is auto ("") for 3-5x faster tool loops.
+		if smol && step > 0 && effort == "" {
+			effort = "off"
+		}
+
+		resp, err := prov.Generate(ctx, llm.GenerateRequest{
+			Model: model, Messages: pruned, Tools: schemas, Effort: effort,
 		})
 		if err != nil {
 			return "", trace, err
 		}
-		if a.cfg.Usage != nil {
-			a.cfg.Usage.Record(a.cfg.Model, a.cfg.Local, resp.Usage)
+		if usageTracker != nil {
+			usageTracker.Record(model, local, resp.Usage)
 		}
-		last = resp.Content
-		msgs = append(msgs, llm.Message{Role: "assistant", Content: resp.Content, ToolCalls: resp.ToolCalls})
+		last = StripEmDashes(resp.Content)
+		msgs = append(msgs, llm.Message{Role: "assistant", Content: last, ToolCalls: resp.ToolCalls})
 		if len(resp.ToolCalls) == 0 {
-			return resp.Content, trace, nil
+			return last, trace, nil
 		}
 		for _, tc := range resp.ToolCalls {
-			st := Step{Name: tc.Name, Args: tc.Arguments}
-			tool, ok := a.cfg.Tools.Get(tc.Name)
-			if !ok {
-				st.Err = "unknown tool: " + tc.Name
-				st.Result = st.Err
-			} else {
-				var args map[string]any
-				if tc.Arguments != "" {
-					_ = json.Unmarshal([]byte(tc.Arguments), &args)
-				}
-				r, err := tool.Run(ctx, args)
-				st.Result = r
-				if err != nil {
-					st.Err = err.Error()
-				}
-			}
+			st := a.executeToolCall(ctx, tc)
 			trace = append(trace, st)
 			msgs = append(msgs, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: st.Result})
+		}
+		// Inject any mid-turn user steering messages queued during tool execution.
+		for _, sm := range a.drainSteer() {
+			msgs = append(msgs, llm.Message{Role: "user", Content: "[User steering instruction]: " + sm})
 		}
 	}
 	return last, trace, nil
@@ -150,10 +436,7 @@ func (a *Agent) RunFull(ctx context.Context, input string, history []llm.Message
 
 // RunStream runs one conversational turn while streaming updates to emit as they
 // happen: recalled memories, token deltas of the model's reply, tool executions, and
-// a final done event carrying the full reply (F2.1 streaming + tool calling). It
-// mirrors RunFull's recall -> infer -> act -> remember cycle, but the answer streams
-// token by token instead of arriving all at once. The doom-loop guard caps steps.
-// history is the prior conversation messages (from the session) for multi-turn context.
+// a final done event carrying the full reply (F2.1 streaming + tool calling).
 func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Message, emit func(Event)) error {
 	memories, err := a.cfg.Cortex.Search(ctx, input, 5)
 	if err != nil {
@@ -163,16 +446,34 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 	for _, m := range memories {
 		emit(Event{Type: EventMemory, Text: m.Content})
 	}
+	schemas := a.schemas()
 	msgs := []llm.Message{
-		{Role: "system", Content: systemPrompt(memories, a.schemas())},
+		{Role: "system", Content: a.buildPromptForInput(input, memories, schemas)},
 	}
 	msgs = append(msgs, history...)
 	msgs = append(msgs, llm.Message{Role: "user", Content: input})
-	schemas := a.schemas()
 	var finalReply string
+	smol := a.SmolMode()
+	keepRecent := 4
+	if smol {
+		keepRecent = 2
+	}
 	for step := 0; step < maxToolSteps; step++ {
-		ch, err := a.cfg.Provider.Stream(ctx, llm.GenerateRequest{
-			Model: a.cfg.Model, Messages: msgs, Tools: schemas,
+		pruned := PruneHistoryPlaceholders(msgs, keepRecent)
+		a.mu.RLock()
+		prov := a.cfg.Provider
+		model := a.cfg.Model
+		local := a.cfg.Local
+		effort := a.cfg.Effort
+		usageTracker := a.cfg.Usage
+		a.mu.RUnlock()
+
+		if smol && step > 0 && effort == "" {
+			effort = "off"
+		}
+
+		ch, err := prov.Stream(ctx, llm.GenerateRequest{
+			Model: model, Messages: pruned, Tools: schemas, Effort: effort,
 		})
 		if err != nil {
 			emit(Event{Type: EventError, Err: err.Error()})
@@ -187,18 +488,19 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 				return ev.Err
 			}
 			if ev.Delta != "" {
-				content.WriteString(ev.Delta)
-				emit(Event{Type: EventToken, Text: ev.Delta})
+				cleanDelta := StripEmDashes(ev.Delta)
+				content.WriteString(cleanDelta)
+				emit(Event{Type: EventToken, Text: cleanDelta})
 			}
 			if ev.Done {
 				toolCalls = ev.ToolCalls
 				usage = ev.Usage
 			}
 		}
-		if a.cfg.Usage != nil {
-			a.cfg.Usage.Record(a.cfg.Model, a.cfg.Local, usage)
+		if usageTracker != nil {
+			usageTracker.Record(model, local, usage)
 		}
-		text := content.String()
+		text := StripEmDashes(content.String())
 		finalReply = text
 		msgs = append(msgs, llm.Message{Role: "assistant", Content: text, ToolCalls: toolCalls})
 		if len(toolCalls) == 0 {
@@ -206,24 +508,13 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 			return nil
 		}
 		for _, tc := range toolCalls {
-			st := Step{Name: tc.Name, Args: tc.Arguments}
-			tool, ok := a.cfg.Tools.Get(tc.Name)
-			if !ok {
-				st.Err = "unknown tool: " + tc.Name
-				st.Result = st.Err
-			} else {
-				var args map[string]any
-				if tc.Arguments != "" {
-					_ = json.Unmarshal([]byte(tc.Arguments), &args)
-				}
-				r, err := tool.Run(ctx, args)
-				st.Result = r
-				if err != nil {
-					st.Err = err.Error()
-				}
-			}
+			st := a.executeToolCall(ctx, tc)
 			emit(Event{Type: EventTool, Step: &st})
 			msgs = append(msgs, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: st.Result})
+		}
+		for _, sm := range a.drainSteer() {
+			emit(Event{Type: EventSteer, Text: sm})
+			msgs = append(msgs, llm.Message{Role: "user", Content: "[User steering instruction]: " + sm})
 		}
 	}
 	emit(Event{Type: EventDone, Reply: finalReply})
@@ -239,8 +530,9 @@ func (a *Agent) runTurn(ctx context.Context, input string, history []llm.Message
 	for i, m := range memories {
 		recalled[i] = m.Content
 	}
+	schemas := a.schemas()
 	msgs := []llm.Message{
-		{Role: "system", Content: systemPrompt(memories, a.schemas())},
+		{Role: "system", Content: a.buildPromptForInput(input, memories, schemas)},
 	}
 	msgs = append(msgs, history...)
 	msgs = append(msgs, llm.Message{Role: "user", Content: input})

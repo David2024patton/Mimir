@@ -1,0 +1,7268 @@
+Directory structure:
+└── tmc-langchaingo/
+    ├── .golangci-exp.yaml
+    ├── .golangci.yaml
+    ├── agents/
+    │   ├── agents.go
+    │   └── prompts/
+    │       ├── conversational_format_instructions.txt
+    │       └── conversational_suffix.txt
+    ├── callbacks/
+    │   ├── doc.go
+    │   └── log_stream.go
+    ├── chains/
+    │   ├── conversation.go
+    │   ├── doc.go
+    │   ├── options_test.go
+    │   ├── prompt_selector.go
+    │   ├── transform_test.go
+    │   ├── prompts/
+    │   │   ├── llm_api_url.txt
+    │   │   ├── llm_api_url_response.txt
+    │   │   └── llm_math.txt
+    │   └── testdata/
+    │       ├── TestConversationWithZepMemory.httprr
+    │       ├── TestLLMChainAzure.httprr
+    │       └── TestSQLDatabaseChain_Call.httprr
+    ├── docs/
+    │   ├── babel.config.js
+    │   ├── code-block-loader.js
+    │   ├── go.mod
+    │   ├── go.sum
+    │   ├── .vale.ini
+    │   ├── docs/
+    │   │   ├── getting-started/
+    │   │   │   └── guide-chat.mdx
+    │   │   └── modules/
+    │   │       ├── agents/
+    │   │       │   ├── agents/
+    │   │       │   │   └── index.mdx
+    │   │       │   ├── executor/
+    │   │       │   │   └── index.mdx
+    │   │       │   └── tools/
+    │   │       │       └── index.mdx
+    │   │       ├── chains/
+    │   │       │   └── llm_chain.mdx
+    │   │       ├── data_connection/
+    │   │       │   ├── index.mdx
+    │   │       │   ├── document_loaders/
+    │   │       │   │   └── index.mdx
+    │   │       │   ├── text_splitters/
+    │   │       │   │   └── index.mdx
+    │   │       │   └── vector_stores/
+    │   │       │       └── index.mdx
+    │   │       ├── memory/
+    │   │       │   └── examples/
+    │   │       │       └── index.mdx
+    │   │       └── model_io/
+    │   │           ├── index.mdx
+    │   │           ├── models/
+    │   │           │   ├── chat/
+    │   │           │   │   └── integrations.mdx
+    │   │           │   ├── embeddings/
+    │   │           │   │   ├── index.mdx
+    │   │           │   │   └── integrations.mdx
+    │   │           │   └── llms/
+    │   │           │       └── Integrations/
+    │   │           │           ├── llamafile.mdx
+    │   │           │           ├── local.mdx
+    │   │           │           ├── openai.mdx
+    │   │           │           ├── vertexai.mdx
+    │   │           │           └── watsonx.mdx
+    │   │           └── output_parsers/
+    │   │               └── index.mdx
+    │   ├── src/
+    │   │   ├── pages/
+    │   │   │   └── index.js
+    │   │   └── theme/
+    │   │       └── CodeBlock/
+    │   │           └── index.js
+    │   ├── static/
+    │   │   └── .nojekyll
+    │   └── styles/
+    │       └── langchaingo/
+    │           ├── ActiveVoice.yml
+    │           ├── Clarity.yml
+    │           ├── CodeBlockLanguage.yml
+    │           ├── ConsistentLists.yml
+    │           ├── DirectLanguage.yml
+    │           ├── ErrorHandling.yml
+    │           ├── HardcodedSecrets.yml
+    │           ├── ignore.txt
+    │           ├── IncompleteExamples.yml
+    │           ├── NoEmojis.yml
+    │           ├── PresentTense.yml
+    │           ├── Pronouns.yml
+    │           ├── Readability.yml
+    │           ├── Spelling.yml
+    │           └── Terminology.yml
+    ├── documentloaders/
+    │   ├── doc.go
+    │   ├── documentloaders.go
+    │   ├── text_test.go
+    │   └── testdata/
+    │       ├── test.csv
+    │       ├── test.html
+    │       ├── test.txt
+    │       └── depth/
+    │           └── test2.md
+    ├── embeddings/
+    │   ├── doc.go
+    │   ├── example_test.go
+    │   ├── options.go
+    │   ├── cybertron/
+    │   │   └── cybertron_test.go
+    │   └── testdata/
+    │       ├── TestOpenaiEmbeddingsWithAzureAPI.httprr
+    │       ├── TestVertexAIPaLMEmbeddings.httprr
+    │       └── TestVertexAIPaLMEmbeddingsWithOptions.httprr
+    ├── examples/
+    │   ├── Makefile
+    │   ├── .update-all-to-latest.sh
+    │   ├── anthropic-completion-example/
+    │   │   ├── anthropic_completion_example.go
+    │   │   └── go.mod
+    │   ├── anthropic-extended-capabilities/
+    │   │   └── go.mod
+    │   ├── anthropic-interleaved-thinking/
+    │   │   └── go.mod
+    │   ├── anthropic-tool-call-example/
+    │   │   └── go.mod
+    │   ├── anthropic-vision-example/
+    │   │   └── go.mod
+    │   ├── caching-llm-example/
+    │   │   └── go.mod
+    │   ├── cohere-llm-example/
+    │   │   ├── cohere_completion_example.go
+    │   │   └── go.mod
+    │   ├── deepseek-completion-example/
+    │   │   └── go.mod
+    │   ├── ernie-chat-example/
+    │   │   ├── ernie_chat_example.go
+    │   │   └── go.mod
+    │   ├── ernie-completion-example/
+    │   │   ├── ernie_completion_example.go
+    │   │   └── go.mod
+    │   ├── ernie-function-call-example/
+    │   │   └── go.mod
+    │   ├── googleai-completion-example/
+    │   │   └── googleai-completion-example.go
+    │   ├── googleai-streaming-example/
+    │   │   └── googleai-stremaing-example.go
+    │   ├── groq-completion-example/
+    │   │   ├── go.mod
+    │   │   └── groq_completion_example.go
+    │   ├── huggingface-llm-example/
+    │   │   └── go.mod
+    │   ├── huggingface-milvus-vectorstore-example/
+    │   │   └── Taskfile.yml
+    │   ├── llamafile-completion-example/
+    │   │   ├── go.mod
+    │   │   └── llamafile_completion_example.go
+    │   ├── llmmath-chain-example/
+    │   │   └── llm_math_chain.go
+    │   ├── local-llm-example/
+    │   │   └── go.mod
+    │   ├── maritaca-example/
+    │   │   ├── go.mod
+    │   │   └── maritaca-chat-example.go
+    │   ├── mistral-completion-example/
+    │   │   └── go.mod
+    │   ├── mongovector-vectorstore-example/
+    │   │   └── docker-compose.yml
+    │   ├── mrkl-agent-example/
+    │   │   └── mrkl_agent.go
+    │   ├── nvidia-chat-completion/
+    │   │   ├── go.mod
+    │   │   └── nvidia_chat_completion_example.go
+    │   ├── ollama-chat-example/
+    │   │   ├── go.mod
+    │   │   └── ollama_chat_example.go
+    │   ├── ollama-completion-example/
+    │   │   ├── go.mod
+    │   │   └── ollama_completion_example.go
+    │   ├── ollama-functions-example/
+    │   │   └── go.mod
+    │   ├── ollama-stream-example/
+    │   │   ├── go.mod
+    │   │   └── ollama_stream_example.go
+    │   ├── openai-chat-example/
+    │   │   ├── go.mod
+    │   │   └── openai_chat_example.go
+    │   ├── openai-completion-example/
+    │   │   ├── go.mod
+    │   │   └── openai_completion_example.go
+    │   ├── openai-completion-example-with-http-debugging/
+    │   │   ├── go.mod
+    │   │   └── openai_completion_example.go
+    │   ├── openai-embeddings-example/
+    │   │   ├── go.mod
+    │   │   └── openai-embeddings-example.go
+    │   ├── openai-function-call-example/
+    │   │   └── go.mod
+    │   ├── openai-function-call-streaming-example/
+    │   │   └── go.mod
+    │   ├── openai-gpt4-turbo-example/
+    │   │   ├── go.mod
+    │   │   └── openai_gpt4_turbo.go
+    │   ├── openai-gpt4o-example/
+    │   │   ├── go.mod
+    │   │   ├── index.html
+    │   │   └── openai_gpt4o_example.go
+    │   ├── openai-gpt4o-mutil-content/
+    │   │   ├── README.md
+    │   │   ├── go.mod
+    │   │   └── openai-gpt4o-mutil-content.go
+    │   ├── openai-jsonformat-example/
+    │   │   ├── README.md
+    │   │   └── go.mod
+    │   ├── openai-o1-example/
+    │   │   └── go.mod
+    │   ├── openai-readme/
+    │   │   ├── go.mod
+    │   │   └── openai-readme.go
+    │   ├── openrouter-llm-example/
+    │   │   └── go.mod
+    │   ├── perplexity-completion-example/
+    │   │   ├── go.mod
+    │   │   └── perplexity_completion_example.go
+    │   ├── pgvector-vectorstore-example/
+    │   │   ├── create_extension.sql
+    │   │   ├── docker-compose.yml
+    │   │   └── postgres.Dockerfile
+    │   ├── prompt-caching/
+    │   │   └── go.mod
+    │   ├── qdrant-vectorstore-example/
+    │   │   └── go.mod
+    │   ├── reasoning-tokens/
+    │   │   └── go.mod
+    │   ├── tutorial-basic-chat-app/
+    │   │   ├── step3_basic.go
+    │   │   └── step4_interactive.go
+    │   ├── vertex-embedding-example/
+    │   │   └── vertex-embedding-example.go
+    │   └── watsonx-llm-example/
+    │       ├── go.mod
+    │       └── watsonx_example.go
+    ├── exp/
+    │   ├── README.md
+    │   └── doc.go
+    ├── internal/
+    │   ├── devtools/
+    │   │   └── git-hooks/
+    │   │       └── pre-push
+    │   ├── imageutil/
+    │   │   └── download.go
+    │   ├── maputil/
+    │   │   └── map.go
+    │   ├── mongodb/
+    │   │   └── client.go
+    │   ├── setutil/
+    │   │   └── set.go
+    │   └── sliceutil/
+    │       ├── slice.go
+    │       └── slice_test.go
+    ├── llms/
+    │   ├── doc.go
+    │   ├── prompts.go
+    │   ├── anthropic/
+    │   │   └── llmtest_test.go
+    │   ├── bedrock/
+    │   │   ├── llmtest_test.go
+    │   │   └── testdata/
+    │   │       ├── TestAmazonNova.httprr
+    │   │       └── TestAmazonOutput.httprr
+    │   ├── cache/
+    │   │   └── doc.go
+    │   ├── cloudflare/
+    │   │   ├── llmtest_test.go
+    │   │   └── internal/
+    │   │       └── cloudflareclient/
+    │   │           ├── client.go
+    │   │           └── role.go
+    │   ├── cohere/
+    │   │   └── llmtest_test.go
+    │   ├── compliance/
+    │   │   └── doc.go
+    │   ├── ernie/
+    │   │   ├── doc.go
+    │   │   └── llmtest_test.go
+    │   ├── fake/
+    │   │   └── llmtest_test.go
+    │   ├── googleai/
+    │   │   ├── README.md
+    │   │   ├── embeddings.go
+    │   │   ├── llmtest_test.go
+    │   │   └── vertex/
+    │   │       └── embeddings.go
+    │   ├── huggingface/
+    │   │   └── llmtest_test.go
+    │   ├── llamafile/
+    │   │   └── llmtest_test.go
+    │   ├── local/
+    │   │   ├── llmtest_test.go
+    │   │   └── internal/
+    │   │       └── localclient/
+    │   │           ├── completions.go
+    │   │           └── doc.go
+    │   ├── maritaca/
+    │   │   └── llmtest_test.go
+    │   ├── mistral/
+    │   │   ├── llmtest_test.go
+    │   │   └── mistralembed.go
+    │   ├── ollama/
+    │   │   ├── llmtest_test.go
+    │   │   └── testdata/
+    │   │       └── TestWithPullTimeout.httprr
+    │   ├── openai/
+    │   │   ├── doc.go
+    │   │   └── llmtest_test.go
+    │   └── watsonx/
+    │       └── llmtest_test.go
+    ├── memory/
+    │   ├── chat_options.go
+    │   ├── doc.go
+    │   ├── simple.go
+    │   ├── alloydb/
+    │   │   └── chat_message_history_options.go
+    │   ├── cloudsql/
+    │   │   └── chat_message_history_options.go
+    │   ├── mongo/
+    │   │   └── main_test.go
+    │   └── testdata/
+    │       ├── TestTokenBufferMemory.httprr
+    │       ├── TestTokenBufferMemoryReturnMessage.httprr
+    │       └── TestTokenBufferMemoryWithPreLoadedHistory.httprr
+    ├── outputparser/
+    │   ├── comma_seperated_list_test.go
+    │   └── simple.go
+    ├── prompts/
+    │   ├── chat_prompt.go
+    │   ├── example_selector.go
+    │   ├── prompt_test.go
+    │   ├── prompts.go
+    │   ├── render_options.go
+    │   ├── string_prompt.go
+    │   ├── templates_go.go
+    │   ├── internal/
+    │   │   └── fstring/
+    │   │       ├── doc.go
+    │   │       └── fstring.go
+    │   └── testdata/
+    │       ├── article.j2
+    │       ├── header.j2
+    │       └── main.j2
+    ├── schema/
+    │   ├── chat_message_history.go
+    │   ├── doc.go
+    │   ├── documents.go
+    │   ├── memory.go
+    │   ├── output_parsers.go
+    │   ├── retrivers.go
+    │   └── schema.go
+    ├── testing/
+    │   └── llmtest/
+    │       └── example_test.go
+    ├── textsplitter/
+    │   ├── doc.go
+    │   └── text_spliter.go
+    ├── tools/
+    │   ├── doc.go
+    │   ├── tool.go
+    │   ├── duckduckgo/
+    │   │   └── doc.go
+    │   ├── metaphor/
+    │   │   └── doc.go
+    │   ├── perplexity/
+    │   │   └── perplexity_test.go
+    │   ├── scraper/
+    │   │   └── doc.go
+    │   ├── serpapi/
+    │   │   ├── doc.go
+    │   │   └── options.go
+    │   ├── sqldatabase/
+    │   │   ├── mysql/
+    │   │   │   └── main_test.go
+    │   │   ├── postgresql/
+    │   │   │   └── main_test.go
+    │   │   └── testdata/
+    │   │       └── db.sql
+    │   ├── wikipedia/
+    │   │   ├── doc.go
+    │   │   └── wikipedia_test.go
+    │   └── zapier/
+    │       ├── doc.go
+    │       ├── zapier_test.go
+    │       └── internal/
+    │           └── errors.go
+    ├── vectorstores/
+    │   ├── doc.go
+    │   ├── alloydb/
+    │   │   ├── main_test.go
+    │   │   └── testdata/
+    │   │       ├── TestAddDocuments.httprr
+    │   │       ├── TestContainerApplyVectorIndexAndDropIndex.httprr
+    │   │       └── TestContainerIsValidIndex.httprr
+    │   ├── azureaisearch/
+    │   │   ├── doc.go
+    │   │   ├── helpers.go
+    │   │   ├── index_delete.go
+    │   │   ├── index_list.go
+    │   │   ├── index_retrieve.go
+    │   │   └── types.go
+    │   ├── bedrockknowledgebases/
+    │   │   └── doc.go
+    │   ├── chroma/
+    │   │   ├── doc.go
+    │   │   └── main_test.go
+    │   ├── cloudsql/
+    │   │   ├── main_test.go
+    │   │   └── testdata/
+    │   │       ├── TestAddDocuments.httprr
+    │   │       ├── TestContainerApplyVectorIndexAndDropIndex.httprr
+    │   │       └── TestContainerIsValidIndex.httprr
+    │   ├── dolt/
+    │   │   └── doc.go
+    │   ├── mariadb/
+    │   │   ├── doc.go
+    │   │   └── main_test.go
+    │   ├── milvus/
+    │   │   └── main_test.go
+    │   ├── mongovector/
+    │   │   └── mock_llm.go
+    │   ├── opensearch/
+    │   │   ├── doc.go
+    │   │   ├── document_indexing.go
+    │   │   ├── index_delete.go
+    │   │   ├── main_test.go
+    │   │   └── types.go
+    │   ├── pgvector/
+    │   │   ├── doc.go
+    │   │   └── main_test.go
+    │   ├── pinecone/
+    │   │   ├── doc.go
+    │   │   └── testdata/
+    │   │       └── TestPineconeStoreRest.httprr
+    │   ├── qdrant/
+    │   │   ├── doc.go
+    │   │   └── schema.go
+    │   ├── redisvector/
+    │   │   ├── doc.go
+    │   │   ├── main_test.go
+    │   │   └── testdata/
+    │   │       ├── schema.yml
+    │   │       └── TestCreateRedisVectorOptions.httprr
+    │   └── weaviate/
+    │       ├── doc.go
+    │       └── main_test.go
+    └── .github/
+        ├── dependabot.yml
+        ├── FUNDING.yml
+        └── PULL_REQUEST_TEMPLATE.md
+
+================================================
+FILE: .golangci-exp.yaml
+================================================
+linters:
+  presets:
+    - bugs
+    - comment
+
+
+
+================================================
+FILE: .golangci.yaml
+================================================
+version: "2"
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - forbidigo
+    - funlen
+    - gosec
+    - misspell
+  settings:
+    cyclop:
+      max-complexity: 12
+    forbidigo:
+      forbid:
+        - pattern: import "[^"]+/(util|common|helpers)"
+    funlen:
+      lines: 90
+    gosec:
+      excludes:
+        - G115
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - internal
+      - vectorstores/bedrockknowledgebases
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+
+
+
+================================================
+FILE: agents/agents.go
+================================================
+package agents
+
+import (
+	"context"
+
+	"github.com/tmc/langchaingo/chains"
+	"github.com/tmc/langchaingo/schema"
+	"github.com/tmc/langchaingo/tools"
+)
+
+// Agent is the interface all agents must implement.
+type Agent interface {
+	// Plan Given an input and previous steps decide what to do next. Returns
+	// either actions or a finish. Options can be passed to configure LLM
+	// parameters like temperature, max tokens, etc.
+	Plan(ctx context.Context, intermediateSteps []schema.AgentStep, inputs map[string]string, options ...chains.ChainCallOption) ([]schema.AgentAction, *schema.AgentFinish, error) //nolint:lll
+	GetInputKeys() []string
+	GetOutputKeys() []string
+	GetTools() []tools.Tool
+}
+
+
+
+================================================
+FILE: agents/prompts/conversational_format_instructions.txt
+================================================
+To use a tool, please use the following format:
+
+Thought: Do I need to use a tool? Yes
+Action: the action to take, should be one of [{{.tool_names}}]
+Action Input: the input to the action
+Observation: the result of the action
+
+When you have a response to say to the Human, or if you do not need to use a tool, you MUST use the format:
+
+Thought: Do I need to use a tool? No
+AI: [your response here]
+
+
+
+================================================
+FILE: agents/prompts/conversational_suffix.txt
+================================================
+Begin!
+
+Previous conversation history:
+{{.history}}
+
+New input: {{.input}}
+
+Thought:{{.agent_scratchpad}}
+
+
+================================================
+FILE: callbacks/doc.go
+================================================
+// Package callbacks includes a standard interface for hooking into various
+// stages of your LLM application. The package contains an implementation of
+// this interface that prints to the standard output.
+package callbacks
+
+
+
+================================================
+FILE: callbacks/log_stream.go
+================================================
+//nolint:forbidigo
+package callbacks
+
+import (
+	"context"
+	"fmt"
+)
+
+// StreamLogHandler is a callback handler that prints to the standard output streaming.
+type StreamLogHandler struct {
+	SimpleHandler
+}
+
+var _ Handler = StreamLogHandler{}
+
+func (StreamLogHandler) HandleStreamingFunc(_ context.Context, chunk []byte) {
+	fmt.Println(string(chunk))
+}
+
+
+
+================================================
+FILE: chains/conversation.go
+================================================
+package chains
+
+import (
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/outputparser"
+	"github.com/tmc/langchaingo/prompts"
+	"github.com/tmc/langchaingo/schema"
+)
+
+//nolint:lll
+const _conversationTemplate = `The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
+
+Current conversation:
+{{.history}}
+Human: {{.input}}
+AI:`
+
+func NewConversation(llm llms.Model, memory schema.Memory) LLMChain {
+	return LLMChain{
+		Prompt: prompts.NewPromptTemplate(
+			_conversationTemplate,
+			[]string{"history", "input"},
+		),
+		LLM:          llm,
+		Memory:       memory,
+		OutputParser: outputparser.NewSimple(),
+		OutputKey:    _llmChainDefaultOutputKey,
+	}
+}
+
+
+
+================================================
+FILE: chains/doc.go
+================================================
+// Package chains contains a standard interface for chains, a number of built-in chains and
+// functions for calling and running chains.
+package chains
+
+
+
+================================================
+FILE: chains/options_test.go
+================================================
+package chains
+
+import (
+	"context"
+	"testing"
+
+	"github.com/tmc/langchaingo/llms"
+)
+
+func TestGetLLMCallOptionsStreamingPresence(t *testing.T) {
+	stream := func(context.Context, []byte) error { return nil }
+
+	tests := []struct {
+		name    string
+		options []ChainCallOption
+		want    func(context.Context, []byte) error
+	}{
+		{name: "absent", want: stream},
+		{name: "explicit nil", options: []ChainCallOption{WithStreamingFunc(nil)}},
+		{name: "explicit function", options: []ChainCallOption{WithStreamingFunc(stream)}, want: stream},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			opts := llms.CallOptions{StreamingFunc: stream}
+			for _, option := range GetLLMCallOptions(test.options...) {
+				option(&opts)
+			}
+			if opts.StreamingFunc == nil && test.want != nil {
+				t.Fatal("streaming function was cleared")
+			}
+			if opts.StreamingFunc != nil && test.want == nil {
+				t.Fatal("streaming function was not cleared")
+			}
+		})
+	}
+}
+
+
+
+================================================
+FILE: chains/prompt_selector.go
+================================================
+package chains
+
+import (
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/prompts"
+)
+
+// PromptSelector is the interface for selecting a formatter depending on the
+// LLM given.
+type PromptSelector interface {
+	GetPrompt(llm llms.Model) prompts.PromptTemplate
+}
+
+// ConditionalPromptSelector is a formatter selector that selects a prompt
+// depending on conditionals.
+type ConditionalPromptSelector struct {
+	DefaultPrompt prompts.PromptTemplate
+	Conditionals  []struct {
+		Condition func(llms.Model) bool
+		Prompt    prompts.PromptTemplate
+	}
+}
+
+var _ PromptSelector = ConditionalPromptSelector{}
+
+func (s ConditionalPromptSelector) GetPrompt(llm llms.Model) prompts.PromptTemplate {
+	for _, conditional := range s.Conditionals {
+		if conditional.Condition(llm) {
+			return conditional.Prompt
+		}
+	}
+
+	return s.DefaultPrompt
+}
+
+
+
+================================================
+FILE: chains/transform_test.go
+================================================
+package chains
+
+import (
+	"context"
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestTransform(t *testing.T) {
+	ctx := context.Background()
+	t.Parallel()
+
+	c := NewTransform(
+		func(_ context.Context, m map[string]any, _ ...ChainCallOption) (map[string]any, error) {
+			input, ok := m["input"].(string)
+			if !ok {
+				return nil, fmt.Errorf("%w: %w", ErrInvalidInputValues, ErrInputValuesWrongType)
+			}
+
+			return map[string]any{
+				"output": input + "foo",
+			}, nil
+		},
+		[]string{"input"},
+		[]string{"output"},
+	)
+
+	output, err := Run(ctx, c, "baz")
+	require.NoError(t, err)
+	require.Equal(t, "bazfoo", output)
+}
+
+
+
+================================================
+FILE: chains/prompts/llm_api_url.txt
+================================================
+You are given the API Documentation:
+
+{{.api_docs}}
+
+Your task is to construct a full API JSON object based on the provided input. The input could be a question that requires an API call for its answer, or a direct or indirect instruction to consume an API. The input will be unpredictable and could come from a user or an agent.
+
+Your goal is to create an API call that accurately reflects the intent of the input. Be sure to exclude any unnecessary data in the API call to ensure efficiency.
+
+Input: {{.input}}
+
+Respond with a JSON object.
+
+{
+    "method":  [the HTTP method for the API call, such as GET or POST],
+    "headers": [object representing the HTTP headers required for the API call, always add a "Content-Type" header],
+    "url": 	   [full for the API call],
+    "body":    [object containing the data sent with the request, if needed]
+}
+
+
+================================================
+FILE: chains/prompts/llm_api_url_response.txt
+================================================
+
+Here is the response from the API:
+
+{{.api_response}}
+
+Now, summarize this response. Your summary should reflect the original input and highlight the key information from the API response that answers or relates to that input. Try to make your summary concise, yet informative.
+
+Summary:
+
+
+================================================
+FILE: chains/prompts/llm_math.txt
+================================================
+Translate a math problem into a expression that can be evaluated as Starlark.
+Use the output of running this code to answer the question.
+
+---
+Question: (Question with math problem.)
+```starlark
+$(single line expression that solves the problem)
+```
+
+---
+Question: What is 37593 * 67?
+```starlark
+37593 * 67
+```
+
+---
+Question: {{.question}}
+
+
+
+================================================
+FILE: chains/testdata/TestConversationWithZepMemory.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: chains/testdata/TestLLMChainAzure.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: chains/testdata/TestSQLDatabaseChain_Call.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: docs/babel.config.js
+================================================
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * @format
+ */
+
+module.exports = {
+  presets: [require.resolve("@docusaurus/core/lib/babel/preset")],
+};
+
+
+
+================================================
+FILE: docs/code-block-loader.js
+================================================
+/* eslint-disable prefer-template */
+/* eslint-disable no-param-reassign */
+// eslint-disable-next-line import/no-extraneous-dependencies
+const babel = require("@babel/core");
+const path = require("path");
+const fs = require("fs");
+
+/**
+ *
+ * @param {string|Buffer} content Content of the resource file
+ * @param {object} [map] SourceMap data consumable by https://github.com/mozilla/source-map
+ * @param {any} [meta] Meta data, could be anything
+ */
+async function webpackLoader(content, map, meta) {
+  const cb = this.async();
+
+  try {
+    cb(null, JSON.stringify({ content, imports: [] }), map, meta);
+  } catch (err) {
+    cb(err)
+  }
+}
+
+module.exports = webpackLoader;
+
+
+
+================================================
+FILE: docs/go.mod
+================================================
+module search-indexer
+
+go 1.21
+
+require (
+	github.com/yuin/goldmark v1.7.8
+	github.com/yuin/goldmark-meta v1.1.0
+)
+
+require gopkg.in/yaml.v2 v2.4.0 // indirect
+
+
+
+================================================
+FILE: docs/go.sum
+================================================
+github.com/yuin/goldmark v1.7.8 h1:iERMLn0/QJeHFhxSt3p6PeN9mGnvIKSpG9YYorDMnic=
+github.com/yuin/goldmark v1.7.8/go.mod h1:uzxRWxtg69N339t3louHJ7+O03ezfj6PlliRlaOzY1E=
+github.com/yuin/goldmark-meta v1.1.0 h1:pWw+JLHGZe8Rk0EGsMVssiNb/AaPMHfSRszZeUeiOUc=
+github.com/yuin/goldmark-meta v1.1.0/go.mod h1:U4spWENafuA7Zyg+Lj5RqK/MF+ovMYtBvXi1lBb2VP0=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/yaml.v2 v2.4.0 h1:D8xgwECY7CYvx+Y2n4sBz93Jn9JRvxdiyyo8CTfuKaY=
+gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=
+
+
+
+================================================
+FILE: docs/.vale.ini
+================================================
+StylesPath = styles
+MinAlertLevel = suggestion
+
+[*.{md,mdx,txt,rst}]
+BasedOnStyles = langchaingo
+
+[formats]
+mdx = md
+
+
+
+
+================================================
+FILE: docs/docs/getting-started/guide-chat.mdx
+================================================
+---
+sidebar_position: 3
+draft: true
+---
+
+# Unfinished quickstart, using chat models
+
+Chat models are a variation on language models.
+While chat models use language models under the hood, the interface they expose is a bit different.
+Rather than expose a "text in, text out" API, they expose an interface where "chat messages" are the inputs and outputs.
+
+## Installation
+
+To get started, install LangChain with the following command:
+
+```bash 
+go get github.com/tmc/langchaingo
+```
+
+## Getting started
+
+
+### Chat models: message in, message out
+
+
+#### Multiple messages
+
+
+#### Multiple completions
+
+``
+
+### Chat prompt templates: manage prompts for chat models
+
+
+### Model + prompt = LLM chain
+
+
+### Agents: dynamically run chains based on user input
+
+
+### Memory: add state to chains and agents
+
+## Streaming
+
+
+
+================================================
+FILE: docs/docs/modules/agents/agents/index.mdx
+================================================
+---
+hide_table_of_contents: true
+sidebar_position: 1
+---
+
+import DocCardList from "@theme/DocCardList";
+
+# Agents
+
+:::info
+[Conceptual Guide](https://python.langchain.com/docs/modules/agents/concepts)
+:::
+
+## All Agents
+
+<DocCardList />
+
+
+
+================================================
+FILE: docs/docs/modules/agents/executor/index.mdx
+================================================
+---
+hide_table_of_contents: true
+sidebar_position: 2
+---
+
+import CodeBlock from "@theme/CodeBlock";
+import Example from "@examples/mrkl-agent-example/mrkl_agent.go";
+import DocCardList from "@theme/DocCardList";
+
+# Agent Executors
+
+:::info
+[Conceptual Guide](https://python.langchain.com/docs/modules/agents/concepts#agentexecutor)
+:::
+
+To make agents more powerful we need to make them iterative, ie. call the model multiple times until they arrive at the final answer. That's the job of the AgentExecutor.
+
+## Example
+An example that initialize a MRKL (Modular Reasoning, Knowledge and Language, pronounced "miracle") agent executor.
+<CodeBlock language="go">{Example}</CodeBlock>
+
+<DocCardList />
+
+
+
+================================================
+FILE: docs/docs/modules/agents/tools/index.mdx
+================================================
+---
+hide_table_of_contents: true
+sidebar_position: 3
+---
+
+import DocCardList from "@theme/DocCardList";
+
+# Tools
+
+:::info
+[Conceptual Guide](https://python.langchain.com/docs/how_to/#tools)
+:::
+
+
+
+================================================
+FILE: docs/docs/modules/chains/llm_chain.mdx
+================================================
+---
+sidebar_label: LLM Chain
+sidebar_position: 1
+draft: true
+---
+
+import CodeBlock from "@theme/CodeBlock";
+import ExampleLLM from "@examples/llm-chain-example/llm_chain.go";
+
+# Getting Started: LLMChain
+
+:::info
+[Conceptual Guide](https://python.langchain.com/docs/modules/chains)
+:::
+
+An `LLMChain` is a simple chain that adds some functionality around language models. It is used widely throughout LangChain, including in other chains and agents.
+
+An `LLMChain` consists of a `PromptTemplate` and a language model (either an [LLM](../models/llms/) or [chat model](../models/chat/)).
+
+## Usage with LLMs
+
+We can construct an LLMChain which takes user input, formats it with a PromptTemplate, and then passes the formatted response to an LLM:
+
+<CodeBlock language="go">{ExampleLLM}</CodeBlock>
+
+
+
+
+
+================================================
+FILE: docs/docs/modules/data_connection/index.mdx
+================================================
+---
+sidebar_position: 2
+hide_table_of_contents: true
+draft: true
+---
+
+import DocCardList from "@theme/DocCardList";
+
+# Data Connection 
+
+:::info
+[Conceptual Guide](https://python.langchain.com/docs/modules/data_connection/indexing)
+:::
+
+Many LLM applications require user-specific data that is not part of the model's training set. LangChain gives you the 
+building blocks to load, transform, store and query your data via:
+
+- [Document loaders](/docs/modules/data_connection/document_loaders/): Load documents from many different sources
+- [Text splitter](/docs/modules/data_connection/text_splitters/): Split documents and texts
+- [Vector stores](/docs/modules/data_connection/vectorstores/): Store and search over embedded data
+- [Retrievers](/docs/modules/data_connection/retrievers/): Query your data
+
+<DocCardList />
+
+
+
+================================================
+FILE: docs/docs/modules/data_connection/document_loaders/index.mdx
+================================================
+---
+sidebar_label: Document Loaders
+sidebar_position: 1
+draft: true
+---
+
+import DocCardList from "@theme/DocCardList";
+
+# Getting Started: Document Loaders
+
+:::info
+[Conceptual Guide](https://python.langchain.com/docs/modules/data_connection/document_loaders)
+:::
+
+Document loaders make it easy to create documents from a variety of sources. These documents can then be loaded onto [Vector Stores](../vector_stores/) to load documents from a source.
+
+## All Document Loaders
+
+<DocCardList />
+
+## Advanced
+
+If you want to implement your own Document Loader, you must create a struct that implement the document loader interface.
+
+```go
+// Loader is the interface for loading and splitting documents from a source.
+type Loader interface {
+	// Loads loads from a source and returns documents.
+	Load(context.Context) ([]schema.Document, error)
+	// LoadAndSplit loads from a source and splits the documents using a text splitter.
+	LoadAndSplit(context.Context, textsplitter.TextSplitter) ([]schema.Document, error)
+}
+```
+
+
+
+
+================================================
+FILE: docs/docs/modules/data_connection/text_splitters/index.mdx
+================================================
+---
+sidebar_label: Text Splitters
+hide_table_of_contents: true
+sidebar_position: 2
+---
+
+import DocCardList from "@theme/DocCardList";
+import CodeBlock from "@theme/CodeBlock";
+
+# Getting Started: Text Splitters
+
+:::info
+[Conceptual Guide](https://python.langchain.com/docs/modules/data_connection/document_transformers)
+:::
+
+Language Models are often limited by the amount of text that you can pass to them. Therefore, it is neccessary to split them up into smaller chunks. LangChain provides several utilities for doing so.
+
+Using a Text Splitter can also help improve the results from vector store searches, as eg. smaller chunks may sometimes be more likely to match a query. Testing different chunk sizes (and chunk overlap) is a worthwhile exercise to tailor the results to your use case.
+
+
+## All Text Splitters
+
+<DocCardList />
+
+
+
+
+
+================================================
+FILE: docs/docs/modules/data_connection/vector_stores/index.mdx
+================================================
+---
+sidebar_label: "Vector Stores"
+sidebar_position: 3
+draft: true
+---
+
+import React from "react";
+import DocCardList from "@theme/DocCardList";
+
+# Getting Started: Vector Stores
+
+:::info
+[Conceptual Guide](https://python.langchain.com/docs/modules/data_connection/vectorstores)
+:::
+
+A vector store is a particular type of database optimized for storing documents and their [embeddings](../../models/embeddings/), and then fetching of the most relevant documents for a particular query, ie. those whose embeddings are most similar to the embedding of the query.
+
+## All Vector Stores
+
+<DocCardList />
+
+
+
+================================================
+FILE: docs/docs/modules/memory/examples/index.mdx
+================================================
+---
+sidebar_label: Examples
+---
+
+import DocCardList from "@theme/DocCardList";
+
+# Examples: Memory
+
+<DocCardList />
+
+
+
+================================================
+FILE: docs/docs/modules/model_io/index.mdx
+================================================
+---
+sidebar_position: 1
+hide_table_of_contents: true
+sidebar_label: Model I/O
+draft: true
+---
+
+import DocCardList from "@theme/DocCardList";
+
+# Model I/0
+
+Working with language models can often be divided into three steps. 
+
+ - Firstly constructing the input to the model. In langchain this is done using the [prompts package](/docs/modules/model_io/prompts/).
+ - Next the input must be sent to the model. This is easy to do using the [model package](/docs/modules/model_io//). 
+ - In many cases, information needs to be extracted from the model output. Doing this is simple using the [output parser package](/docs/modules/model_io/output_parser) 
+
+<DocCardList />
+
+
+
+================================================
+FILE: docs/docs/modules/model_io/models/chat/integrations.mdx
+================================================
+---
+sidebar_position: 3
+sidebar_label: Integrations
+---
+
+import CodeBlock from "@theme/CodeBlock";
+
+# Integrations: Chat Models
+
+LangChainGo offers a number of Chat Models implementations that integrate with various model providers. These include:
+
+## OpenAI
+
+```go
+import "github.com/tmc/langchaingo/llms/openai"
+
+llm, err := openai.New()
+```
+
+## Anthropic
+
+```go
+import "github.com/tmc/langchaingo/llms/anthropic"
+
+llm, err := anthropic.New()
+```
+
+## Google AI (Gemini)
+
+```go
+import "github.com/tmc/langchaingo/llms/googleai"
+
+llm, err := googleai.New(ctx)
+```
+
+## Ollama (Local Models)
+
+```go
+import "github.com/tmc/langchaingo/llms/ollama"
+
+llm, err := ollama.New()
+```
+
+For detailed configuration options for each provider, see the [Configure LLM Providers](../../../../how-to/configure-llm-providers.md) guide.
+
+
+
+================================================
+FILE: docs/docs/modules/model_io/models/embeddings/index.mdx
+================================================
+---
+sidebar_position: 3 
+hide_table_of_contents: true
+sidebar_label: Embeddings
+---
+
+import DocCardList from "@theme/DocCardList";
+import CodeBlock from "@theme/CodeBlock";
+import Example from "@examples/vertex-embedding-example/vertex-embedding-example.go";
+
+# Getting Started: Embeddings
+
+:::info
+[Conceptual Guide](https://python.langchain.com/docs/modules/data_connection/text_embedding)
+:::
+
+Embeddings can be used to create a numerical representation of textual data. This numerical representation is useful because it can be used to find similar documents.
+
+## Example
+<CodeBlock language="go">{Example}</CodeBlock>
+
+## Dig deeper
+
+<DocCardList />
+
+
+
+================================================
+FILE: docs/docs/modules/model_io/models/embeddings/integrations.mdx
+================================================
+---
+sidebar_position: 3
+sidebar_label: Integrations
+---
+
+import CodeBlock from "@theme/CodeBlock";
+
+# Integrations: Embeddings
+
+LangChainGo offers a number of Embeddings implementations that integrate with various model providers. These include:
+
+## OpenAI Embeddings
+
+```go
+import "github.com/tmc/langchaingo/embeddings"
+
+embedder, err := embeddings.NewEmbedder(llm)
+```
+
+## Google AI Embeddings
+
+```go
+import "github.com/tmc/langchaingo/llms/googleai"
+
+// The GoogleAI client can be used for embeddings
+llm, err := googleai.New(ctx)
+embedder, err := llm.CreateEmbedding(ctx, texts)
+```
+
+## Vertex AI Embeddings
+
+```go
+import "github.com/tmc/langchaingo/llms/googleai/vertex"
+
+llm, err := vertex.New(ctx)
+embedder, err := llm.CreateEmbedding(ctx, texts)
+```
+
+For more details on using embeddings, see the [Embeddings documentation](./index.mdx).
+
+
+
+================================================
+FILE: docs/docs/modules/model_io/models/llms/Integrations/llamafile.mdx
+================================================
+---
+sidebar_label: Llamafile
+---
+import CodeBlock from "@theme/CodeBlock";
+import ExampleLlamafile from "@examples/llamafile-completion-example/llamafile_completion_example.go";
+
+# Llamafile
+
+## Running Server
+first you need have a server running.
+
+```sh 
+./mistral-7b-instruct-v0.2.Q3_K_L.llamafile  --server --nobrowser --embedding
+```
+
+
+<CodeBlock language="go">{ExampleLlamafile}</CodeBlock>
+
+
+================================================
+FILE: docs/docs/modules/model_io/models/llms/Integrations/local.mdx
+================================================
+---
+sidebar_label: Local
+---
+
+import CodeBlock from "@theme/CodeBlock";
+import LocalExample from "@examples/local-llm-example/local_llm_example.go";
+
+# Local
+
+## Example
+
+<CodeBlock language="go">{LocalExample}</CodeBlock>
+
+
+
+================================================
+FILE: docs/docs/modules/model_io/models/llms/Integrations/openai.mdx
+================================================
+---
+sidebar_label: OpenAI
+---
+
+import CodeBlock from "@theme/CodeBlock";
+import ExampleOpenAI from "@examples/openai-completion-example/openai_completion_example.go";
+
+# OpenAI
+OpenAI offers a spectrum of models with different levels of power suitable for different tasks.
+
+This example goes over how to use LangChain to interact with OpenAI models.
+
+There are two options to set the the OpenAI key. 
+
+1. We can do this by setting the environment variable `OPENAI_API_KEY` to the API key.
+
+2. Or we can do it when initializing the wrapper along with other arguments:
+
+```go
+model, err := openai.New(openai.WithToken(apiToken))
+```
+
+## Example
+
+<CodeBlock language="go">{ExampleOpenAI}</CodeBlock>
+
+
+
+================================================
+FILE: docs/docs/modules/model_io/models/llms/Integrations/vertexai.mdx
+================================================
+---
+sidebar_label: Vertex AI
+---
+
+import CodeBlock from "@theme/CodeBlock";
+import ExampleVertexAICompletion from "@examples/vertex-completion-example/vertex-completion-example.go";
+
+
+# Vertex AI
+To use the Vertex AI LLM you need to set the google project ID. 
+You can do this by setting the `GOOGLE_CLOUD_PROJECT` environment variable or giving it as a variaic option when creating the wrapper.
+
+<CodeBlock language="go">{ExampleVertexAICompletion}</CodeBlock>
+
+
+
+================================================
+FILE: docs/docs/modules/model_io/models/llms/Integrations/watsonx.mdx
+================================================
+---
+sidebar_label: watsonx
+---
+
+import CodeBlock from "@theme/CodeBlock";
+import WatsonxExample from "@examples/watsonx-llm-example/watsonx_example.go";
+
+# watsonx
+
+Integration support for [IBM watsonx](https://www.ibm.com/watsonx) foundation models with [`watsonx-go`](https://github.com/IBM/watsonx-go
+).
+
+## Setup
+
+You will need to set the following environment variables for using the WatsonX AI API.
+
+- `WATSONX_API_KEY`: generate from your [IBM Cloud account](https://cloud.ibm.com/iam/apikeys).
+- `WATSONX_PROJECT_ID`: copy from your [watsonx project settings](https://dataplatform.cloud.ibm.com/projects/?context=wx).
+
+Alternatively, these can be passed into the model on creation:
+
+```go
+import (
+	wx "github.com/IBM/watsonx-go/pkg/models"
+    "github.com/tmc/langchaingo/llms/watsonx"
+)
+...
+llm, _ := watsonx.New(
+    wx.WithWatsonxAPIKey("YOUR WATSONX API KEY"),
+    wx.WithWatsonxProjectID("YOUR WATSONX PROJECT ID"),
+)
+```
+
+## Example
+
+<CodeBlock language="go">{WatsonxExample}</CodeBlock>
+
+
+
+================================================
+FILE: docs/docs/modules/model_io/output_parsers/index.mdx
+================================================
+---
+sidebar_label: Output Parsers
+sidebar_position: 3
+---
+
+# Output Parsers
+
+:::info
+[Conceptual Guide](https://python.langchain.com/docs/modules/model_io/output_parsers)
+:::
+
+Language models output text. But many times you may want to get more structured information than just text back. This is where output parsers come in.
+
+Output parsers are structs that help structure language model responses. There are three main methods an output parser must implement:
+
+```go
+// OutputParser is an interface for parsing the output of an LLM call.
+type OutputParser[T any] interface {
+	// Parse parses the output of an LLM call.
+	Parse(text string) (T, error)
+	// ParseWithPrompt parses the output of an LLM call with the prompt used.
+	ParseWithPrompt(text string, prompt PromptValue) (T, error)
+	// GetFormatInstructions returns a string describing the format of the output.
+	GetFormatInstructions() string
+	// Type returns the string type key uniquely identifying this class of parser
+	Type() string
+}
+```
+
+
+
+================================================
+FILE: docs/src/pages/index.js
+================================================
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * @format
+ */
+
+import React from "react";
+import { Redirect } from "@docusaurus/router";
+
+export default function Home() {
+  return <Redirect to="docs/" />;
+}
+
+
+
+================================================
+FILE: docs/src/theme/CodeBlock/index.js
+================================================
+/* eslint-disable react/jsx-props-no-spreading */
+import React from "react";
+import CodeBlock from "@theme-original/CodeBlock";
+
+export default function CodeBlockWrapper({ children, ...props }) {
+  if (typeof children === "string") {
+    return <CodeBlock {...props}>{children}</CodeBlock>;
+  }
+  console.log(children)
+  return (
+    <>
+      <CodeBlock {...props}>{children.content}</CodeBlock>
+    </>
+  );
+}
+
+
+
+================================================
+FILE: docs/static/.nojekyll
+================================================
+[Empty file]
+
+
+================================================
+FILE: docs/styles/langchaingo/ActiveVoice.yml
+================================================
+extends: existence
+message: "Use active voice: '%s'"
+level: warning
+ignorecase: true
+tokens:
+  - should be configured
+  - should be used
+  - should be avoided
+  - will be created
+  - will be returned
+  - can be found
+  - must be provided
+  - has been added
+  - have been updated
+
+
+
+
+================================================
+FILE: docs/styles/langchaingo/Clarity.yml
+================================================
+extends: existence
+message: "Be more specific than '%s'"
+level: suggestion
+tokens:
+  - 'easy'
+  - 'simple'
+  - 'just'
+  - 'simply'
+  - 'obviously'
+  - 'clearly'
+  - 'basically'
+  - 'actually'
+
+
+
+
+================================================
+FILE: docs/styles/langchaingo/CodeBlockLanguage.yml
+================================================
+extends: existence
+message: "Specify language for code blocks (use ```go, ```bash, etc.)"
+level: error
+scope: raw
+tokens:
+  - '```\n'
+  - '```\r\n'
+
+
+
+
+================================================
+FILE: docs/styles/langchaingo/ConsistentLists.yml
+================================================
+extends: consistency
+message: "Inconsistent list punctuation"
+level: warning
+scope: list
+either:
+  ':': ':'
+  '.': '.'
+  '': ''
+
+
+
+
+================================================
+FILE: docs/styles/langchaingo/DirectLanguage.yml
+================================================
+extends: existence
+message: "Avoid flowery or marketing language"
+level: error
+ignorecase: true
+tokens:
+  - amazing
+  - awesome
+  - revolutionary
+  - game-changing
+  - cutting-edge
+  - state-of-the-art
+  - best-in-class
+  - world-class
+  - enterprise-grade
+  - blazing fast
+  - lightning fast
+  - super easy
+  - dead simple
+
+
+
+
+================================================
+FILE: docs/styles/langchaingo/ErrorHandling.yml
+================================================
+extends: existence
+message: "Include error handling in Go examples"
+level: warning
+scope: raw
+tokens:
+  - ':= .+\(\)$'
+  - '= .+\(\)$'
+
+
+
+
+================================================
+FILE: docs/styles/langchaingo/HardcodedSecrets.yml
+================================================
+extends: existence
+message: "Don't include hardcoded API keys or secrets"
+level: error
+tokens:
+  - 'sk-[a-zA-Z0-9]{48}'
+  - 'api_key = "[a-zA-Z0-9]+"'
+  - 'API_KEY = "[a-zA-Z0-9]+"'
+  - 'token = "[a-zA-Z0-9]+"'
+  - 'secret = "[a-zA-Z0-9]+"'
+
+
+
+
+================================================
+FILE: docs/styles/langchaingo/ignore.txt
+================================================
+LangChainGo
+langchaingo
+openai
+llm
+llms
+LLM
+LLMs
+API
+APIs
+mdx
+npm
+repo
+config
+configs
+runnable
+how-to
+how-tos
+hardcoded
+Ollama
+ollama
+Mistral
+mistral
+goroutines
+goroutine
+LLMChain
+backoff
+sanitization
+Docusaurus
+docusaurus
+agentic
+stdlib
+httprr
+ie
+blockchain
+Groq
+Groq's
+watsonx
+pgvector
+PGVector
+embedder
+eg
+chatbots
+chatbot
+baz
+Qdrant
+qdrant
+Postgres
+postgres
+pinecone
+Llamafile
+langchain
+IVFFlat
+godotenv
+api
+testcontainers
+untrusted
+
+
+
+================================================
+FILE: docs/styles/langchaingo/IncompleteExamples.yml
+================================================
+extends: existence
+message: "Avoid incomplete code examples (use complete, runnable code)"
+level: warning
+tokens:
+  - '// ... magic happens here'
+  - '// ... rest of'
+  - '// TODO:'
+  - '// FIXME:'
+  - '// ...'
+  - '/* ... */'
+
+
+
+
+================================================
+FILE: docs/styles/langchaingo/NoEmojis.yml
+================================================
+extends: existence
+message: "Don't use emojis in documentation"
+level: error
+tokens:
+  - '😀'
+  - '😃'
+  - '😄'
+  - '😁'
+  - '🎉'
+  - '🚀'
+  - '💡'
+  - '⚡'
+  - '🔥'
+  - '✨'
+  - '👍'
+  - '👎'
+  - '❤️'
+  - '💯'
+  - '🎯'
+
+
+
+
+================================================
+FILE: docs/styles/langchaingo/PresentTense.yml
+================================================
+extends: substitution
+message: "Use present tense: '%s' instead of '%s'"
+level: warning
+swap:
+  'will return': 'returns'
+  'will create': 'creates'
+  'will configure': 'configures'
+  'will build': 'builds'
+  'will show': 'shows'
+  'will explain': 'explains'
+  'will help': 'helps'
+  'will solve': 'solves'
+
+
+
+
+================================================
+FILE: docs/styles/langchaingo/Pronouns.yml
+================================================
+extends: existence
+message: "Use 'you/your' to address readers directly"
+level: suggestion
+scope: sentence
+tokens:
+  - 'the user'
+  - 'the developer'
+  - 'the reader'
+  - 'one should'
+  - 'users should'
+  - 'developers should'
+
+
+
+
+================================================
+FILE: docs/styles/langchaingo/Readability.yml
+================================================
+extends: readability
+message: "Try to keep sentences shorter and clearer"
+level: suggestion
+grade: 9
+metrics:
+  - Flesch-Kincaid
+  - Gunning Fog
+
+
+
+
+================================================
+FILE: docs/styles/langchaingo/Spelling.yml
+================================================
+extends: spelling
+message: "Check spelling of '%s'"
+level: warning
+ignore:
+  - langchaingo/ignore.txt
+
+
+
+
+================================================
+FILE: docs/styles/langchaingo/Terminology.yml
+================================================
+extends: substitution
+message: "Use '%s' instead of '%s' for consistency"
+level: warning
+ignorecase: true
+swap:
+  'click here': 'descriptive link text'
+  'will return': 'returns'
+  'should be configured': 'configure'
+  'the client should be': 'configure the client'
+  'Title Case': 'sentence case'
+  'how-to': 'how-to guide'
+  'howto': 'how-to guide'
+
+
+
+
+================================================
+FILE: documentloaders/doc.go
+================================================
+// Package documentloaders includes a standard interface for loading documents
+// from a source and implementations of this interface.
+package documentloaders
+
+
+
+================================================
+FILE: documentloaders/documentloaders.go
+================================================
+package documentloaders
+
+import (
+	"context"
+
+	"github.com/tmc/langchaingo/schema"
+	"github.com/tmc/langchaingo/textsplitter"
+)
+
+// Loader is the interface for loading and splitting documents from a source.
+type Loader interface {
+	// Load loads from a source and returns documents.
+	Load(ctx context.Context) ([]schema.Document, error)
+	// LoadAndSplit loads from a source and splits the documents using a text splitter.
+	LoadAndSplit(ctx context.Context, splitter textsplitter.TextSplitter) ([]schema.Document, error)
+}
+
+
+
+================================================
+FILE: documentloaders/text_test.go
+================================================
+package documentloaders
+
+import (
+	"context"
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestTextLoader(t *testing.T) {
+	ctx := context.Background()
+	t.Parallel()
+	file, err := os.Open("./testdata/test.txt")
+	require.NoError(t, err)
+
+	loader := NewText(file)
+
+	docs, err := loader.Load(ctx)
+	require.NoError(t, err)
+	require.Len(t, docs, 1)
+
+	expectedPageContent := "Foo Bar Baz"
+	assert.Equal(t, expectedPageContent, docs[0].PageContent)
+
+	expectedMetadata := map[string]any{}
+	assert.Equal(t, expectedMetadata, docs[0].Metadata)
+}
+
+
+
+================================================
+FILE: documentloaders/testdata/test.csv
+================================================
+name,age,city,country
+John Doe,25,New York,United States
+Jane Smith,32,London,United Kingdom
+Alex Johnson,42,Sydney,Australia
+Emma Davis,29,Paris,France
+Michael Lee,37,Toronto,Canada
+Sophia Wilson,22,Berlin,Germany
+Matthew Brown,31,Tokyo,Japan
+Olivia Taylor,27,Rome,Italy
+David Anderson,35,Moscow,Russia
+Emily Thomas,30,Madrid,Spain
+Daniel Martinez,26,Mexico City,Mexico
+Isabella Lopez,28,Seoul,South Korea
+Christopher Harris,33,Cairo,Egypt
+Ava Clark,24,Sao Paulo,Brazil
+James Wright,39,Amsterdam,Netherlands
+Mia Hall,23,Stockholm,Sweden
+Andrew Allen,34,Beijing,China
+Abigail Baker,36,New Delhi,India
+Ryan Scott,41,Johannesburg,South Africa
+Grace Green,38,Zurich,Switzerland
+
+
+
+================================================
+FILE: documentloaders/testdata/test.html
+================================================
+<html>
+  <head>
+    <title>langchaingo html example</title>
+    <script>console.log("langchaingo rocks")</script>
+  </head>
+  <body>
+    <h1>The content</h1>
+    <p><a href="javascript:alert('XSS1')" onmouseover="alert('XSS2')">goes <span>here</span></a></p>
+    <p></p>
+    <footer>
+      <ul>
+        <li> and here</li>
+      </ul>
+    </footer>
+  </body>
+</html>
+
+
+
+================================================
+FILE: documentloaders/testdata/test.txt
+================================================
+Foo Bar Baz
+
+
+================================================
+FILE: documentloaders/testdata/depth/test2.md
+================================================
+hello md
+
+
+
+================================================
+FILE: embeddings/doc.go
+================================================
+/*
+Package embeddings contains helpers for creating vector embeddings from text
+using different providers.
+
+The main components of this package are:
+
+  - [Embedder] interface: a common interface for creating vector embeddings
+    from texts, with optional batching.
+  - [NewEmbedder] creates implementations of [Embedder] from provider LLM
+    (or Chat) clients.
+
+See the package example below.
+*/
+package embeddings
+
+
+
+================================================
+FILE: embeddings/example_test.go
+================================================
+package embeddings_test
+
+import (
+	"context"
+	"log"
+
+	"github.com/tmc/langchaingo/embeddings"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+func Example() { //nolint:testableexamples
+	llm, err := openai.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Create a new Embedder from the given LLM.
+	embedder, err := embeddings.NewEmbedder(llm)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	docs := []string{"doc 1", "another doc"}
+	embs, err := embedder.EmbedDocuments(context.Background(), docs)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Consume embs
+	_ = embs
+}
+
+
+
+================================================
+FILE: embeddings/options.go
+================================================
+package embeddings
+
+const (
+	defaultBatchSize     = 512
+	defaultStripNewLines = true
+)
+
+type Option func(p *EmbedderImpl)
+
+// WithStripNewLines is an option for specifying the should it strip new lines.
+func WithStripNewLines(stripNewLines bool) Option {
+	return func(p *EmbedderImpl) {
+		p.StripNewLines = stripNewLines
+	}
+}
+
+// WithBatchSize is an option for specifying the batch size.
+func WithBatchSize(batchSize int) Option {
+	return func(p *EmbedderImpl) {
+		p.BatchSize = batchSize
+	}
+}
+
+
+
+================================================
+FILE: embeddings/cybertron/cybertron_test.go
+================================================
+package cybertron
+
+import (
+	"context"
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestCybertronEmbeddings(t *testing.T) {
+	ctx := context.Background()
+	t.Parallel()
+
+	_, err := os.Stat(_defaultModelsDir)
+	if os.IsNotExist(err) && os.Getenv("CYBERTRON_DO_DOWNLOAD") == "" {
+		// Cybertron downloads the embedding model and caches it in ModelsDir. Doing this as
+		// part of the tests would be costly in terms of time and bandwidth and likely make
+		// the test flaky.
+		t.Skipf("ModelsDir %q doesn't exist", _defaultModelsDir)
+	}
+
+	emb, err := NewCybertron(
+		WithModelsDir(_defaultModelsDir),
+		WithModel(_defaultModel),
+		WithPoolingStrategy(_defaultPoolingStrategy),
+	)
+	require.NoError(t, err)
+
+	res, err := emb.CreateEmbedding(ctx, []string{
+		"Hello world", "The world is ending", "good bye",
+	})
+	require.NoError(t, err)
+	require.Len(t, res, 3)
+}
+
+
+
+================================================
+FILE: embeddings/testdata/TestOpenaiEmbeddingsWithAzureAPI.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: embeddings/testdata/TestVertexAIPaLMEmbeddings.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: embeddings/testdata/TestVertexAIPaLMEmbeddingsWithOptions.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: examples/Makefile
+================================================
+SYNC_REF?=latest
+
+.PHONY: sync
+sync: ## Sync all go.mod files
+	@sh .update-all-to-latest.sh ${SYNC_REF}
+
+.PHONY: install-all
+install-all: ## Add go work files to all examples
+	@find . -name go.mod -execdir go install \;
+
+.PHONY: tidy-all
+tidy-all: ## Tidy all go.mod files
+	@find . -name go.mod -execdir go mod tidy \;
+
+.PHONY: fmt-all
+fmt-all: ## Run go fmt on all examples
+	@find . -name go.mod -execdir go fmt \;
+
+
+
+================================================
+FILE: examples/.update-all-to-latest.sh
+================================================
+#!/bin/bash
+# .update-all-to-latest.sh is a small helper to update all examples to point to the latest langchaingo release
+#
+export GOPROXY=direct
+export GOWORK=off
+
+syncref="${1:-latest}"
+
+for gm in $(find . -name go.mod); do
+  (
+  cd $(dirname $gm)
+  go get -u github.com/tmc/langchaingo@${syncref}
+  go mod tidy
+) &
+done
+wait
+
+
+
+================================================
+FILE: examples/anthropic-completion-example/anthropic_completion_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/anthropic"
+)
+
+func main() {
+	llm, err := anthropic.New(
+		anthropic.WithModel("claude-3-5-sonnet-20240620"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+	completion, err := llms.GenerateFromSinglePrompt(ctx, llm, "Hi claude, write a poem about golang powered AI systems",
+		llms.WithTemperature(0.8),
+		llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+			fmt.Print(string(chunk))
+			return nil
+		}),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_ = completion
+}
+
+
+
+================================================
+FILE: examples/anthropic-completion-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/anthropic-completion-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/anthropic-extended-capabilities/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/anthropic-extended-capabilities
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/anthropic-interleaved-thinking/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/interleaved-thinking
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/anthropic-tool-call-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/anthropic-tool-call-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/anthropic-vision-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/anthropic-vision-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/caching-llm-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/caching-llm-example
+
+go 1.26.0
+
+require (
+	github.com/mitchellh/go-wordwrap v1.0.1
+	github.com/tmc/langchaingo v0.1.15
+)
+
+require (
+	github.com/Code-Hex/go-generics-cache v1.3.1 // indirect
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/cohere-llm-example/cohere_completion_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/cohere"
+)
+
+func main() {
+	llm, err := cohere.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+	input := "The first man to walk on the moon"
+	completion, err := llms.GenerateFromSinglePrompt(ctx, llm, input)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(completion)
+
+	inputToken := llms.CountTokens("", input)
+	outputToken := llms.CountTokens("", completion)
+
+	fmt.Printf("%v/%v\n", inputToken, outputToken)
+}
+
+
+
+================================================
+FILE: examples/cohere-llm-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/cohere-llm-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/cohere-ai/tokenizer v1.1.2 // indirect
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/deepseek-completion-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/deepseek-completion-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/ernie-chat-example/ernie_chat_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/ernie"
+)
+
+func main() {
+	llm, err := ernie.New(
+		ernie.WithModelName(ernie.ModelNameERNIEBot),
+		// Fill in your AK and SK here.
+		ernie.WithAKSK("ak", "sk"),
+		// Use an external cache for the access token.
+		ernie.WithAccessToken("accesstoken"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+
+	content := []llms.MessageContent{
+		llms.TextParts(llms.ChatMessageTypeSystem, "You are a company branding design wizard."),
+		llms.TextParts(llms.ChatMessageTypeHuman, "What would be a good company name a company that makes colorful socks?"),
+	}
+	completion, err := llm.GenerateContent(ctx, content, llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+		fmt.Print(string(chunk))
+		return nil
+	}))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(completion)
+}
+
+
+
+================================================
+FILE: examples/ernie-chat-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/ernie-chat-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/ernie-completion-example/ernie_completion_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/embeddings"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/ernie"
+)
+
+func main() {
+	llm, err := ernie.New(ernie.WithModelName(ernie.ModelNameERNIEBot))
+	// note:
+	// You would include ernie.WithAKSK(apiKey,secretKey) to use specific auth info.
+	// You would include ernie.WithModelName(ernie.ModelNameERNIEBot) to use the ERNIE-Bot model.
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+	completion, err := llms.GenerateFromSinglePrompt(ctx, llm, "介绍一下你自己",
+		llms.WithTemperature(0.8),
+		llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+			log.Println(string(chunk))
+			return nil
+		}),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_ = completion
+
+	// embedding
+	embedding, _ := embeddings.NewEmbedder(llm)
+
+	emb, err := embedding.EmbedDocuments(ctx, []string{"你好"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Embedding-V1:", len(emb), len(emb[0]))
+}
+
+
+
+================================================
+FILE: examples/ernie-completion-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/ernie-completion-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/ernie-function-call-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/ernie-function-call-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/googleai-completion-example/googleai-completion-example.go
+================================================
+// Set the GOOGLE_API_KEY env var to your API key taken from ai.google.dev
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/googleai"
+)
+
+func main() {
+	ctx := context.Background()
+	apiKey := os.Getenv("GOOGLE_API_KEY")
+	llm, err := googleai.New(ctx, googleai.WithAPIKey(apiKey))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer llm.Close() // Clean up client when done
+
+	prompt := "Who was the second person to walk on the moon?"
+	answer, err := llms.GenerateFromSinglePrompt(ctx, llm, prompt)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(answer)
+}
+
+
+
+================================================
+FILE: examples/googleai-streaming-example/googleai-stremaing-example.go
+================================================
+// Set the GOOGLE_API_KEY env var to your API key taken from ai.google.dev
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/googleai"
+)
+
+func main() {
+	ctx := context.Background()
+	apiKey := os.Getenv("GOOGLE_API_KEY")
+	// See https://ai.google.dev/gemini-api/docs/models/gemini for possible models
+	llm, err := googleai.New(ctx, googleai.WithAPIKey(apiKey), googleai.WithDefaultModel("gemini-1.5-pro"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	content := []llms.MessageContent{
+		llms.TextParts(llms.ChatMessageTypeSystem, "You are a company branding design wizard."),
+		llms.TextParts(llms.ChatMessageTypeHuman, "What would be a good company name for a comapny that produces Go-backed LLM tools?"),
+	}
+	completion, err := llm.GenerateContent(ctx, content, llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+		fmt.Print(string(chunk))
+		return nil
+	}))
+	if err != nil {
+		log.Fatal(err)
+	}
+	_ = completion
+}
+
+
+
+================================================
+FILE: examples/groq-completion-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/groq-completion-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/groq-completion-example/groq_completion_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+func main() {
+	apiKey := os.Getenv("GROQ_API_KEY")
+
+	llm, err := openai.New(
+		openai.WithModel("moonshotai/kimi-k2-instruct"),
+		openai.WithBaseURL("https://api.groq.com/openai/v1"),
+		openai.WithToken(apiKey),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+	_, err = llms.GenerateFromSinglePrompt(ctx,
+		llm,
+		"Write a long poem about how golang is a fantastic language.",
+		llms.WithTemperature(0.8),
+		llms.WithMaxTokens(4096),
+		llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+			fmt.Print(string(chunk))
+			return nil
+		}),
+	)
+	fmt.Println()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+
+
+================================================
+FILE: examples/huggingface-llm-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/huggingface-llm-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/huggingface-milvus-vectorstore-example/Taskfile.yml
+================================================
+# https://taskfile.dev
+
+version: '3'
+
+silent: true
+
+tasks:
+  default:
+    cmds:
+      - task --list-all
+  run:text-embeddings-inference:
+    cmds:
+      - text-embeddings-router --model-id thenlper/gte-large --port 5500
+
+
+
+================================================
+FILE: examples/llamafile-completion-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/llamafile-completion-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/llamafile-completion-example/llamafile_completion_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/llamafile"
+)
+
+func main() {
+
+	options := []llamafile.Option{
+		llamafile.WithEmbeddingSize(2048),
+		llamafile.WithTemperature(0.8),
+	}
+	llm, err := llamafile.New(options...)
+
+	if err != nil {
+		panic(err)
+	}
+
+	parts := []llms.ContentPart{
+		llms.TextContent{Text: "Brazil is a country? answer yes or no"},
+	}
+	content := []llms.MessageContent{
+		{
+			Role:  llms.ChatMessageTypeHuman,
+			Parts: parts,
+		},
+	}
+
+	_, err = llm.GenerateContent(context.Background(), content,
+		llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+			fmt.Print(string(chunk))
+			return nil
+		}))
+
+	if err != nil {
+		panic(err)
+	}
+}
+
+
+
+================================================
+FILE: examples/llmmath-chain-example/llm_math_chain.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/tmc/langchaingo/chains"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	llm, err := openai.New()
+	if err != nil {
+		return err
+	}
+	llmMathChain := chains.NewLLMMathChain(llm)
+	ctx := context.Background()
+	out, err := chains.Run(ctx, llmMathChain, "What is 1024 plus six times 9?")
+	fmt.Println(out)
+	return err
+}
+
+
+
+================================================
+FILE: examples/local-llm-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/local-llm-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/maritaca-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/maritaca-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/maritaca-example/maritaca-chat-example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/tmc/langchaingo/llms/maritaca"
+)
+
+func main() {
+	token := os.Getenv("MARITACA_KEY")
+
+	opts := []maritaca.Option{
+		maritaca.WithToken(token),
+		maritaca.WithModel("sabia-2-medium"),
+	}
+	llm, err := maritaca.New(opts...)
+	if err != nil {
+		panic(err)
+	}
+
+	prompt := "How many people live in Brazil?"
+
+	resp, err := llm.Call(context.Background(), prompt)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp)
+}
+
+
+
+================================================
+FILE: examples/mistral-completion-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/mistral-completion-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/gage-technologies/mistral-go v1.1.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/mongovector-vectorstore-example/docker-compose.yml
+================================================
+version: '3.8'
+
+services:
+  mongodb-atlas-local:
+    image: mongodb/mongodb-atlas-local:latest
+    container_name: mongodb-atlas-local
+    ports:
+      - "27017:27017"
+    environment:
+      DO_NOT_TRACK: 1  # Set to 1 to opt out of telemetry
+    volumes:
+      - ./init-scripts:/docker-entrypoint-initdb.d  # Directory for initialization scripts
+      - ./logs:/var/log/mongodb  # Directory for logs (optional)
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+
+
+
+================================================
+FILE: examples/mrkl-agent-example/mrkl_agent.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/tmc/langchaingo/agents"
+	"github.com/tmc/langchaingo/chains"
+	"github.com/tmc/langchaingo/llms/openai"
+	"github.com/tmc/langchaingo/tools"
+	"github.com/tmc/langchaingo/tools/serpapi"
+)
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	llm, err := openai.New()
+	if err != nil {
+		return err
+	}
+	search, err := serpapi.New()
+	if err != nil {
+		return err
+	}
+	agentTools := []tools.Tool{
+		tools.Calculator{},
+		search,
+	}
+
+	agent := agents.NewOneShotAgent(llm,
+		agentTools,
+		agents.WithMaxIterations(3))
+	executor := agents.NewExecutor(agent)
+
+	question := "Who is Olivia Wilde's boyfriend? What is his current age raised to the 0.23 power?"
+	answer, err := chains.Run(context.Background(), executor, question)
+	fmt.Println(answer)
+	return err
+}
+
+
+
+================================================
+FILE: examples/nvidia-chat-completion/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/nvidia-chat-completion
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/nvidia-chat-completion/nvidia_chat_completion_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+func main() {
+	key := os.Getenv("NVIDIA_API_KEY")
+	llm, err := openai.New(
+		openai.WithBaseURL("https://integrate.api.nvidia.com/v1/"),
+		openai.WithModel("mistralai/mixtral-8x7b-instruct-v0.1"),
+		openai.WithToken(key),
+		// openai.WithHTTPClient(httputil.DebugHTTPClient),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+
+	content := []llms.MessageContent{
+		llms.TextParts(llms.ChatMessageTypeSystem, "You are a golang expert"),
+		llms.TextParts(llms.ChatMessageTypeHuman, "explain why go is a great fit for ai based products"),
+	}
+
+	if _, err = llm.GenerateContent(ctx, content,
+		llms.WithMaxTokens(4096),
+		llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+			fmt.Print(string(chunk))
+			return nil
+		})); err != nil {
+		log.Fatal(err)
+	}
+}
+
+
+
+================================================
+FILE: examples/ollama-chat-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/ollama-chat-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/ollama-chat-example/ollama_chat_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/ollama"
+)
+
+func main() {
+	llm, err := ollama.New(ollama.WithModel("mistral"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+
+	content := []llms.MessageContent{
+		llms.TextParts(llms.ChatMessageTypeSystem, "You are a company branding design wizard."),
+		llms.TextParts(llms.ChatMessageTypeHuman, "What would be a good company name a company that makes colorful socks?"),
+	}
+	completion, err := llm.GenerateContent(ctx, content, llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+		fmt.Print(string(chunk))
+		return nil
+	}))
+	if err != nil {
+		log.Fatal(err)
+	}
+	_ = completion
+}
+
+
+
+================================================
+FILE: examples/ollama-completion-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/ollama-completion-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/ollama-completion-example/ollama_completion_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/ollama"
+)
+
+func main() {
+	llm, err := ollama.New(ollama.WithModel("llama2"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+	completion, err := llms.GenerateFromSinglePrompt(
+		ctx,
+		llm,
+		"Human: Who was the first man to walk on the moon?\nAssistant:",
+		llms.WithTemperature(0.8),
+		llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+			fmt.Print(string(chunk))
+			return nil
+		}),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_ = completion
+}
+
+
+
+================================================
+FILE: examples/ollama-functions-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/ollama-functions-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/ollama-stream-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/ollama-stream-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/ollama-stream-example/ollama_stream_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/ollama"
+)
+
+func main() {
+	llm, err := ollama.New(ollama.WithModel("mistral"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+
+	content := []llms.MessageContent{
+		llms.TextParts(llms.ChatMessageTypeSystem, "You are a company branding design wizard."),
+		llms.TextParts(llms.ChatMessageTypeHuman, "What would be a good company name for a comapny that produces Go-backed LLM tools?"),
+	}
+	completion, err := llm.GenerateContent(ctx, content, llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+		fmt.Print(string(chunk))
+		return nil
+	}))
+	if err != nil {
+		log.Fatal(err)
+	}
+	_ = completion
+}
+
+
+
+================================================
+FILE: examples/openai-chat-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/openai-chat-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/openai-chat-example/openai_chat_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+func main() {
+	llm, err := openai.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+
+	content := []llms.MessageContent{
+		llms.TextParts(llms.ChatMessageTypeSystem, "You are a company branding design wizard."),
+		llms.TextParts(llms.ChatMessageTypeHuman, "What would be a good company name a company that makes colorful socks?"),
+	}
+
+	// if _, err := llm.GenerateContent(ctx, content,
+	// 	llms.WithMaxTokens(1024),
+	// 	llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+	// 		fmt.Print(string(chunk))
+	// 		return nil
+	// 	})); err != nil {
+	// 	log.Fatal(err)
+	// }
+	r, err := llm.GenerateContent(ctx, content, llms.WithMaxTokens(1024))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(r.Choices[0].Content)
+
+}
+
+
+
+================================================
+FILE: examples/openai-completion-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/openai-completion-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/openai-completion-example/openai_completion_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+func main() {
+	llm, err := openai.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+	completion, err := llms.GenerateFromSinglePrompt(ctx,
+		llm,
+		"The first man to walk on the moon",
+		llms.WithTemperature(0.8),
+		llms.WithStopWords([]string{"Armstrong"}),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("The first man to walk on the moon:")
+	fmt.Println(completion)
+}
+
+
+
+================================================
+FILE: examples/openai-completion-example-with-http-debugging/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/openai-completion-example-with-http-debugging
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/openai-completion-example-with-http-debugging/openai_completion_example.go
+================================================
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/httputil"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+var flagDebugHTTP = flag.Bool("debug-http", true, "enable debugging of HTTP requests and responses")
+
+func main() {
+	// Demonstrates how to use a custom HTTP client to log requests and responses.
+	flag.Parse()
+	var opts []openai.Option
+	if *flagDebugHTTP {
+		opts = append(opts, openai.WithHTTPClient(httputil.DebugHTTPClient))
+	}
+
+	llm, err := openai.New(opts...)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+	completion, err := llms.GenerateFromSinglePrompt(ctx,
+		llm,
+		"The first man to walk on the moon",
+		llms.WithTemperature(0.0),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(completion)
+}
+
+
+
+================================================
+FILE: examples/openai-embeddings-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/openai-embeddings-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/openai-embeddings-example/openai-embeddings-example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+func main() {
+	opts := []openai.Option{
+		openai.WithModel("gpt-3.5-turbo-0125"),
+		openai.WithEmbeddingModel("text-embedding-3-large"),
+	}
+	llm, err := openai.New(opts...)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+	embedings, err := llm.CreateEmbedding(ctx, []string{"ola", "mundo"})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(embedings)
+}
+
+
+
+================================================
+FILE: examples/openai-function-call-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/openai-function-call-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/openai-function-call-streaming-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/openai-function-call-streaming-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/openai-gpt4-turbo-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/openai-gpt4-turbo-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/openai-gpt4-turbo-example/openai_gpt4_turbo.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+func main() {
+	llm, err := openai.New(openai.WithModel("gpt-4-turbo"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+
+	content := []llms.MessageContent{
+		llms.TextParts(llms.ChatMessageTypeSystem, "You are a company branding design wizard."),
+		llms.TextParts(llms.ChatMessageTypeHuman, "What would be a good company name a company that makes colorful socks?"),
+	}
+
+	completion, err := llm.GenerateContent(ctx, content, llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+		fmt.Print(string(chunk))
+		return nil
+	}))
+	if err != nil {
+		log.Fatal(err)
+	}
+	_ = completion
+}
+
+
+
+================================================
+FILE: examples/openai-gpt4o-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/openai-gpt4o-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/openai-gpt4o-example/index.html
+================================================
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<script src="wasm_exec.js"></script>
+		<script>
+			const go = new Go();
+			WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
+				go.run(result.instance);
+			});
+		</script>
+	</head>
+	<body></body>
+</html>
+
+
+
+================================================
+FILE: examples/openai-gpt4o-example/openai_gpt4o_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+func main() {
+	llm, err := openai.New(openai.WithModel("gpt-4o"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+
+	content := []llms.MessageContent{
+		llms.TextParts(llms.ChatMessageTypeSystem, "You are a go programming expert"),
+		llms.TextParts(llms.ChatMessageTypeHuman, "Why is go a good language for production LLM applications?"),
+	}
+
+	completion, err := llm.GenerateContent(ctx, content, llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+		fmt.Print(string(chunk))
+		return nil
+	}))
+	if err != nil {
+		log.Fatal(err)
+	}
+	_ = completion
+}
+
+
+
+================================================
+FILE: examples/openai-gpt4o-mutil-content/README.md
+================================================
+# OpenAI Multi-Content Example
+
+This example demonstrates how to use the OpenAI model with the LangChain Go library to post multiple messages.
+
+## What does this example do?
+
+This nifty little program does the following:
+
+1. Sets up a connection to the OpenAI API using the GPT-4o model.
+
+2. Posts multiple messages to the AI, each with a different role (user, assistant, system).
+
+3. Prints the AI's response for each message.
+
+
+## How to Run
+
+1. Make sure you have Go installed on your system.
+2. Set up your OpenAI API key as an environment variable.
+3. Run the program:
+
+```
+go run openai-gpt4o-mutil-content.go
+```
+
+
+================================================
+FILE: examples/openai-gpt4o-mutil-content/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/openai-gpt4o-mutil-content
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/openai-gpt4o-mutil-content/openai-gpt4o-mutil-content.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+func main() {
+	llm, err := openai.New(openai.WithModel("gpt-4o"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+
+	content := []llms.MessageContent{
+		llms.TextParts(llms.ChatMessageTypeSystem, "You are a ocr assistant."),
+		llms.TextParts(llms.ChatMessageTypeHuman, "which image is this?"),
+		{
+			Role:  llms.ChatMessageTypeHuman,
+			Parts: []llms.ContentPart{llms.ImageURLPart("https://github.com/tmc/langchaingo/blob/main/docs/static/img/parrot-icon.png?raw=true")},
+		},
+	}
+
+	completion, err := llm.GenerateContent(ctx, content, llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+		fmt.Print(string(chunk))
+		return nil
+	}))
+	if err != nil {
+		log.Fatal(err)
+	}
+	_ = completion
+}
+
+
+
+================================================
+FILE: examples/openai-jsonformat-example/README.md
+================================================
+# OpenAI STRUCTURED JSON Example
+
+This example demonstrates how to use the OpenAI model with the LangChain Go library to generate structured JSON output.
+
+## What does this example do?
+
+This nifty little program does the following:
+
+1. Sets up a connection to the OpenAI API using the GPT-4o model.
+
+2. Prompts the AI to generate a structured JSON output.
+
+
+## How to Run
+
+1. Make sure you have Go installed on your system.
+2. Set up your OpenAI API key as an environment variable.
+3. Run the program:
+
+```
+go run openai_jsonformat.go
+```
+
+
+================================================
+FILE: examples/openai-jsonformat-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/openai-jsonformat-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/openai-o1-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/openai-o1-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/openai-readme/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/openai-readme
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/openai-readme/openai-readme.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+func main() {
+	ctx := context.Background()
+	llm, err := openai.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	prompt := "What would be a good company name for a company that makes colorful socks?"
+	completion, err := llms.GenerateFromSinglePrompt(ctx, llm, prompt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(completion)
+}
+
+
+
+================================================
+FILE: examples/openrouter-llm-example/go.mod
+================================================
+module openrouter-llm-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/perplexity-completion-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/perplexity-completion-example
+
+go 1.26.0
+
+require (
+	github.com/joho/godotenv v1.5.1
+	github.com/tmc/langchaingo v0.1.15
+)
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/perplexity-completion-example/perplexity_completion_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	apiKey := os.Getenv("PERPLEXITY_API_KEY")
+
+	llm, err := openai.New(
+		// Supported models: https://docs.perplexity.ai/docs/model-cards
+		openai.WithModel("llama-3.1-sonar-large-128k-online"),
+		openai.WithBaseURL("https://api.perplexity.ai"),
+		openai.WithToken(apiKey),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+	_, err = llms.GenerateFromSinglePrompt(ctx,
+		llm,
+		"What is a prime number?",
+		llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+			fmt.Print(string(chunk))
+			return nil
+		}),
+	)
+	fmt.Println()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+
+
+================================================
+FILE: examples/pgvector-vectorstore-example/create_extension.sql
+================================================
+create extension if not exists vector;
+
+
+
+================================================
+FILE: examples/pgvector-vectorstore-example/docker-compose.yml
+================================================
+version: "3.9"
+services:
+  db:
+    build:
+      dockerfile: postgres.Dockerfile
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_USER: testuser
+      POSTGRES_DB: testdb
+
+
+================================================
+FILE: examples/pgvector-vectorstore-example/postgres.Dockerfile
+================================================
+FROM postgres:16
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends postgresql-16-pgvector && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /docker-entrypoint-initdb.d
+ADD create_extension.sql /docker-entrypoint-initdb.d
+
+
+================================================
+FILE: examples/prompt-caching/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/prompt-caching
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/qdrant-vectorstore-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/qdrant-vectorstore-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/reasoning-tokens/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/reasoning-tokens
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/tutorial-basic-chat-app/step3_basic.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+// Step 3: Basic Chat Application
+func basicChat() {
+	// Initialize the OpenAI LLM
+	llm, err := openai.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Create a context
+	ctx := context.Background()
+
+	// Send a message to the LLM
+	response, err := llms.GenerateFromSinglePrompt(
+		ctx,
+		llm,
+		"Hello! How can you help me today?",
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("AI:", response)
+}
+
+
+================================================
+FILE: examples/tutorial-basic-chat-app/step4_interactive.go
+================================================
+package main
+
+import (
+	"bufio"
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"strings"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
+)
+
+// Step 4: Interactive Chat
+func interactiveChat() {
+	// Initialize LLM
+	llm, err := openai.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx := context.Background()
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Println("Chat Application Started (type 'quit' to exit)")
+	fmt.Println("----------------------------------------")
+
+	for {
+		fmt.Print("You: ")
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+
+		if input == "quit" {
+			break
+		}
+
+		response, err := llms.GenerateFromSinglePrompt(ctx, llm, input)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			continue
+		}
+
+		fmt.Printf("AI: %s\n\n", response)
+	}
+}
+
+
+================================================
+FILE: examples/vertex-embedding-example/vertex-embedding-example.go
+================================================
+// Set the VERTEX_PROJECT to your GCP project with Vertex AI APIs enabled.
+// Set VERTEX_LOCATION to a GCP location (region); if you're not sure about
+// the location, set us-central1
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/tmc/langchaingo/llms/googleai"
+	"github.com/tmc/langchaingo/llms/googleai/vertex"
+)
+
+func main() {
+	ctx := context.Background()
+	project := os.Getenv("VERTEX_PROJECT")
+	location := os.Getenv("VERTEX_LOCATION")
+	llm, err := vertex.New(ctx, googleai.WithCloudProject(project), googleai.WithCloudLocation(location))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	embeddings, err := llm.CreateEmbedding(ctx, []string{"I am a human"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(embeddings)
+}
+
+
+
+================================================
+FILE: examples/watsonx-llm-example/go.mod
+================================================
+module github.com/tmc/langchaingo/examples/watsonx-llm-example
+
+go 1.26.0
+
+require github.com/tmc/langchaingo v0.1.15
+
+require (
+	github.com/IBM/watsonx-go v1.0.0 // indirect
+	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/watsonx-llm-example/watsonx_example.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/watsonx"
+)
+
+func main() {
+	llm, err := watsonx.New(
+		"meta-llama/llama-3-70b-instruct",
+		//// Optional parameters:
+		// wx.WithWatsonxAPIKey("YOUR WATSONX API KEY"),
+		// wx.WithWatsonxProjectID("YOUR WATSONX PROJECT ID"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+
+	// Or override default model to another one
+	prompt := "What would be a good company name be for name a company that makes colorful socks?"
+	completion, err := llms.GenerateFromSinglePrompt(
+		ctx,
+		llm,
+		prompt,
+		llms.WithTopK(10),
+		llms.WithTopP(0.95),
+		llms.WithSeed(13),
+	)
+	// Check for errors
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(completion)
+}
+
+
+
+================================================
+FILE: exp/README.md
+================================================
+# exp
+
+Experimental packages.
+
+We have this source tree to accept ideas before they're ready to be included. Ideally code quality
+is high enough from the get go to be accepted directly and this directory will see little use over
+time. 
+
+
+
+
+================================================
+FILE: exp/doc.go
+================================================
+// Package exp contains experimental code that is subject to change or removal.
+// There are no compatibility guarantees for this package and its subpackages.
+package exp
+
+
+
+================================================
+FILE: internal/devtools/git-hooks/pre-push
+================================================
+#!/bin/sh
+# Pre-push hook for langchaingo
+make pre-push
+# Exit with the make command's exit code
+exit $?
+
+
+
+================================================
+FILE: internal/imageutil/download.go
+================================================
+package imageutil
+
+import (
+	"fmt"
+	"io"
+	"strings"
+
+	"github.com/tmc/langchaingo/httputil"
+)
+
+// downloadImageData downloads the content from the given URL and returns the
+// image type and data. The image type is the second part of the response's
+// MIME (e.g. "png" from "image/png").
+func DownloadImageData(url string) (string, []byte, error) {
+	resp, err := httputil.DefaultClient.Get(url)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to fetch image from url: %w", err)
+	}
+	defer resp.Body.Close()
+
+	urlData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to read image bytes: %w", err)
+	}
+
+	mimeType := resp.Header.Get("Content-Type")
+
+	// Handle empty Content-Type header
+	if mimeType == "" {
+		return "", urlData, nil
+	}
+
+	parts := strings.Split(mimeType, "/")
+	if len(parts) != 2 {
+		return "", nil, fmt.Errorf("invalid mime type %v", mimeType)
+	}
+
+	return parts[1], urlData, nil
+}
+
+
+
+================================================
+FILE: internal/maputil/map.go
+================================================
+package maputil
+
+func ListKeys[T any](m map[string]T) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+
+
+================================================
+FILE: internal/mongodb/client.go
+================================================
+package mongodb
+
+import (
+	"context"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
+)
+
+func NewClient(ctx context.Context, url string) (*mongo.Client, error) {
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(url))
+	if err != nil {
+		return nil, err
+	}
+
+	err = client.Ping(ctx, readpref.Primary())
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+
+
+================================================
+FILE: internal/setutil/set.go
+================================================
+package setutil
+
+// ToSet converts a list to a set.
+func ToSet(list []string) map[string]struct{} {
+	set := make(map[string]struct{}, 0)
+	for _, v := range list {
+		set[v] = struct{}{}
+	}
+	return set
+}
+
+// Difference returns the elements in list that are not in set.
+func Difference(list []string, set map[string]struct{}) []string {
+	diff := make([]string, 0)
+	for _, v := range list {
+		if _, ok := set[v]; !ok {
+			diff = append(diff, v)
+		}
+	}
+	return diff
+}
+
+// Intersection returns the elements in list that are in set.
+func Intersection(list []string, set map[string]struct{}) []string {
+	intersection := make([]string, 0)
+	for _, v := range list {
+		if _, ok := set[v]; ok {
+			intersection = append(intersection, v)
+		}
+	}
+	return intersection
+}
+
+
+
+================================================
+FILE: internal/sliceutil/slice.go
+================================================
+package sliceutil
+
+// MinInt returns the minimum value in nums.
+// If nums is empty, it returns 0.
+func MinInt(nums []int) int {
+	var m int
+	for idx := 0; idx < len(nums); idx++ {
+		item := nums[idx]
+		if idx == 0 {
+			m = item
+			continue
+		}
+		if item < m {
+			m = item
+		}
+	}
+	return m
+}
+
+
+
+================================================
+FILE: internal/sliceutil/slice_test.go
+================================================
+package sliceutil
+
+import (
+	"testing"
+)
+
+func TestMinInt(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		nums     []int
+		expected int
+	}{
+		{
+			name:     "ascending order",
+			nums:     []int{1, 2, 3, 23, 34},
+			expected: 1,
+		},
+		{
+			name:     "mixed order",
+			nums:     []int{3, 2, 1, 34, 2213},
+			expected: 1,
+		},
+		{
+			name:     "nil slice",
+			nums:     nil,
+			expected: 0,
+		},
+		{
+			name:     "empty slice",
+			nums:     []int{},
+			expected: 0,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := MinInt(tc.nums)
+			if got != tc.expected {
+				t.Errorf("MinInt(%v) = %v, want %v", tc.nums, got, tc.expected)
+			}
+		})
+	}
+}
+
+
+
+================================================
+FILE: llms/doc.go
+================================================
+// Package llms provides unified support for interacting with different Language Models (LLMs) from various providers.
+// Designed with an extensible architecture, the package facilitates seamless integration of LLMs
+// with a focus on modularity, encapsulation, and easy configurability.
+//
+// The package includes the following subpackages for LLM providers:
+// 1. Hugging Face:      llms/huggingface/
+// 2. Local LLM:         llms/local/
+// 3. OpenAI:            llms/openai/
+// 4. Google AI:         llms/googleai/
+// 5. Cohere:            llms/cohere/
+//
+// Each subpackage includes provider-specific LLM implementations and helper files for communication
+// with supported LLM providers. The internal directories within these subpackages contain provider-specific
+// client and API implementations.
+//
+// The `llms.go` file contains the types and interfaces for interacting with different LLMs.
+//
+// The `options.go` file provides various options and functions to configure the LLMs.
+package llms
+
+
+
+================================================
+FILE: llms/prompts.go
+================================================
+package llms
+
+// PromptValue is the interface that all prompt values must implement.
+type PromptValue interface {
+	String() string
+	Messages() []ChatMessage
+}
+
+
+
+================================================
+FILE: llms/anthropic/llmtest_test.go
+================================================
+package anthropic
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+
+	llm, err := New(WithModel("claude-haiku-4-5"))
+	if err != nil {
+		t.Fatalf("Failed to create Anthropic LLM: %v", err)
+	}
+
+	// Test with automatic capability discovery
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: llms/bedrock/llmtest_test.go
+================================================
+package bedrock
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	if os.Getenv("AWS_REGION") == "" {
+		t.Skip("AWS_REGION not set")
+	}
+
+	llm, err := New(
+		WithModel("anthropic.claude-3-haiku-20240307-v1:0"),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create Bedrock LLM: %v", err)
+	}
+
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: llms/bedrock/testdata/TestAmazonNova.httprr
+================================================
+httprr trace v1
+589 342
+POST https://bedrock-runtime.us-west-2.amazonaws.com/model/us.amazon.nova-micro-v1%3A0/invoke HTTP/1.1
+Host: bedrock-runtime.us-west-2.amazonaws.com
+User-Agent: langchaingo-httprr
+Content-Length: 167
+Accept: */*
+Amz-Sdk-Invocation-Id: ee742d2e-8d90-4297-953b-7a9af18ad2e5
+Amz-Sdk-Request: attempt=1; max=3
+Authorization: AWS4-HMAC-SHA256 test-api-key
+Content-Type: application/json
+X-Amz-Date: 20250818T121112Z
+
+{"messages":[{"role":"user","content":[{"text":"Explain AI in 10 words or less."}]}],"inferenceConfig":{"maxTokens":4096},"system":[{"text":"You know all about AI."}]}HTTP/2.0 403 Forbidden
+Content-Length: 77
+Content-Type: application/json
+Date: Mon, 18 Aug 2025 12:11:20 GMT
+X-Amzn-Errortype: AccessDeniedException:http://internal.amazon.com/coral/com.amazon.bedrock/
+X-Amzn-Requestid: 63e33e55-4ca9-49ef-9744-86ae82e7fb7e
+
+{"message":"You don't have access to the model with the specified model ID."}
+
+
+================================================
+FILE: llms/bedrock/testdata/TestAmazonOutput.httprr
+================================================
+httprr trace v1
+604 342
+POST https://bedrock-runtime.us-east-1.amazonaws.com/model/ai21.j2-mid-v1/invoke HTTP/1.1
+Host: bedrock-runtime.us-east-1.amazonaws.com
+User-Agent: langchaingo-httprr
+Content-Length: 195
+Accept: */*
+Amz-Sdk-Invocation-Id: d19478dd-214d-4507-9eb7-eb8bdd4c40a1
+Amz-Sdk-Request: attempt=1; max=3
+Authorization: AWS4-HMAC-SHA256 test-api-key
+Content-Type: application/json
+X-Amz-Date: 20250818T121009Z
+
+{"prompt":"\nsystem: You know all about AI.\nhuman: Explain AI in 10 words or less.\nAI: ","maxTokens":512,"countPenalty":{"scale":0},"presencePenalty":{"scale":0},"frequencyPenalty":{"scale":0}}HTTP/2.0 403 Forbidden
+Content-Length: 77
+Content-Type: application/json
+Date: Mon, 18 Aug 2025 12:10:10 GMT
+X-Amzn-Errortype: AccessDeniedException:http://internal.amazon.com/coral/com.amazon.bedrock/
+X-Amzn-Requestid: 483997a5-e09e-41ae-9d87-0b8cd8ef6035
+
+{"message":"You don't have access to the model with the specified model ID."}
+
+
+================================================
+FILE: llms/cache/doc.go
+================================================
+// Package cache provides a generic wrapper that adds caching to a `llms.Model`. Responses are
+// cached under a key calculated based on the provided messages and options. Different cache
+// backends can be used when creating the wrapper.
+package cache
+
+
+
+================================================
+FILE: llms/cloudflare/llmtest_test.go
+================================================
+package cloudflare
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	apiToken := os.Getenv("CLOUDFLARE_API_TOKEN")
+	if apiToken == "" {
+		t.Skip("CLOUDFLARE_API_TOKEN not set")
+	}
+
+	accountID := os.Getenv("CLOUDFLARE_ACCOUNT_ID")
+	if accountID == "" {
+		t.Skip("CLOUDFLARE_ACCOUNT_ID not set")
+	}
+
+	llm, err := New(WithToken(apiToken), WithAccountID(accountID))
+	if err != nil {
+		t.Fatalf("Failed to create Cloudflare LLM: %v", err)
+	}
+
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: llms/cloudflare/internal/cloudflareclient/client.go
+================================================
+package cloudflareclient
+
+import (
+	"fmt"
+	"net/http"
+)
+
+type httpClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+type Client struct {
+	httpClient         httpClient
+	accountID          string
+	token              string
+	baseURL            string
+	modelName          string
+	embeddingModelName string
+	endpointURL        string
+	bearerToken        string
+}
+
+func NewClient(client httpClient, accountID, baseURL, token, modelName, embeddingModelName string) *Client {
+	return &Client{
+		httpClient:         client,
+		accountID:          accountID,
+		baseURL:            baseURL,
+		token:              token,
+		modelName:          modelName,
+		embeddingModelName: embeddingModelName,
+		endpointURL:        fmt.Sprintf("%s/%s/ai/run/%s", baseURL, accountID, modelName),
+		bearerToken:        "Bearer " + token,
+	}
+}
+
+
+
+================================================
+FILE: llms/cloudflare/internal/cloudflareclient/role.go
+================================================
+package cloudflareclient
+
+const (
+	RoleSystem    = "system"
+	RoleTypeUser  = "user"
+	RoleAssistant = "assistant"
+)
+
+type Role string
+
+
+
+================================================
+FILE: llms/cohere/llmtest_test.go
+================================================
+package cohere
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	if os.Getenv("COHERE_API_KEY") == "" {
+		t.Skip("COHERE_API_KEY not set")
+	}
+
+	llm, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create Cohere LLM: %v", err)
+	}
+
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: llms/compliance/doc.go
+================================================
+// Package compliance provides a test suite to verify provider implementations.
+//
+// The compliance suite tests that LLM providers correctly implement the
+// standard interfaces and behave consistently across different implementations.
+//
+// Usage:
+//
+//	func TestProviderCompliance(t *testing.T) {
+//	    model, err := provider.New()
+//	    if err != nil {
+//	        t.Fatal(err)
+//	    }
+//
+//	    suite := compliance.NewSuite("provider", model)
+//	    suite.Run(t)
+//	}
+package compliance
+
+
+
+================================================
+FILE: llms/ernie/doc.go
+================================================
+/*
+Package ernie wrapper around the Baidu Large Language Model Platform APIs.
+ERNIE-Bot is a Baidu-developed large language model.
+Additional information can be found at: https://cloud.baidu.com/doc/WENXINWORKSHOP/index.html .
+*/
+package ernie
+
+
+
+================================================
+FILE: llms/ernie/llmtest_test.go
+================================================
+package ernie
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	apiKey := os.Getenv("ERNIE_API_KEY")
+	if apiKey == "" {
+		t.Skip("ERNIE_API_KEY not set")
+	}
+
+	secretKey := os.Getenv("ERNIE_SECRET_KEY")
+	if secretKey == "" {
+		t.Skip("ERNIE_SECRET_KEY not set")
+	}
+
+	llm, err := New(WithAKSK(apiKey, secretKey))
+	if err != nil {
+		t.Fatalf("Failed to create Ernie LLM: %v", err)
+	}
+
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: llms/fake/llmtest_test.go
+================================================
+package fake
+
+import (
+	"context"
+	"testing"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	llm := NewFakeLLM([]string{"OK", "Grace", "1 2 3"})
+	if err := llmtest.TestModel(context.Background(), llm, "multiturn", "streaming"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+
+
+================================================
+FILE: llms/googleai/README.md
+================================================
+This directory contains langchaingo provider for Google's models.
+
+* In the main `googleai` directory: provider for Google AI
+  (https://ai.google.dev/)
+* In the `vertex` directory: provider for GCP Vertex AI
+  (https://cloud.google.com/vertex-ai/)
+* In the `palm` directory: provider for the legacy PaLM models.
+
+Both the `googleai` and `vertex` providers give access to Gemini-family
+multi-modal LLMs. The code between these providers is very similar; therefore,
+most of the `vertex` package is code-generated from the `googleai` package using
+a tool:
+
+    go run ./llms/googleai/internal/cmd/generate-vertex.go < llms/googleai/googleai.go > llms/googleai/vertex/vertex.go
+
+----
+
+Testing:
+
+The test code between `googleai` and `vertex` is also shared, and lives in
+the `shared_test` directory. The same tests are run for both providers.
+
+
+
+================================================
+FILE: llms/googleai/embeddings.go
+================================================
+package googleai
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/google/generative-ai-go/genai"
+)
+
+// CreateEmbedding creates embeddings from texts.
+func (g *GoogleAI) CreateEmbedding(ctx context.Context, texts []string) ([][]float32, error) {
+	em := g.client.EmbeddingModel(g.opts.DefaultEmbeddingModel)
+
+	results := make([][]float32, 0, len(texts))
+
+	batch := em.NewBatch()
+	for i, t := range texts {
+		batch = batch.AddContent(genai.Text(t))
+		// The Gemini Embedding Batch API allows up to 100 documents per batch,
+		// so send a request every 100 documents and when we hit the
+		// last document.
+		if (i > 0 && (i+1)%100 == 0) || i == len(texts)-1 {
+			embeddings, err := em.BatchEmbedContents(ctx, batch)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create embeddings: %w", err)
+			}
+			for _, e := range embeddings.Embeddings {
+				results = append(results, e.Values)
+			}
+			batch = em.NewBatch()
+		}
+	}
+
+	return results, nil
+}
+
+
+
+================================================
+FILE: llms/googleai/llmtest_test.go
+================================================
+package googleai
+
+import (
+	"context"
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	if os.Getenv("GOOGLE_API_KEY") == "" {
+		t.Skip("GOOGLE_API_KEY not set")
+	}
+
+	ctx := context.Background()
+	llm, err := New(ctx,
+		WithAPIKey(os.Getenv("GOOGLE_API_KEY")),
+		WithDefaultModel("gemini-2.5-flash"),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create Google AI LLM: %v", err)
+	}
+	t.Cleanup(func() { llm.Close() })
+
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: llms/googleai/vertex/embeddings.go
+================================================
+package vertex
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/tmc/langchaingo/llms/googleai/internal/palmclient"
+)
+
+// CreateEmbedding creates embeddings from texts.
+func (g *Vertex) CreateEmbedding(ctx context.Context, texts []string) ([][]float32, error) {
+	embeddings, err := g.palmClient.CreateEmbedding(ctx, &palmclient.EmbeddingRequest{
+		Input: texts,
+	})
+	if err != nil {
+		return [][]float32{}, err
+	}
+
+	if len(embeddings) == 0 {
+		return nil, errors.New("empty response")
+	}
+	if len(texts) != len(embeddings) {
+		return embeddings, fmt.Errorf("returned %d embeddings for %d texts", len(embeddings), len(texts))
+	}
+
+	return embeddings, nil
+}
+
+
+
+================================================
+FILE: llms/huggingface/llmtest_test.go
+================================================
+package huggingface
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	if os.Getenv("HUGGINGFACEHUB_API_TOKEN") == "" {
+		t.Skip("HUGGINGFACEHUB_API_TOKEN not set")
+	}
+
+	llm, err := New(WithModel("gpt2"))
+	if err != nil {
+		t.Fatalf("Failed to create HuggingFace LLM: %v", err)
+	}
+
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: llms/llamafile/llmtest_test.go
+================================================
+package llamafile
+
+import (
+	"testing"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	if !isLlamafileAvailable() {
+		t.Skip("llamafile is not available")
+	}
+
+	// Llamafile uses LLAMAFILE_HOST environment variable for server URL
+	// If not set, it defaults to http://127.0.0.1:8080
+
+	llm, err := New()
+	if err != nil {
+		t.Skipf("Llamafile server not available: %v", err)
+	}
+
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: llms/local/llmtest_test.go
+================================================
+package local
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	binPath := os.Getenv("LOCAL_LLM_BIN")
+	if binPath == "" {
+		t.Skip("LOCAL_LLM_BIN not set")
+	}
+
+	llm, err := New(WithBin(binPath))
+	if err != nil {
+		t.Fatalf("Failed to create Local LLM: %v", err)
+	}
+
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: llms/local/internal/localclient/completions.go
+================================================
+package localclient
+
+import (
+	"context"
+	"os/exec"
+)
+
+type completionPayload struct {
+	Prompt string `json:"prompt"`
+}
+
+type completionResponsePayload struct {
+	Response string
+}
+
+func (c *Client) createCompletion(ctx context.Context, payload *completionPayload) (*completionResponsePayload, error) {
+	// Append the prompt to the args
+	c.Args = append(c.Args, payload.Prompt)
+
+	// #nosec G204
+	out, err := exec.CommandContext(ctx, c.BinPath, c.Args...).Output()
+	if err != nil {
+		return nil, err
+	}
+
+	return &completionResponsePayload{
+		Response: string(out),
+	}, nil
+}
+
+
+
+================================================
+FILE: llms/local/internal/localclient/doc.go
+================================================
+// Package localclient provides a client for local LLMs.
+package localclient
+
+
+
+================================================
+FILE: llms/maritaca/llmtest_test.go
+================================================
+package maritaca
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	if os.Getenv("MARITACA_API_KEY") == "" {
+		t.Skip("MARITACA_API_KEY not set")
+	}
+
+	llm, err := New(
+		WithToken(os.Getenv("MARITACA_API_KEY")),
+		WithModel("sabia-3"),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create Maritaca LLM: %v", err)
+	}
+
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: llms/mistral/llmtest_test.go
+================================================
+package mistral
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	if os.Getenv("MISTRAL_API_KEY") == "" {
+		t.Skip("MISTRAL_API_KEY not set")
+	}
+
+	llm, err := New(
+		WithAPIKey(os.Getenv("MISTRAL_API_KEY")),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create Mistral LLM: %v", err)
+	}
+
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: llms/mistral/mistralembed.go
+================================================
+package mistral
+
+import (
+	"context"
+	"errors"
+)
+
+var ErrEmptyEmbeddings = errors.New("empty embeddings")
+
+func convertFloat64ToFloat32(input []float64) []float32 {
+	// Create a slice with the same length as the input.
+	output := make([]float32, len(input))
+
+	// Iterate over the input slice and convert each element.
+	for i, v := range input {
+		output[i] = float32(v)
+	}
+
+	return output
+}
+
+// CreateEmbedding implements the embeddings.EmbedderClient interface and creates embeddings for the given input texts.
+func (m *Model) CreateEmbedding(_ context.Context, inputTexts []string) ([][]float32, error) {
+	embsRes, err := m.client.Embeddings("mistral-embed", inputTexts)
+	if err != nil {
+		return nil, errors.New("failed to create embeddings: " + err.Error())
+	}
+	allEmbds := make([][]float32, len(embsRes.Data))
+	for i, embs := range embsRes.Data {
+		if len(embs.Embedding) == 0 {
+			return nil, ErrEmptyEmbeddings
+		}
+		allEmbds[i] = convertFloat64ToFloat32(embs.Embedding)
+	}
+	return allEmbds, nil
+}
+
+
+
+================================================
+FILE: llms/ollama/llmtest_test.go
+================================================
+package ollama
+
+import (
+	"context"
+	"net/http"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+// liveServerURL returns the Ollama server URL for live tests.
+// It skips the test if no server answers there.
+func liveServerURL(t *testing.T) string {
+	t.Helper()
+	serverURL := os.Getenv("OLLAMA_HOST")
+	if serverURL == "" {
+		serverURL = "http://localhost:11434"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, serverURL+"/api/version", nil)
+	if err != nil {
+		t.Skipf("Ollama not available: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Skipf("Ollama not available: %v", err)
+	}
+	resp.Body.Close()
+	return serverURL
+}
+
+func TestLLM(t *testing.T) {
+	llm, err := New(
+		WithServerURL(liveServerURL(t)),
+		WithModel("gpt-oss:20b"),
+	)
+	if err != nil {
+		t.Skipf("Ollama not available: %v", err)
+	}
+
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: llms/ollama/testdata/TestWithPullTimeout.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: llms/openai/doc.go
+================================================
+// Package openai provides an interface to OpenAI's language models.
+//
+// # Token Limits
+//
+// For setting token limits with OpenAI models, use openai.WithMaxCompletionTokens()
+// for clarity. The OpenAI API now uses max_completion_tokens as the field for
+// limiting output tokens.
+//
+//	// Recommended for clarity:
+//	llm.GenerateContent(ctx, messages,
+//	    openai.WithMaxCompletionTokens(100),
+//	)
+//
+//	// Also works (backward compatible):
+//	llm.GenerateContent(ctx, messages,
+//	    llms.WithMaxTokens(100),
+//	)
+//
+// Both options set the same underlying field. By default, the implementation sends
+// max_completion_tokens (modern field). For older OpenAI-compatible servers that
+// only support max_tokens, use WithLegacyMaxTokensField():
+//
+//	llm.GenerateContent(ctx, messages,
+//	    llms.WithMaxTokens(100),
+//	    openai.WithLegacyMaxTokensField(), // Forces use of max_tokens field
+//	)
+package openai
+
+
+
+================================================
+FILE: llms/openai/llmtest_test.go
+================================================
+package openai
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	if os.Getenv("OPENAI_API_KEY") == "" {
+		t.Skip("OPENAI_API_KEY not set")
+	}
+
+	llm, err := New(WithModel("gpt-3.5-turbo"))
+	if err != nil {
+		t.Fatalf("Failed to create OpenAI LLM: %v", err)
+	}
+
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: llms/watsonx/llmtest_test.go
+================================================
+package watsonx
+
+import (
+	"os"
+	"testing"
+
+	wx "github.com/IBM/watsonx-go/pkg/models"
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func TestLLM(t *testing.T) {
+	if os.Getenv("WATSONX_API_KEY") == "" || os.Getenv("WATSONX_PROJECT_ID") == "" {
+		t.Skip("WATSONX_API_KEY or WATSONX_PROJECT_ID not set")
+	}
+
+	llm, err := New(
+		"ibm/granite-13b-instruct-v2",
+		wx.WithWatsonxAPIKey(wx.WatsonxAPIKey(os.Getenv("WATSONX_API_KEY"))),
+		wx.WithWatsonxProjectID(wx.WatsonxProjectID(os.Getenv("WATSONX_PROJECT_ID"))),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create WatsonX LLM: %v", err)
+	}
+
+	llmtest.TestLLM(t, llm)
+}
+
+
+
+================================================
+FILE: memory/chat_options.go
+================================================
+package memory
+
+import "github.com/tmc/langchaingo/llms"
+
+// ChatMessageHistoryOption is a function for creating new chat message history
+// with other than the default values.
+type ChatMessageHistoryOption func(m *ChatMessageHistory)
+
+// WithPreviousMessages is an option for NewChatMessageHistory for adding
+// previous messages to the history.
+func WithPreviousMessages(previousMessages []llms.ChatMessage) ChatMessageHistoryOption {
+	return func(m *ChatMessageHistory) {
+		m.messages = append(m.messages, previousMessages...)
+	}
+}
+
+func applyChatOptions(options ...ChatMessageHistoryOption) *ChatMessageHistory {
+	h := &ChatMessageHistory{
+		messages: make([]llms.ChatMessage, 0),
+	}
+
+	for _, option := range options {
+		option(h)
+	}
+
+	return h
+}
+
+
+
+================================================
+FILE: memory/doc.go
+================================================
+/*
+Package memory provides an interface for managing conversational data and
+a variety of implementations for storing and retrieving that data.
+
+The main components of this package are:
+- ChatMessageHistory: a struct that stores chat messages.
+- ConversationBuffer: a simple form of memory that remembers previous conversational back and forth directly.
+*/
+package memory
+
+
+
+================================================
+FILE: memory/simple.go
+================================================
+package memory
+
+import (
+	"context"
+
+	"github.com/tmc/langchaingo/schema"
+)
+
+// Simple is a class that implement the memory interface, but does nothing.
+// The class is used as default in multiple chains.
+type Simple struct{}
+
+func NewSimple() Simple {
+	return Simple{}
+}
+
+// Statically assert that Simple implement the memory interface.
+var _ schema.Memory = Simple{}
+
+func (m Simple) MemoryVariables(context.Context) []string {
+	return nil
+}
+
+func (m Simple) LoadMemoryVariables(context.Context, map[string]any) (map[string]any, error) {
+	return make(map[string]any), nil
+}
+
+func (m Simple) SaveContext(context.Context, map[string]any, map[string]any) error {
+	return nil
+}
+
+func (m Simple) Clear(context.Context) error {
+	return nil
+}
+
+func (m Simple) GetMemoryKey(context.Context) string {
+	return ""
+}
+
+
+
+================================================
+FILE: memory/alloydb/chat_message_history_options.go
+================================================
+package alloydb
+
+const (
+	defaultSchemaName = "public"
+)
+
+// ChatMessageHistoryStoresOption is a function for creating chat message
+// history with other than the default values.
+type ChatMessageHistoryStoresOption func(c *ChatMessageHistory)
+
+// WithSchemaName sets the schemaName field for the ChatMessageHistory.
+func WithSchemaName(schemaName string) ChatMessageHistoryStoresOption {
+	return func(c *ChatMessageHistory) {
+		c.schemaName = schemaName
+	}
+}
+
+// applyChatMessageHistoryOptions applies the given options to the
+// ChatMessageHistory.
+func applyChatMessageHistoryOptions(cmh ChatMessageHistory, opts ...ChatMessageHistoryStoresOption) ChatMessageHistory {
+	cmh.schemaName = defaultSchemaName
+
+	// Check for optional values.
+	for _, opt := range opts {
+		opt(&cmh)
+	}
+	return cmh
+}
+
+
+
+================================================
+FILE: memory/cloudsql/chat_message_history_options.go
+================================================
+package cloudsql
+
+const (
+	defaultSchemaName = "public"
+)
+
+// ChatMessageHistoryStoresOption is a function for creating chat message
+// history with other than the default values.
+type ChatMessageHistoryStoresOption func(c *ChatMessageHistory)
+
+// WithSchemaName sets the schemaName field for the ChatMessageHistory.
+func WithSchemaName(schemaName string) ChatMessageHistoryStoresOption {
+	return func(c *ChatMessageHistory) {
+		c.schemaName = schemaName
+	}
+}
+
+// applyChatMessageHistoryOptions applies the given options to the
+// ChatMessageHistory.
+func applyChatMessageHistoryOptions(cmh ChatMessageHistory, opts ...ChatMessageHistoryStoresOption) ChatMessageHistory {
+	cmh.schemaName = defaultSchemaName
+
+	// Check for optional values.
+	for _, opt := range opts {
+		opt(&cmh)
+	}
+	return cmh
+}
+
+
+
+================================================
+FILE: memory/mongo/main_test.go
+================================================
+package mongo
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/internal/testutil/testctr"
+)
+
+func TestMain(m *testing.M) {
+	code := testctr.EnsureTestEnv()
+	if code == 0 {
+		code = m.Run()
+	}
+	os.Exit(code)
+}
+
+
+
+================================================
+FILE: memory/testdata/TestTokenBufferMemory.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: memory/testdata/TestTokenBufferMemoryReturnMessage.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: memory/testdata/TestTokenBufferMemoryWithPreLoadedHistory.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: outputparser/comma_seperated_list_test.go
+================================================
+package outputparser_test
+
+import (
+	"reflect"
+	"testing"
+
+	"github.com/tmc/langchaingo/outputparser"
+)
+
+func TestCommaSeparatedList(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name:     "basic comma separated",
+			input:    "foo, bar, baz",
+			expected: []string{"foo", "bar", "baz"},
+		},
+		{
+			name:     "extra whitespace",
+			input:    "	foo, bar  , b az ",
+			expected: []string{"foo", "bar", "b az"},
+		},
+		{
+			name:     "spaces in values",
+			input:    " foo bar  , baz",
+			expected: []string{"foo bar", "baz"},
+		},
+	}
+
+	parser := outputparser.NewCommaSeparatedList()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			output, err := parser.Parse(tc.input)
+			if err != nil {
+				t.Fatalf("Parse(%q) error = %v", tc.input, err)
+			}
+			if !reflect.DeepEqual(tc.expected, output) {
+				t.Errorf("Parse(%q) = %v, want %v", tc.input, output, tc.expected)
+			}
+		})
+	}
+}
+
+
+
+================================================
+FILE: outputparser/simple.go
+================================================
+package outputparser
+
+import (
+	"strings"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/schema"
+)
+
+// Simple is an output parser that does nothing.
+type Simple struct{}
+
+func NewSimple() Simple { return Simple{} }
+
+var _ schema.OutputParser[any] = Simple{}
+
+func (p Simple) GetFormatInstructions() string { return "" }
+func (p Simple) Parse(text string) (any, error) {
+	return strings.TrimSpace(text), nil
+}
+
+func (p Simple) ParseWithPrompt(text string, _ llms.PromptValue) (any, error) {
+	return strings.TrimSpace(text), nil
+}
+func (p Simple) Type() string { return "simple_parser" }
+
+
+
+================================================
+FILE: prompts/chat_prompt.go
+================================================
+package prompts
+
+import (
+	"fmt"
+
+	"github.com/tmc/langchaingo/llms"
+)
+
+var _ llms.PromptValue = ChatPromptValue{}
+
+// ChatPromptValue is a prompt value that is a list of chat messages.
+type ChatPromptValue []llms.ChatMessage
+
+// String returns the chat message slice as a buffer string.
+func (v ChatPromptValue) String() string {
+	s, err := llms.GetBufferString(v, "Human", "AI")
+	if err == nil {
+		return s
+	}
+	return fmt.Sprintf("%v", []llms.ChatMessage(v))
+}
+
+// Messages returns the ChatMessage slice.
+func (v ChatPromptValue) Messages() []llms.ChatMessage {
+	return v
+}
+
+
+
+================================================
+FILE: prompts/example_selector.go
+================================================
+package prompts
+
+// ExampleSelector is an interface for example selectors. It is equivalent to
+// BaseExampleSelector in langchain and langchainjs.
+type ExampleSelector interface {
+	AddExample(example map[string]string) string
+	SelectExamples(inputVariables map[string]string) []map[string]string
+}
+
+
+
+================================================
+FILE: prompts/prompt_test.go
+================================================
+package prompts
+
+import (
+	"testing"
+)
+
+func TestStringPromptValueString(t *testing.T) {
+	t.Parallel()
+
+	spv := StringPromptValue("")
+	str := spv.String()
+	if str != "" {
+		t.Errorf("expected empty string, got %q", str)
+	}
+
+	spv = StringPromptValue("test")
+	str = spv.String()
+	if str != "test" {
+		t.Errorf("expected %q, got %q", "test", str)
+	}
+}
+
+func TestStringPromptValueMessages(t *testing.T) {
+	t.Parallel()
+
+	spv := StringPromptValue("")
+	msgs := spv.Messages()
+	if len(msgs) != 1 {
+		t.Fatalf("expected 1 message, got %d", len(msgs))
+	}
+
+	spv = StringPromptValue("test")
+	msgs = spv.Messages()
+	if len(msgs) != 1 {
+		t.Fatalf("expected 1 message, got %d", len(msgs))
+	}
+	if msgs[0].GetContent() != "test" {
+		t.Errorf("expected %q, got %q", "test", msgs[0].GetContent())
+	}
+}
+
+
+
+================================================
+FILE: prompts/prompts.go
+================================================
+package prompts
+
+import "github.com/tmc/langchaingo/llms"
+
+// Formatter is an interface for formatting a map of values into a string.
+type Formatter interface {
+	Format(values map[string]any) (string, error)
+}
+
+// MessageFormatter is an interface for formatting a map of values into a list
+// of messages.
+type MessageFormatter interface {
+	FormatMessages(values map[string]any) ([]llms.ChatMessage, error)
+	GetInputVariables() []string
+}
+
+// FormatPrompter is an interface for formatting a map of values into a prompt.
+type FormatPrompter interface {
+	FormatPrompt(values map[string]any) (llms.PromptValue, error)
+	GetInputVariables() []string
+}
+
+
+
+================================================
+FILE: prompts/render_options.go
+================================================
+package prompts
+
+// RenderOption configures template rendering behavior.
+type RenderOption func(*renderConfig)
+
+// renderConfig holds internal configuration for rendering.
+type renderConfig struct {
+	// enableSanitization enables HTML escaping for safety
+	enableSanitization bool
+}
+
+// WithSanitization enables HTML escaping of template data values.
+// This helps prevent XSS attacks when rendering templates with untrusted data.
+// When enabled, HTML special characters in string values will be escaped.
+func WithSanitization() RenderOption {
+	return func(c *renderConfig) {
+		c.enableSanitization = true
+	}
+}
+
+// applyOptions applies the given options to a render configuration.
+func applyOptions(opts []RenderOption) *renderConfig {
+	cfg := &renderConfig{
+		enableSanitization: false, // Sanitization is opt-in
+	}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	return cfg
+}
+
+
+
+================================================
+FILE: prompts/string_prompt.go
+================================================
+package prompts
+
+import "github.com/tmc/langchaingo/llms"
+
+var _ llms.PromptValue = StringPromptValue("")
+
+// StringPromptValue is a prompt value that is a string.
+type StringPromptValue string
+
+func (v StringPromptValue) String() string {
+	return string(v)
+}
+
+// Messages returns a single-element ChatMessage slice.
+func (v StringPromptValue) Messages() []llms.ChatMessage {
+	return []llms.ChatMessage{
+		llms.HumanChatMessage{Content: string(v)},
+	}
+}
+
+
+
+================================================
+FILE: prompts/templates_go.go
+================================================
+package prompts
+
+import (
+	"errors"
+	"fmt"
+	"io/fs"
+	"strings"
+	"text/template"
+
+	"github.com/Masterminds/sprig/v3"
+)
+
+// renderGoTemplateWithFS renders a Go template from the filesystem.
+func renderGoTemplateWithFS(fsys fs.FS, name string, values map[string]any) (string, error) {
+	tmpl, err := template.New(name).
+		Option("missingkey=error").
+		Funcs(sprig.TxtFuncMap()).
+		ParseFS(fsys, name)
+	if err != nil {
+		// Check if it's a file not found error
+		if errors.Is(err, fs.ErrNotExist) {
+			return "", fmt.Errorf("template file %q not found: %w", name, err)
+		}
+		return "", fmt.Errorf("failed to parse template %q: %w", name, err)
+	}
+
+	sb := new(strings.Builder)
+	err = tmpl.Execute(sb, values)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute template %q: %w", name, err)
+	}
+
+	return sb.String(), nil
+}
+
+
+
+================================================
+FILE: prompts/internal/fstring/doc.go
+================================================
+// Package fstring contains template format with f-string.
+package fstring
+
+
+
+================================================
+FILE: prompts/internal/fstring/fstring.go
+================================================
+package fstring
+
+import "errors"
+
+var (
+	ErrEmptyExpression       = errors.New("empty expression not allowed")
+	ErrArgsNotDefined        = errors.New("args not defined")
+	ErrLeftBracketNotClosed  = errors.New("single '{' is not allowed")
+	ErrRightBracketNotClosed = errors.New("single '}' is not allowed")
+)
+
+// Format interpolates the given template with the given values by using
+// f-string.
+func Format(template string, values map[string]any) (string, error) {
+	p := newParser(template, values)
+	if err := p.parse(); err != nil {
+		return "", err
+	}
+	return string(p.result), nil
+}
+
+
+
+================================================
+FILE: prompts/testdata/article.j2
+================================================
+# {{ title }}
+
+**Author:** {{ author }}
+
+---
+
+{{ content }}
+
+
+================================================
+FILE: prompts/testdata/header.j2
+================================================
+Hello {{user}}! Welcome to {{company}}.
+
+
+================================================
+FILE: prompts/testdata/main.j2
+================================================
+{{title}}
+{% include 'testdata/header.j2' %}
+This is a safe template composition example.
+
+
+================================================
+FILE: schema/chat_message_history.go
+================================================
+package schema
+
+import (
+	"context"
+
+	"github.com/tmc/langchaingo/llms"
+)
+
+// ChatMessageHistory is the interface for chat history in memory/store.
+type ChatMessageHistory interface {
+	// AddMessage adds a message to the store.
+	AddMessage(ctx context.Context, message llms.ChatMessage) error
+
+	// AddUserMessage is a convenience method for adding a human message string
+	// to the store.
+	AddUserMessage(ctx context.Context, message string) error
+
+	// AddAIMessage is a convenience method for adding an AI message string to
+	// the store.
+	AddAIMessage(ctx context.Context, message string) error
+
+	// Clear removes all messages from the store.
+	Clear(ctx context.Context) error
+
+	// Messages retrieves all messages from the store
+	Messages(ctx context.Context) ([]llms.ChatMessage, error)
+
+	// SetMessages replaces existing messages in the store
+	SetMessages(ctx context.Context, messages []llms.ChatMessage) error
+}
+
+
+
+================================================
+FILE: schema/doc.go
+================================================
+// Package schema implements a shared core set of data types for use in
+// langchaingo.
+package schema
+
+
+
+================================================
+FILE: schema/documents.go
+================================================
+package schema
+
+// Document is the interface for interacting with a document.
+type Document struct {
+	PageContent string
+	Metadata    map[string]any
+	Score       float32
+}
+
+
+
+================================================
+FILE: schema/memory.go
+================================================
+package schema
+
+import "context"
+
+// Memory is the interface for memory in chains.
+type Memory interface {
+	// GetMemoryKey getter for memory key.
+	GetMemoryKey(ctx context.Context) string
+	// MemoryVariables Input keys this memory class will load dynamically.
+	MemoryVariables(ctx context.Context) []string
+	// LoadMemoryVariables Return key-value pairs given the text input to the chain.
+	// If None, return all memories
+	LoadMemoryVariables(ctx context.Context, inputs map[string]any) (map[string]any, error)
+	// SaveContext Save the context of this model run to memory.
+	SaveContext(ctx context.Context, inputs map[string]any, outputs map[string]any) error
+	// Clear memory contents.
+	Clear(ctx context.Context) error
+}
+
+
+
+================================================
+FILE: schema/output_parsers.go
+================================================
+package schema
+
+import "github.com/tmc/langchaingo/llms"
+
+// OutputParser is an interface for parsing the output of an LLM call.
+type OutputParser[T any] interface {
+	// Parse parses the output of an LLM call.
+	Parse(text string) (T, error)
+	// ParseWithPrompt parses the output of an LLM call with the prompt used.
+	ParseWithPrompt(text string, prompt llms.PromptValue) (T, error)
+	// GetFormatInstructions returns a string describing the format of the output.
+	GetFormatInstructions() string
+	// Type returns the string type key uniquely identifying this class of parser
+	Type() string
+}
+
+
+
+================================================
+FILE: schema/retrivers.go
+================================================
+package schema
+
+import "context"
+
+// Retriever is an interface that defines the behavior of a retriever.
+type Retriever interface {
+	GetRelevantDocuments(ctx context.Context, query string) ([]Document, error)
+}
+
+
+
+================================================
+FILE: schema/schema.go
+================================================
+package schema
+
+// AgentAction is the agent's action to take.
+type AgentAction struct {
+	Tool      string
+	ToolInput string
+	Log       string
+	ToolID    string
+}
+
+// AgentStep is a step of the agent.
+type AgentStep struct {
+	Action      AgentAction
+	Observation string
+}
+
+// AgentFinish is the agent's return value.
+type AgentFinish struct {
+	ReturnValues map[string]any
+	Log          string
+}
+
+
+
+================================================
+FILE: testing/llmtest/example_test.go
+================================================
+package llmtest_test
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/tmc/langchaingo/llms/fake"
+	"github.com/tmc/langchaingo/testing/llmtest"
+)
+
+func ExampleTestModel() {
+	model := fake.NewFakeLLM([]string{"OK", "Grace"})
+	if err := llmtest.TestModel(context.Background(), model, "multiturn"); err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("conforms")
+	// Output: conforms
+}
+
+
+
+================================================
+FILE: textsplitter/doc.go
+================================================
+/*
+Package textsplitter provides tools for splitting long texts into smaller chunks
+based on configurable rules and parameters.
+It aims to help in processing these chunks more efficiently
+when interacting with language models or other text-processing tools.
+
+The main components of this package are:
+
+- TextSplitter interface: a common interface for splitting texts into smaller chunks.
+- RecursiveCharacter: a text splitter that recursively splits texts by different characters (separators)
+combined with chunk size and overlap settings.
+- Helper functions: utility functions for creating documents out of split texts and rejoining them if necessary.
+
+Using the TextSplitter interface, developers can implement custom
+splitting strategies for their specific use cases and requirements.
+*/
+package textsplitter
+
+
+
+================================================
+FILE: textsplitter/text_spliter.go
+================================================
+package textsplitter
+
+// TextSplitter is the standard interface for splitting texts.
+type TextSplitter interface {
+	SplitText(text string) ([]string, error)
+}
+
+
+
+================================================
+FILE: tools/doc.go
+================================================
+// Package tools defines a standard interface for tools to be used by agents.
+package tools
+
+
+
+================================================
+FILE: tools/tool.go
+================================================
+package tools
+
+import "context"
+
+// Tool is a tool for the llm agent to interact with different applications.
+type Tool interface {
+	Name() string
+	Description() string
+	Call(ctx context.Context, input string) (string, error)
+}
+
+
+
+================================================
+FILE: tools/duckduckgo/doc.go
+================================================
+// Package duckduckgo contains an implementation of the tool interface with the
+// duckduckgo api client.
+package duckduckgo
+
+
+
+================================================
+FILE: tools/metaphor/doc.go
+================================================
+// // Package metaphor contains an implementation of the tool interface with the
+// metaphor search api client.
+package metaphor
+
+
+
+================================================
+FILE: tools/perplexity/perplexity_test.go
+================================================
+package perplexity
+
+import (
+	"context"
+	"net/http"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tmc/langchaingo/internal/httprr"
+)
+
+func TestPerplexityTool(t *testing.T) {
+	ctx := context.Background()
+
+	httprr.SkipIfNoCredentialsAndRecordingMissing(t, "PERPLEXITY_API_KEY")
+
+	rr := httprr.OpenForTest(t, http.DefaultTransport)
+
+	var opts []Option
+	opts = append(opts, WithHTTPClient(rr.Client()))
+
+	// Use test token when replaying
+	if rr.Replaying() {
+		opts = append(opts, WithAPIKey("test-api-key"))
+	}
+
+	tool, err := New(opts...)
+	require.NoError(t, err)
+	require.NotNil(t, tool)
+
+	assert.Equal(t, "PerplexityAI", tool.Name())
+	assert.NotEmpty(t, tool.Description())
+
+	// Test Call functionality
+	response, err := tool.Call(ctx, "what is the largest country in the world by total area?")
+	require.NoError(t, err)
+	assert.Contains(t, response, "Russia")
+}
+
+
+
+================================================
+FILE: tools/scraper/doc.go
+================================================
+// Package scraper contains an implementation of the tool interface for
+// a web scraping tool.
+package scraper
+
+
+
+================================================
+FILE: tools/serpapi/doc.go
+================================================
+// Package serpapi contains an implementation of the tool interface with the
+// serapi.
+package serpapi
+
+
+
+================================================
+FILE: tools/serpapi/options.go
+================================================
+package serpapi
+
+import "net/http"
+
+type options struct {
+	apiKey     string
+	httpClient *http.Client
+}
+
+type Option func(*options)
+
+// WithAPIKey passes the Serpapi API token to the client. If not set, the token
+// is read from the SERPAPI_API_KEY environment variable.
+func WithAPIKey(apiKey string) Option {
+	return func(opts *options) {
+		opts.apiKey = apiKey
+	}
+}
+
+// WithHTTPClient sets a custom HTTP client for the SerpAPI requests.
+func WithHTTPClient(client *http.Client) Option {
+	return func(opts *options) {
+		opts.httpClient = client
+	}
+}
+
+
+
+================================================
+FILE: tools/sqldatabase/mysql/main_test.go
+================================================
+package mysql
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/internal/testutil/testctr"
+)
+
+func TestMain(m *testing.M) {
+	code := testctr.EnsureTestEnv()
+	if code == 0 {
+		code = m.Run()
+	}
+	os.Exit(code)
+}
+
+
+
+================================================
+FILE: tools/sqldatabase/postgresql/main_test.go
+================================================
+package postgresql
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/internal/testutil/testctr"
+)
+
+func TestMain(m *testing.M) {
+	code := testctr.EnsureTestEnv()
+	if code == 0 {
+		code = m.Run()
+	}
+	os.Exit(code)
+}
+
+
+
+================================================
+FILE: tools/sqldatabase/testdata/db.sql
+================================================
+CREATE TABLE Activity (
+    Id int, StringId text, Note text, TimeType text, DayOfWeek text, Year text, Month text, Day text, Hour text, Minute text, Second text, Duration int
+);
+
+CREATE TABLE Activity1 (
+    Id int, StringId text, Note text, TimeType text, DayOfWeek text, Year text, Month text, Day text, Hour text, Minute text, Second text, Duration int
+);
+
+CREATE TABLE Activity2 (
+    Id int, StringId text, Note text, TimeType text, DayOfWeek text, Year text, Month text, Day text, Hour text, Minute text, Second text, Duration int
+);
+
+
+================================================
+FILE: tools/wikipedia/doc.go
+================================================
+// Package wikipedia contains an implementation of the tool interface with the
+// wikipedia api.
+package wikipedia
+
+
+
+================================================
+FILE: tools/wikipedia/wikipedia_test.go
+================================================
+package wikipedia
+
+import (
+	"context"
+	"net/http"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"github.com/tmc/langchaingo/internal/httprr"
+)
+
+const _userAgent = "langchaingo test (https://github.com/tmc/langchaingo)"
+
+func TestWikipedia(t *testing.T) {
+	ctx := context.Background()
+	t.Parallel()
+
+	// Setup httprr for HTTP requests
+	rr := httprr.OpenForTest(t, http.DefaultTransport)
+	t.Cleanup(func() { rr.Close() })
+
+	tool := New(_userAgent, WithHTTPClient(rr.Client()))
+	_, err := tool.Call(ctx, "america")
+	require.NoError(t, err)
+}
+
+
+
+================================================
+FILE: tools/zapier/doc.go
+================================================
+// Package zapier contains an implementation of the tool interface with the
+// zapier NLA api client.
+package zapier
+
+
+
+================================================
+FILE: tools/zapier/zapier_test.go
+================================================
+package zapier
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestCreateDescription(t *testing.T) {
+	t.Parallel()
+
+	tool, err := New(ToolOptions{
+		Name:     "Test Tool",
+		ActionID: "test1234",
+		Params: map[string]string{
+			"Param1": "Param1 Description",
+			"Param2": "Param2 Description",
+		},
+	})
+	require.NoError(t, err)
+
+	desc := tool.Description()
+	assert.Contains(t, desc, "Test Tool")
+	assert.Contains(t, desc, "Param2")
+	assert.Contains(t, desc, "Param1")
+}
+
+
+
+================================================
+FILE: tools/zapier/internal/errors.go
+================================================
+package internal
+
+// NoCredentialsError is thrown when no valid credentials are passed to the client.
+type NoCredentialsError struct{}
+
+func (e NoCredentialsError) Error() string {
+	return "Must pass a APIKey or AccessToken"
+}
+
+
+
+================================================
+FILE: vectorstores/doc.go
+================================================
+/*
+Package vectorstores contains the implementation of VectorStore, an interface for saving
+and querying documents as vector embeddings.
+
+The main components of this package are:
+
+- VectorStore interface: a common interface for saving and querying vector embeddings of documents.
+- Options: a set of options for similarity search and document addition.
+- Retriever: a retriever for vector stores that implements the schema.Retriever interface.
+
+The package provides a flexible way to handle different types of vector stores
+by using the VectorStore interface as an abstraction.
+It supports customization of the search and storage operation via the Options mechanism.
+*/
+package vectorstores
+
+
+
+================================================
+FILE: vectorstores/alloydb/main_test.go
+================================================
+package alloydb_test
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/internal/testutil/testctr"
+)
+
+func TestMain(m *testing.M) {
+	testctr.EnsureTestEnv()
+	os.Exit(m.Run())
+}
+
+
+
+================================================
+FILE: vectorstores/alloydb/testdata/TestAddDocuments.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: vectorstores/alloydb/testdata/TestContainerApplyVectorIndexAndDropIndex.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: vectorstores/alloydb/testdata/TestContainerIsValidIndex.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: vectorstores/azureaisearch/doc.go
+================================================
+// Package azureaisearch contains an implementation of the VectorStore interface that connects to Azure AI search.
+package azureaisearch
+
+
+
+================================================
+FILE: vectorstores/azureaisearch/helpers.go
+================================================
+package azureaisearch
+
+import (
+	"encoding/json"
+	"fmt"
+)
+
+func structToMap(input any, output *map[string]interface{}) error {
+	inrec, err := json.Marshal(input)
+	if err != nil {
+		return fmt.Errorf("error marshalling StructToMap input : %w", err)
+	}
+
+	return json.Unmarshal(inrec, output)
+}
+
+
+
+================================================
+FILE: vectorstores/azureaisearch/index_delete.go
+================================================
+package azureaisearch
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+)
+
+// CreateIndexAPIRequest send a request to azure AI search Rest API for deleting an index.
+func (s *Store) DeleteIndex(ctx context.Context, indexName string) error {
+	URL := fmt.Sprintf("%s/indexes/%s?api-version=2023-11-01", s.azureAISearchEndpoint, indexName)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, URL, nil)
+	if err != nil {
+		return fmt.Errorf("err setting request for index creating: %w", err)
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	if s.azureAISearchAPIKey != "" {
+		req.Header.Add("api-key", s.azureAISearchAPIKey)
+	}
+
+	if err := s.httpDefaultSend(req, "index creating for azure ai search", nil); err != nil {
+		return fmt.Errorf("err request: %w", err)
+	}
+
+	return nil
+}
+
+
+
+================================================
+FILE: vectorstores/azureaisearch/index_list.go
+================================================
+package azureaisearch
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+)
+
+// ListIndexes send a request to azure AI search Rest API for creatin an index, helper function.
+func (s *Store) ListIndexes(ctx context.Context, output *map[string]interface{}) error {
+	URL := fmt.Sprintf("%s/indexes?api-version=2023-11-01", s.azureAISearchEndpoint)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, URL, nil)
+	if err != nil {
+		return fmt.Errorf("err setting request for index retrieving: %w", err)
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	if s.azureAISearchAPIKey != "" {
+		req.Header.Add("api-key", s.azureAISearchAPIKey)
+	}
+
+	return s.httpDefaultSend(req, "search documents on azure ai search", output)
+}
+
+
+
+================================================
+FILE: vectorstores/azureaisearch/index_retrieve.go
+================================================
+package azureaisearch
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+)
+
+// RetrieveIndex send a request to azure AI search Rest API for retrieving an index, helper function.
+func (s *Store) RetrieveIndex(ctx context.Context, indexName string, output *map[string]interface{}) error {
+	URL := fmt.Sprintf("%s/indexes/%s?api-version=2023-11-01", s.azureAISearchEndpoint, indexName)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, URL, nil)
+	if err != nil {
+		return fmt.Errorf("err setting request for index retrieving: %w", err)
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	if s.azureAISearchAPIKey != "" {
+		req.Header.Add("api-key", s.azureAISearchAPIKey)
+	}
+
+	return s.httpDefaultSend(req, "search documents on azure ai search", output)
+}
+
+
+
+================================================
+FILE: vectorstores/azureaisearch/types.go
+================================================
+package azureaisearch
+
+import (
+	"fmt"
+)
+
+// FieldType type for pseudo enum.
+type FieldType = string
+
+// Pseudo enum for all the different FieldType.
+const (
+	FieldTypeString         FieldType = "Edm.String"
+	FieldTypeSingle         FieldType = "Edm.Single"
+	FieldTypeInt32          FieldType = "Edm.Int32"
+	FieldTypeInt64          FieldType = "Edm.Int64"
+	FieldTypeDouble         FieldType = "Edm.Double"
+	FieldTypeBoolean        FieldType = "Edm.Boolean"
+	FieldTypeDatetimeOffset FieldType = "Edm.DateTimeOffset"
+	FieldTypeComplexType    FieldType = "Edm.ComplexType"
+)
+
+// CollectionField allows to define a fieldtype as a collection.
+func CollectionField(fieldType FieldType) FieldType {
+	return fmt.Sprintf("Collection(%s)", fieldType)
+}
+
+
+
+================================================
+FILE: vectorstores/bedrockknowledgebases/doc.go
+================================================
+package bedrockknowledgebases
+
+
+
+================================================
+FILE: vectorstores/chroma/doc.go
+================================================
+// Package chroma contains an implementation of the VectorStore interface that connects to an external Chroma database.
+package chroma
+
+
+
+================================================
+FILE: vectorstores/chroma/main_test.go
+================================================
+package chroma_test
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/internal/testutil/testctr"
+)
+
+func TestMain(m *testing.M) {
+	code := testctr.EnsureTestEnv()
+	if code == 0 {
+		code = m.Run()
+	}
+	os.Exit(code)
+}
+
+
+
+================================================
+FILE: vectorstores/cloudsql/main_test.go
+================================================
+package cloudsql_test
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/internal/testutil/testctr"
+)
+
+func TestMain(m *testing.M) {
+	testctr.EnsureTestEnv()
+	os.Exit(m.Run())
+}
+
+
+
+================================================
+FILE: vectorstores/cloudsql/testdata/TestAddDocuments.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: vectorstores/cloudsql/testdata/TestContainerApplyVectorIndexAndDropIndex.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: vectorstores/cloudsql/testdata/TestContainerIsValidIndex.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: vectorstores/dolt/doc.go
+================================================
+// Package dolt contains an implementation of the VectorStore
+// interface using Dolt.
+package dolt
+
+
+
+================================================
+FILE: vectorstores/mariadb/doc.go
+================================================
+// Package mariadb contains an implementation of the VectorStore
+// interface using MariaDB.
+package mariadb
+
+
+
+================================================
+FILE: vectorstores/mariadb/main_test.go
+================================================
+package mariadb_test
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/internal/testutil/testctr"
+)
+
+func TestMain(m *testing.M) {
+	code := testctr.EnsureTestEnv()
+	if code == 0 {
+		code = m.Run()
+	}
+	os.Exit(code)
+}
+
+
+
+================================================
+FILE: vectorstores/milvus/main_test.go
+================================================
+package milvus
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/internal/testutil/testctr"
+)
+
+func TestMain(m *testing.M) {
+	testctr.EnsureTestEnv()
+	os.Exit(m.Run())
+}
+
+
+
+================================================
+FILE: vectorstores/mongovector/mock_llm.go
+================================================
+package mongovector
+
+import (
+	"context"
+
+	"github.com/tmc/langchaingo/embeddings"
+)
+
+// mockLLM will create consistent text embeddings mocking the OpenAI
+// text-embedding-3-small algorithm.
+type mockLLM struct {
+	seen map[string][]float32
+	dim  int
+}
+
+var _ embeddings.EmbedderClient = &mockLLM{}
+
+// createEmbedding will return vector embeddings for the mock LLM, maintaining
+// consistency.
+func (emb *mockLLM) CreateEmbedding(_ context.Context, texts []string) ([][]float32, error) {
+	if emb.seen == nil {
+		emb.seen = map[string][]float32{}
+	}
+
+	vectors := make([][]float32, len(texts))
+	for i, text := range texts {
+		if f32s := emb.seen[text]; len(f32s) > 0 {
+			vectors[i] = f32s
+
+			continue
+		}
+
+		vectors[i] = newNormalizedVector(emb.dim)
+		emb.seen[text] = vectors[i] // ensure consistency
+	}
+
+	return vectors, nil
+}
+
+
+
+================================================
+FILE: vectorstores/opensearch/doc.go
+================================================
+// Package opensearch contains an implementation of the VectorStore interface that connects to Opensearch.
+package opensearch
+
+
+
+================================================
+FILE: vectorstores/opensearch/document_indexing.go
+================================================
+package opensearch
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"github.com/opensearch-project/opensearch-go/opensearchapi"
+)
+
+type document struct {
+	FieldsContent       string                 `json:"content"`
+	FieldsContentVector []float32              `json:"contentVector"`
+	FieldsMetadata      map[string]interface{} `json:"metadata"`
+}
+
+func (s *Store) documentIndexing(
+	ctx context.Context,
+	id string,
+	indexName string,
+	text string,
+	vector []float32,
+	metadata map[string]any,
+) (*opensearchapi.Response, error) {
+	document := document{
+		FieldsContent:       text,
+		FieldsContentVector: vector,
+		FieldsMetadata:      metadata,
+	}
+
+	buf := new(bytes.Buffer)
+
+	if err := json.NewEncoder(buf).Encode(document); err != nil {
+		return nil, fmt.Errorf("error encoding index schema to json buffer %w", err)
+	}
+
+	indice := opensearchapi.IndexRequest{
+		Index:      indexName,
+		DocumentID: id,
+		Body:       buf,
+	}
+
+	return indice.Do(ctx, s.client)
+}
+
+
+
+================================================
+FILE: vectorstores/opensearch/index_delete.go
+================================================
+package opensearch
+
+import (
+	"context"
+
+	"github.com/opensearch-project/opensearch-go/opensearchapi"
+)
+
+// DeleteIndex for deleting an index before to add a document to it.
+func (s *Store) DeleteIndex(
+	ctx context.Context,
+	indexName string,
+) (*opensearchapi.Response, error) {
+	deleteIndex := opensearchapi.IndicesDeleteRequest{
+		Index: []string{indexName},
+	}
+
+	return deleteIndex.Do(ctx, s.client)
+}
+
+
+
+================================================
+FILE: vectorstores/opensearch/main_test.go
+================================================
+package opensearch_test
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/internal/testutil/testctr"
+)
+
+func TestMain(m *testing.M) {
+	testctr.EnsureTestEnv()
+	os.Exit(m.Run())
+}
+
+
+
+================================================
+FILE: vectorstores/opensearch/types.go
+================================================
+package opensearch
+
+type searchResults struct {
+	Took     int  `json:"took"`
+	TimedOut bool `json:"timed_out"`
+	Shards   struct {
+		Total      int `json:"total"`
+		Successful int `json:"successful"`
+		Skipped    int `json:"skipped"`
+		Failed     int `json:"failed"`
+	} `json:"_shards"`
+	Hits struct {
+		Total struct {
+			Value    int    `json:"value"`
+			Relation string `json:"relation"`
+		} `json:"total"`
+		MaxScore float64            `json:"max_score"`
+		Hits     []searchResultsHit `json:"hits"`
+	} `json:"hits"`
+}
+
+type searchResultsHit struct {
+	Index  string   `json:"_index"`
+	ID     string   `json:"_id"`
+	Score  float32  `json:"_score"`
+	Source document `json:"_source"`
+}
+
+
+
+================================================
+FILE: vectorstores/pgvector/doc.go
+================================================
+// Package pgvector contains an implementation of the VectorStore
+// interface using pgvector.
+package pgvector
+
+
+
+================================================
+FILE: vectorstores/pgvector/main_test.go
+================================================
+package pgvector
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/internal/testutil/testctr"
+)
+
+func TestMain(m *testing.M) {
+	code := testctr.EnsureTestEnv()
+	if code == 0 {
+		code = m.Run()
+	}
+	os.Exit(code)
+}
+
+
+
+================================================
+FILE: vectorstores/pinecone/doc.go
+================================================
+// Package pinecone contains an implementation of the VectorStore
+// interface using pinecone.
+package pinecone
+
+
+
+================================================
+FILE: vectorstores/pinecone/testdata/TestPineconeStoreRest.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: vectorstores/qdrant/doc.go
+================================================
+// Package qdrant contains an implementation of the VectorStore
+// interface using Qdrant.
+package qdrant
+
+
+
+================================================
+FILE: vectorstores/qdrant/schema.go
+================================================
+// This file contains the partial schema of the Qdrant REST API.
+// i.e. Only fields that are used by the application are specified.
+// For a comprehensive reference of the Qdrant REST API
+// Refer to https://qdrant.github.io/qdrant/redoc/
+
+package qdrant
+
+type upsertBatch struct {
+	IDs      []string                 `json:"ids"`
+	Payloads []map[string]interface{} `json:"payloads"`
+	Vectors  [][]float32              `json:"vectors"`
+}
+
+type upsertBody struct {
+	Batch upsertBatch `json:"batch"`
+}
+
+type result struct {
+	Score   float32                `json:"score"`
+	Payload map[string]interface{} `json:"payload"`
+}
+
+type searchResponse struct {
+	Result []result `json:"result"`
+}
+
+type searchBody struct {
+	Vector         []float32 `json:"vector"`
+	Filter         any       `json:"filter"`
+	Limit          int       `json:"limit"`
+	ScoreThreshold float32   `json:"score_threshold"`
+	WithVector     bool      `json:"with_vector"`
+	WithPayload    bool      `json:"with_payload"`
+}
+
+
+
+================================================
+FILE: vectorstores/redisvector/doc.go
+================================================
+// Package redisvector contains an implementation of the VectorStore
+// interface using redisvector.
+package redisvector
+
+
+
+================================================
+FILE: vectorstores/redisvector/main_test.go
+================================================
+package redisvector_test
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/internal/testutil/testctr"
+)
+
+func TestMain(m *testing.M) {
+	code := testctr.EnsureTestEnv()
+	if code == 0 {
+		code = m.Run()
+	}
+	os.Exit(code)
+}
+
+
+
+================================================
+FILE: vectorstores/redisvector/testdata/schema.yml
+================================================
+numeric:
+  - name: age
+    no_index: false
+    sortable: false
+text:
+  - name: user
+    no_index: false
+    no_stem: false
+    sortable: false
+    weight: 1
+    withsuffixtrie: false
+  - name: job
+    no_index: false
+    no_stem: false
+    sortable: false
+    weight: 1
+    withsuffixtrie: false
+  - name: credit_score
+    no_index: false
+    no_stem: false
+    sortable: false
+    weight: 1
+    withsuffixtrie: false
+  - name: content
+    no_index: false
+    no_stem: false
+    sortable: false
+    weight: 1
+    withsuffixtrie: false
+vector:
+  - algorithm: FLAT
+    block_size: 1000
+    datatype: FLOAT32
+    dims: 1536
+    distance_metric: COSINE
+    initial_cap: 20000
+    name: content_vector
+
+
+
+================================================
+FILE: vectorstores/redisvector/testdata/TestCreateRedisVectorOptions.httprr
+================================================
+httprr trace v1
+
+
+
+================================================
+FILE: vectorstores/weaviate/doc.go
+================================================
+// Package weaviate contains an implementation of the VectorStore
+// interface using weaviate.
+package weaviate
+
+
+
+================================================
+FILE: vectorstores/weaviate/main_test.go
+================================================
+package weaviate
+
+import (
+	"os"
+	"testing"
+
+	"github.com/tmc/langchaingo/internal/testutil/testctr"
+)
+
+func TestMain(m *testing.M) {
+	code := testctr.EnsureTestEnv()
+	if code == 0 {
+		code = m.Run()
+	}
+	os.Exit(code)
+}
+
+
+
+================================================
+FILE: .github/dependabot.yml
+================================================
+# Weekly dependency updates, grouped into one pull request per ecosystem.
+# Example modules are not listed: each is its own module, updated by hand
+# after a release (make update-examples, then go get and go mod tidy).
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      go:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+
+
+================================================
+FILE: .github/FUNDING.yml
+================================================
+# These are supported funding model platforms
+github: tmc
+
+
+
+================================================
+FILE: .github/PULL_REQUEST_TEMPLATE.md
+================================================
+
+### PR Checklist
+
+- [ ] Read the [Contributing documentation](https://github.com/tmc/langchaingo/blob/main/CONTRIBUTING.md).
+- [ ] Read the [Code of conduct documentation](https://github.com/tmc/langchaingo/blob/main/CODE_OF_CONDUCT.md).
+- [ ] Name your Pull Request title clearly, concisely, and prefixed with the name of the primarily affected package you changed according to [Good commit messages](https://go.dev/doc/contribute#commit_messages) (such as `memory: add interfaces for X, Y` or `util: add whizzbang helpers`).
+- [ ] Check that there isn't already a PR that solves the problem the same way to avoid creating a duplicate.
+- [ ] Provide a description in this PR that addresses **what** the PR is solving, or reference the issue that it solves (e.g. `Fixes #123`).
+- [ ] Describes the source of new concepts.
+- [ ] References existing implementations as appropriate.
+- [ ] Contains test coverage for new functions.
+- [ ] Passes all [`golangci-lint`](https://golangci-lint.run/) checks.
+
+

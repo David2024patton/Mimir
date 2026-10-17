@@ -45,3 +45,29 @@ func (r *Registry) All() []Tool {
 	}
 	return out
 }
+
+// IsWriteTool reports whether a tool mutates files or executes shell commands.
+// In read-only ("ro") mode, write tools are hidden from the model's tool schema
+// so smaller models cannot hallucinate edits (smolcoder pattern).
+func IsWriteTool(name string) bool {
+	switch name {
+	case "write_file", "edit_block", "bash":
+		return true
+	default:
+		return false
+	}
+}
+
+// ForMode returns the tools visible for the given permission mode ("ro", "edit", "bypass").
+func (r *Registry) ForMode(mode string) []Tool {
+	if mode != "ro" {
+		return r.All()
+	}
+	out := make([]Tool, 0, len(r.tools))
+	for _, t := range r.tools {
+		if !IsWriteTool(t.Name()) {
+			out = append(out, t)
+		}
+	}
+	return out
+}

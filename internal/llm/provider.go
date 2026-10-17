@@ -32,6 +32,7 @@ type GenerateRequest struct {
 	Messages []Message
 	Tools    []ToolSchema
 	Stream   bool
+	Effort   string // optional reasoning effort: off | low | medium | high (smolcoder /effort pattern)
 }
 
 // GenerateResponse is a provider-agnostic completion response.

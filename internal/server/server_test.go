@@ -39,7 +39,7 @@ func TestServerChatAndMemory(t *testing.T) {
 	ag := agent.New(agent.Config{
 		Provider: &fakeText{"WIRED"}, Tools: tools.NewRegistry(), Cortex: store, Model: "m",
 	})
-	srv := httptest.NewServer(Handler(ag, store, nil, nil))
+	srv := httptest.NewServer(Handler(ag, store, nil, nil, nil))
 	defer srv.Close()
 
 	resp, err := http.Post(srv.URL+"/chat", "application/json", strings.NewReader(`{"prompt":"hi","mode":"chat"}`))
@@ -81,7 +81,7 @@ func TestServerChatAndMemory(t *testing.T) {
 	}
 }
 
-// TestServerServesBookSpineUI proves GET / serves the polished book-spine UI (E70),
+// TestServerServesBookSpineUI proves GET /app serves the polished book-spine UI (E70),
 // not the old minimal shell: it must expose the spines + the live wire endpoints.
 func TestServerServesBookSpineUI(t *testing.T) {
 	store, err := cortex.NewMemoryStoreAt(filepath.Join(t.TempDir(), "cortex.json"))
@@ -89,12 +89,12 @@ func TestServerServesBookSpineUI(t *testing.T) {
 		t.Fatalf("store: %v", err)
 	}
 	ag := agent.New(agent.Config{Provider: &fakeText{"x"}, Tools: tools.NewRegistry(), Cortex: store, Model: "m"})
-	srv := httptest.NewServer(Handler(ag, store, nil, nil))
+	srv := httptest.NewServer(Handler(ag, store, nil, nil, nil))
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/")
+	resp, err := http.Get(srv.URL + "/app")
 	if err != nil {
-		t.Fatalf("get /: %v", err)
+		t.Fatalf("get /app: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -125,7 +125,7 @@ func TestServerMemoryJSONCasing(t *testing.T) {
 		t.Fatalf("put: %v", err)
 	}
 	ag := agent.New(agent.Config{Provider: &fakeText{"x"}, Tools: tools.NewRegistry(), Cortex: store, Model: "m"})
-	srv := httptest.NewServer(Handler(ag, store, nil, nil))
+	srv := httptest.NewServer(Handler(ag, store, nil, nil, nil))
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL + "/memory")
@@ -178,7 +178,7 @@ func TestServerChatStream(t *testing.T) {
 		t.Fatalf("store: %v", err)
 	}
 	ag := agent.New(agent.Config{Provider: &fakeStream{}, Tools: tools.NewRegistry(), Cortex: store, Model: "m"})
-	srv := httptest.NewServer(Handler(ag, store, nil, nil))
+	srv := httptest.NewServer(Handler(ag, store, nil, nil, nil))
 	defer srv.Close()
 
 	resp, err := http.Post(srv.URL+"/chat/stream", "application/json", strings.NewReader(`{"prompt":"hi","mode":"chat"}`))
@@ -230,7 +230,7 @@ func TestServerUsage(t *testing.T) {
 	tracker := llm.NewTracker()
 	tracker.Record("qwen3:8b", true, llm.Usage{PromptTokens: 100, CompletionTokens: 50})
 	tracker.Record("qwen3:8b", true, llm.Usage{PromptTokens: 10, CompletionTokens: 5})
-	srv := httptest.NewServer(Handler(ag, store, nil, tracker))
+	srv := httptest.NewServer(Handler(ag, store, nil, nil, tracker))
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL + "/usage")

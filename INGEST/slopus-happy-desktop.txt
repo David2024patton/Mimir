@@ -1,0 +1,2849 @@
+Directory structure:
+└── slopus-happy-desktop/
+    ├── happy.toml
+    ├── pnpm-workspace.yaml
+    ├── tsconfig.base.json
+    ├── tsconfig.json
+    ├── .dockerignore
+    ├── .npmrc
+    ├── .oxfmtrc.json
+    ├── .oxlintrc.json
+    ├── CLAUDE.md -> AGENTS.md
+    ├── html-preview-demo/
+    │   ├── secrets.ts
+    │   └── styles/
+    │       └── accents.css
+    ├── packages/
+    │   ├── happy-desktop-analytics/
+    │   │   ├── package.json
+    │   │   ├── tsconfig.json
+    │   │   └── src/
+    │   │       └── index.ts
+    │   ├── happy-desktop-app/
+    │   │   ├── tsconfig.json
+    │   │   ├── .prettierignore
+    │   │   ├── sources/
+    │   │   │   ├── appShortcuts.ts
+    │   │   │   ├── externalLink.ts
+    │   │   │   ├── styles.css
+    │   │   │   ├── gptLive/
+    │   │   │   │   └── AppGptLivePhone.tsx
+    │   │   │   └── views/
+    │   │   │       └── BlueprintView.tsx
+    │   │   └── tests/
+    │   │       └── setup.ts
+    │   ├── happy-desktop-electron/
+    │   │   ├── index.html
+    │   │   ├── tsconfig.json
+    │   │   ├── vite.preload.config.ts
+    │   │   ├── vitest.config.ts
+    │   │   ├── assets/
+    │   │   │   └── app-icon/
+    │   │   │       └── README.md
+    │   │   └── sources/
+    │   │       ├── main/
+    │   │       │   ├── applicationMenu.ts
+    │   │       │   ├── desktopInspector.ts
+    │   │       │   └── localAgentSocketPath.ts
+    │   │       ├── renderer/
+    │   │       │   ├── desktopGptLive.ts
+    │   │       │   ├── desktopStartupModel.ts
+    │   │       │   ├── desktopStatusBar.ts
+    │   │       │   ├── global.d.ts
+    │   │       │   ├── localWebBuild.ts
+    │   │       │   ├── profileEntry.ts
+    │   │       │   ├── reactDevtoolsCoreUnavailable.ts
+    │   │       │   └── startupValuesStore.ts
+    │   │       ├── shared/
+    │   │       │   └── cloudAuthConfig.ts
+    │   │       └── utility/
+    │   │           └── utility.ts
+    │   ├── happy-desktop-gym/
+    │   │   ├── tsconfig.json
+    │   │   ├── vitest.playwright.config.ts
+    │   │   └── sources/
+    │   │       ├── index.ts
+    │   │       └── electron/
+    │   │           └── index.ts
+    │   ├── happy-desktop-state/
+    │   │   ├── package.json
+    │   │   ├── tsconfig.json
+    │   │   ├── vitest.config.ts
+    │   │   └── src/
+    │   │       ├── deepReadonly.ts
+    │   │       ├── happyAgentServiceTier.test.ts
+    │   │       ├── happyAgentServiceTier.ts
+    │   │       ├── picomatch.d.ts
+    │   │       ├── conversation/
+    │   │       │   └── loadable.ts
+    │   │       ├── happyAgent/
+    │   │       │   ├── happyAgentHost.ts
+    │   │       │   └── happyAgentTokenFormat.ts
+    │   │       ├── happyAgentConnection/
+    │   │       │   ├── happyAgentSyncRead.ts
+    │   │       │   └── index.ts
+    │   │       ├── testing/
+    │   │       │   └── index.ts
+    │   │       └── utils/
+    │   │           └── orderKeySequence.ts
+    │   ├── happy-desktop-ui/
+    │   │   ├── index.html
+    │   │   ├── tsconfig.json
+    │   │   ├── dev/
+    │   │   │   ├── kit.test.tsx
+    │   │   │   ├── main.tsx
+    │   │   │   └── workbenchDocument.css
+    │   │   ├── src/
+    │   │   │   ├── assets.ts
+    │   │   │   ├── componentProps.ts
+    │   │   │   ├── ComposerAttachmentRemoveButton.tsx
+    │   │   │   ├── ConnectionSurface.tsx
+    │   │   │   ├── conversationErrorAssistanceText.ts
+    │   │   │   ├── conversationErrorTitle.ts
+    │   │   │   ├── dimensions.ts
+    │   │   │   ├── elapsedTimeFormat.ts
+    │   │   │   ├── InfoPanel.tsx
+    │   │   │   ├── messageListDisclosureAnchor.tsx
+    │   │   │   ├── react-css.d.ts
+    │   │   │   ├── systemNotification.ts
+    │   │   │   ├── ThemeScope.tsx
+    │   │   │   ├── toolCallStillGlyph.ts
+    │   │   │   ├── TurnSummary.test.tsx
+    │   │   │   ├── usageTone.ts
+    │   │   │   ├── ZoomIndicator.tsx
+    │   │   │   ├── fixtures/
+    │   │   │   │   └── nested-link-list.txt
+    │   │   │   ├── pages/
+    │   │   │   │   ├── settings/
+    │   │   │   │   │   └── providerAccountName.ts
+    │   │   │   │   └── surfaces/
+    │   │   │   │       └── surfaceBackdropsPreload.ts
+    │   │   │   └── styles/
+    │   │   │       ├── admin-page.css
+    │   │   │       ├── audience-toggle.css
+    │   │   │       ├── avatar-brutalist.css
+    │   │   │       ├── brand-logo.css
+    │   │   │       ├── code-block.css
+    │   │   │       ├── composer-dock.css
+    │   │   │       ├── fade.css
+    │   │   │       ├── gpt-live-phone.css
+    │   │   │       ├── happy-agent-project-clone-dialog.css
+    │   │   │       ├── live-performance.css
+    │   │   │       ├── night-sky-shader.css
+    │   │   │       ├── onboarding-steps.css
+    │   │   │       ├── panel-header.css
+    │   │   │       ├── sidebar-apps.css
+    │   │   │       ├── sidebar-keep-awake-menu.css
+    │   │   │       ├── visually-hidden.css
+    │   │   │       └── wait-ring.css
+    │   │   └── vite/
+    │   │       └── lottiePlugin.ts
+    │   └── happy-desktop-web/
+    │       ├── index.html
+    │       ├── package.json
+    │       ├── tsconfig.json
+    │       ├── vite.config.ts
+    │       └── src/
+    │           └── main.tsx
+    └── scripts/
+        ├── dev-blueprint.mjs
+        ├── dev-web.mjs
+        ├── demo/
+        │   ├── assets/
+        │   │   └── sounds/
+        │   │       └── mechanical/
+        │   │           └── README.md
+        │   ├── compositions/
+        │   │   └── readme/
+        │   │       ├── backdrop.CREDITS.md
+        │   │       └── cues.json
+        │   └── demos/
+        │       ├── astra-speed/
+        │       │   ├── world.mjs
+        │       │   └── selected/
+        │       │       ├── astra-speed.srt
+        │       │       ├── ffprobe.json
+        │       │       ├── framing.json
+        │       │       └── provenance.json
+        │       └── core/
+        │           ├── assets/
+        │           │   └── release-coordinator.CREDITS.md
+        │           └── patches/
+        │               ├── empty-state.patch
+        │               └── model-order.patch
+        └── release/
+            ├── PackageManifest.ts
+            └── readPackageManifest.ts
+
+================================================
+FILE: happy.toml
+================================================
+[workspace]
+setup_commands = ["pnpm install --frozen-lockfile"]
+
+[network]
+allowed_domains = ["registry.npmjs.org", "nodejs.org"]
+allowed_ports = [443]
+# The happy-desktop-ui rendering suite is a real browser suite: Vitest starts a
+# loopback server on an ephemeral port and Chromium, Firefox, and WebKit
+# connect back to it. Without this the suite dies on EPERM before a single
+# test runs.
+allow_local_binding = true
+
+
+================================================
+FILE: pnpm-workspace.yaml
+================================================
+packages:
+    - packages/*
+
+# Electron downloads its platform binary during installation.
+onlyBuiltDependencies:
+    - electron
+
+patchedDependencies:
+    react-dom@19.2.7: patches/react-dom@19.2.7.patch
+
+
+
+================================================
+FILE: tsconfig.base.json
+================================================
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "jsx": "react-jsx",
+    "noEmit": true
+  }
+}
+
+
+
+================================================
+FILE: tsconfig.json
+================================================
+{
+    "extends": "./tsconfig.base.json",
+    "compilerOptions": {
+        "lib": ["ES2024", "DOM"],
+        "types": ["node"]
+    },
+    "include": ["scripts/**/*.ts"]
+}
+
+
+
+================================================
+FILE: .dockerignore
+================================================
+.git
+.context
+.happy
+**/node_modules
+**/dist
+**/coverage
+**/.vitest-attachments
+**/__screenshots__
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+
+
+
+================================================
+FILE: .npmrc
+================================================
+auto-install-peers=false
+strict-peer-dependencies=false
+
+
+
+================================================
+FILE: .oxfmtrc.json
+================================================
+{
+    "$schema": "./node_modules/oxfmt/configuration_schema.json",
+    "ignorePatterns": ["packages/happy-desktop-ui/src/assets/animations/*.json"],
+    "tabWidth": 4,
+    "useTabs": false
+}
+
+
+
+================================================
+FILE: .oxlintrc.json
+================================================
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "env": {
+        "browser": true,
+        "node": true
+    },
+    "ignorePatterns": ["dist", "coverage", "node_modules"]
+}
+
+
+
+================================================
+SYMLINK: CLAUDE.md -> AGENTS.md
+================================================
+
+
+
+================================================
+FILE: html-preview-demo/secrets.ts
+================================================
+export const apiKey = "if-you-can-read-this-the-preview-is-broken";
+
+
+
+================================================
+FILE: html-preview-demo/styles/accents.css
+================================================
+/* Reached as ./styles/accents.css — relative to the document. It supplies the
+   left rule on each section, so if only this sheet failed the page would still
+   be styled but visibly plainer. */
+main section {
+    padding-left: 14px;
+    border-left: 3px solid #2baccc;
+}
+
+main section + section {
+    margin-top: 8px;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-analytics/package.json
+================================================
+{
+    "name": "happy-desktop-analytics",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "typecheck": "tsc --project tsconfig.json",
+        "format": "oxfmt --write .",
+        "format:check": "oxfmt --check .",
+        "lint": "oxlint ."
+    },
+    "dependencies": {
+        "posthog-js": "^1.438.3"
+    },
+    "devDependencies": {
+        "typescript": "^7.0.2"
+    }
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-analytics/tsconfig.json
+================================================
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    },
+    "include": ["src"]
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-analytics/src/index.ts
+================================================
+export * from "./analyticsCatalog";
+export * from "./analyticsClient";
+
+
+
+================================================
+FILE: packages/happy-desktop-app/tsconfig.json
+================================================
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "types": ["vite/client"]
+    },
+    "include": ["sources", "tests", "vite.config.ts"]
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-app/.prettierignore
+================================================
+# Generated by @tanstack/router-plugin from sources/routes; its header asks that
+# formatters and linters leave it alone, and the generator's own output style
+# would otherwise fight `pnpm format` on every regeneration.
+sources/routeTree.gen.ts
+
+
+
+================================================
+FILE: packages/happy-desktop-app/sources/appShortcuts.ts
+================================================
+import { commandShortcut } from "happy-desktop-ui";
+
+/**
+ * The window's Command chords, in one place because two surfaces read them: the
+ * dispatchers that run them, and the command palette, which shows the same cap
+ * beside the row that does the same thing. A chord written down twice would
+ * eventually promise one key and run another.
+ */
+export const APP_SHORTCUTS = {
+    /** Opens the command palette. Closing it again is the palette's own key. */
+    paletteOpen: commandShortcut("k"),
+    panelToggle: commandShortcut("j"),
+    panelToggleAlternate: commandShortcut("b", { alt: true }),
+    sessionCreate: commandShortcut("t"),
+    tabClose: commandShortcut("w"),
+    /** Opens the new-task surface on the active Happy Agent, as its Tasks heading's + does. */
+    taskCreate: commandShortcut("n"),
+    workspaceCreate: commandShortcut("n", { shift: true }),
+} as const;
+
+
+
+================================================
+FILE: packages/happy-desktop-app/sources/externalLink.ts
+================================================
+/**
+ * Opens an externally-supplied link only when it is a plain web URL. Callers pass
+ * URLs that originate from untrusted content — an MCP app requesting a link, or a
+ * durable shared-link resource projected into the sidebar — so anything but
+ * http/https is refused, and the new browsing context is fully severed from Happy
+ * with noopener/noreferrer. This is the single safe web-open helper for the app:
+ * a normal web host creates an external tab, while Electron intercepts the new
+ * context and routes it into an embedded browser tab. Reusable happy-desktop-ui never
+ * calls `window.open` itself.
+ */
+export function openExternalLink(url: string): void {
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return;
+    }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return;
+    window.open(parsed.href, "_blank", "noopener,noreferrer");
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-app/sources/styles.css
+================================================
+@import "tailwindcss" source(".");
+
+/* The AppShell fills its host; both hosts mount into #root, which must own
+ * the window height for `height: 100%` to resolve. The neutral chrome surface
+ * is painted on the root so there is no bright flash before the React tree
+ * mounts and the auth / app surfaces (which share this base) fade in. */
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+    background: var(--header-background);
+    color: var(--text);
+    font-family: var(--happy-font-ui);
+    font-synthesis: none;
+}
+
+html,
+body {
+    color-scheme: light dark;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* The scrollbar treatment lives in the design system, beside the panel inset
+   contract it is the other half of — see happy-desktop-ui/src/styles/scrollbar.css. */
+
+
+
+================================================
+FILE: packages/happy-desktop-app/sources/gptLive/AppGptLivePhone.tsx
+================================================
+import { useSyncExternalStore } from "react";
+import {
+    experimentsStoreNoop,
+    type ExperimentsStore,
+    type GptLiveStore,
+} from "happy-desktop-state";
+import { GptLivePhone } from "happy-desktop-ui";
+
+export function AppGptLivePhone(props: { store: GptLiveStore; experiments?: ExperimentsStore }) {
+    const state = useSyncExternalStore(props.store.subscribe, props.store.get, props.store.get);
+    const experiments = props.experiments ?? experimentsStoreNoop;
+    const experimental = useSyncExternalStore(
+        experiments.subscribe,
+        experiments.get,
+        experiments.get,
+    ).experimentalFeaturesEnabled;
+    return experimental && state.gptLiveEnabled ? (
+        <GptLivePhone state={state} onStart={props.store.callStart} onEnd={props.store.callEnd} />
+    ) : null;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-app/sources/views/BlueprintView.tsx
+================================================
+import { lazy, Suspense } from "react";
+
+/**
+ * The Blueprint component workbench, mounted inside the app so a development
+ * build can browse every component page without a second dev server. It is the
+ * same workbench the standalone Blueprint serves and owns all of its own visuals,
+ * so this view only places it in the content area.
+ *
+ * The workbench is loaded lazily: it pulls in every component page and its
+ * fixtures, and nothing but this development-only screen ever asks for them.
+ */
+const Workbench = lazy(async () => ({
+    default: (await import("happy-desktop-ui/blueprint")).Workbench,
+}));
+
+export function BlueprintView() {
+    return (
+        <Suspense fallback={null}>
+            {/* The window's address belongs to its own router, so the workbench
+                keeps its page selection to itself rather than writing a hash. */}
+            <Workbench hashAddressed={false} />
+        </Suspense>
+    );
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-app/tests/setup.ts
+================================================
+import { cleanup } from "@testing-library/react";
+import { afterEach } from "vitest";
+
+class TestResizeObserver implements ResizeObserver {
+    constructor(_callback: ResizeObserverCallback) {}
+
+    disconnect() {}
+    observe(_target: Element, _options?: ResizeObserverOptions) {}
+    unobserve(_target: Element) {}
+}
+
+globalThis.ResizeObserver = TestResizeObserver;
+
+afterEach(cleanup);
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/index.html
+================================================
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="default-src 'self'; base-uri 'none'; object-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: http: https:; media-src 'self' data: blob: http: https:; connect-src 'self' http: https: ws: wss:; worker-src 'self' blob:; frame-src 'self' data: blob: http: https:"
+        />
+        <link rel="icon" type="image/png" href="/favicon.png" />
+        <title>Happy Place Desktop</title>
+    </head>
+    <body>
+        <div id="root"></div>
+        <script type="module" src="/sources/renderer/renderer.tsx"></script>
+    </body>
+</html>
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/tsconfig.json
+================================================
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "types": ["node", "vite/client"]
+    },
+    "include": ["sources", "vite.config.ts", "vite.main.config.ts", "vite.preload.config.ts"]
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/vite.preload.config.ts
+================================================
+import { resolve } from "node:path";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+    publicDir: false,
+    build: {
+        emptyOutDir: false,
+        lib: {
+            entry: resolve(import.meta.dirname, "sources/preload/preload.ts"),
+            formats: ["cjs"],
+            fileName: () => "preload.cjs",
+        },
+        outDir: "dist",
+        rollupOptions: {
+            external: ["electron"],
+        },
+    },
+});
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/vitest.config.ts
+================================================
+import { defineConfig } from "vitest/config";
+
+// Main-process tests must use Node, without the renderer Vite process polyfill.
+export default defineConfig({ test: { environment: "node" } });
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/assets/app-icon/README.md
+================================================
+# Application icon assets
+
+`source.png` is the editable 1024 × 1024 application artwork. The files under
+`generated/` are committed build inputs shared by development and packaged
+macOS applications.
+
+Regenerate both derivatives after changing the source:
+
+```sh
+pnpm desktop:assets
+```
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/sources/main/applicationMenu.ts
+================================================
+import type { DesktopRuntimeSnapshot } from "../shared/desktopContract";
+
+export interface DesktopInstanceMenuTarget {
+    active: boolean;
+    id: string;
+    label: string;
+}
+
+/** Projects durable runtime targets into the native switcher available to remote web apps. */
+export function desktopInstanceMenuTargets(
+    snapshot: DesktopRuntimeSnapshot,
+): readonly DesktopInstanceMenuTarget[] {
+    const activeId = snapshot.phase === "ready" ? snapshot.activeTargetId : undefined;
+    return snapshot.targets.map((target) => ({
+        active: target.id === activeId,
+        id: target.id,
+        label: `${target.label} — ${target.detail}`,
+    }));
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/sources/main/desktopInspector.ts
+================================================
+import * as inspector from "node:inspector";
+
+/**
+ * Starts the Electron main-process inspector on loopback and returns the
+ * debugger's WebSocket URL. Node keeps one inspector per process, so repeated
+ * requests are idempotent and return the existing endpoint.
+ */
+export function desktopMainInspectorStart(): string {
+    const existing = inspector.url();
+    if (existing) return existing;
+    inspector.open(0, "127.0.0.1", false);
+    const started = inspector.url();
+    if (!started) throw new Error("The Electron main-process inspector did not start.");
+    return started;
+}
+
+/** Stops the main-process inspector without affecting the Electron process. */
+export function desktopMainInspectorStop(): void {
+    if (inspector.url()) inspector.close();
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/sources/main/localAgentSocketPath.ts
+================================================
+import { createHash } from "node:crypto";
+import { join, win32 } from "node:path";
+
+// This deterministic transport identity matches happy-agent-compute.
+export function localAgentSocketPath(
+    agentDirectory: string,
+    platform: NodeJS.Platform = process.platform,
+): string {
+    if (platform !== "win32") return join(agentDirectory, "server.sock");
+    const identity = createHash("sha256")
+        .update(win32.resolve(agentDirectory).toLowerCase())
+        .digest("hex");
+    return `\\\\.\\pipe\\happy-agent-${identity}`;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/sources/renderer/desktopGptLive.ts
+================================================
+import type { GptLiveDocument, GptLivePersistence } from "happy-desktop-state";
+
+const GPT_LIVE_KEY = "happy.gpt-live.v1";
+
+/** Browser-only storage adapter. No native host or provider credentials involved. */
+export function desktopGptLivePersistence(): GptLivePersistence {
+    return {
+        read() {
+            const value = localStorage.getItem(GPT_LIVE_KEY);
+            return value ? (JSON.parse(value) as GptLiveDocument) : undefined;
+        },
+        write(document) {
+            localStorage.setItem(GPT_LIVE_KEY, JSON.stringify(document));
+        },
+    };
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/sources/renderer/desktopStartupModel.ts
+================================================
+import type { DesktopStartupValues } from "happy-desktop-app";
+import type { DesktopStartRequest } from "../shared/desktopContract";
+
+/** Projects the only supported desktop start mode into the startup screen. */
+export function desktopStartupValues(_request?: DesktopStartRequest): DesktopStartupValues {
+    return { mode: "local" };
+}
+
+/** The startup screen can only request the local Happy Agent runtime. */
+export function desktopStartRequestFromValues(_values: DesktopStartupValues): DesktopStartRequest {
+    return { mode: "local" };
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/sources/renderer/desktopStatusBar.ts
+================================================
+import type { StatusBarPersistence } from "happy-desktop-state";
+
+const STATUS_BAR_KEY = "happy.status-bar.v1";
+
+/** The status bar's show/hide choices, kept in this window's own storage. */
+export function desktopStatusBarPersistence(): StatusBarPersistence {
+    return {
+        read() {
+            try {
+                return JSON.parse(localStorage.getItem(STATUS_BAR_KEY) ?? "null") as unknown;
+            } catch {
+                return undefined;
+            }
+        },
+        write(document) {
+            try {
+                localStorage.setItem(STATUS_BAR_KEY, JSON.stringify(document));
+            } catch {
+                // A storage-denied renderer keeps the choice for this window's lifetime.
+            }
+        },
+    };
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/sources/renderer/global.d.ts
+================================================
+import type { HappyDesktopBridge, HappyMediaPreviewBridge } from "../shared/desktopContract";
+
+declare global {
+    const __HAPPY_DESKTOP_PROFILE__: boolean;
+
+    interface Window {
+        happyDesktop?: HappyDesktopBridge;
+        /** Present only in the window that shows one file, and never beside `happyDesktop`. */
+        happyMediaPreview?: HappyMediaPreviewBridge;
+    }
+}
+
+export {};
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/sources/renderer/localWebBuild.ts
+================================================
+declare const __HAPPY_LOCAL_WEB_BUILD_ID__: string | null;
+declare const __HAPPY_LOCAL_WEB_VERSION__: string | null;
+
+export interface LocalWebBuild {
+    readonly buildId: string;
+    readonly version: string;
+}
+
+/**
+ * Identity embedded into one hosted renderer deployment. Packaged and
+ * development renderers receive null constants and therefore never poll Pages.
+ */
+export const localWebBuild: LocalWebBuild | undefined =
+    __HAPPY_LOCAL_WEB_BUILD_ID__ && __HAPPY_LOCAL_WEB_VERSION__
+        ? {
+              buildId: __HAPPY_LOCAL_WEB_BUILD_ID__,
+              version: __HAPPY_LOCAL_WEB_VERSION__,
+          }
+        : undefined;
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/sources/renderer/profileEntry.ts
+================================================
+import { happyProfilerBootstrap } from "./happyProfilerBootstrap";
+
+/**
+ * This is the only profile renderer entry. Keep the dynamic import below the
+ * completed synchronous bootstrap so React and react-dom/profiling cannot
+ * initialize before the official DevTools hook exists.
+ */
+try {
+    happyProfilerBootstrap();
+} catch (error) {
+    // A profiler bootstrap failure must not prevent the app itself from opening.
+    // The main process will truthfully keep React attribution unavailable.
+    console.error("Happy profiler bootstrap failed.", error);
+}
+
+await import("./renderer");
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/sources/renderer/reactDevtoolsCoreUnavailable.ts
+================================================
+/**
+ * Normal Happy builds keep the official profiler backend out of the renderer
+ * bundle. The profile build aliases the same import to the exact pinned
+ * react-devtools-core package; this typed no-op preserves the ordinary build's
+ * startup and attribution-unavailable contract.
+ */
+export function initialize(): void {}
+
+export function connectWithCustomMessagingProtocol(): () => void {
+    return () => undefined;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/sources/renderer/startupValuesStore.ts
+================================================
+import type { DesktopStartupValues } from "happy-desktop-app";
+
+export interface StartupValuesStore {
+    get(): DesktopStartupValues;
+    subscribe(listener: () => void): () => void;
+    change(values: DesktopStartupValues): void;
+}
+
+/**
+ * The desktop chooser's form values held outside React. The startup screen is a
+ * pure projection of this store, so the renderer needs no local component state.
+ */
+export function startupValuesStoreCreate(): StartupValuesStore {
+    let values: DesktopStartupValues = { mode: "local" };
+    const listeners = new Set<() => void>();
+    return {
+        get: () => values,
+        subscribe(listener) {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+        },
+        change(next) {
+            values = next;
+            for (const listener of listeners) listener();
+        },
+    };
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/sources/shared/cloudAuthConfig.ts
+================================================
+/** Every desktop build returns through the production Cloud callback protocol. */
+export const cloudAuthProductionRedirectUri = "happy-auth://callback";
+
+
+
+================================================
+FILE: packages/happy-desktop-electron/sources/utility/utility.ts
+================================================
+import { happyAgentRendererUtilityServerCreate } from "./happyAgentRendererUtilityServer";
+import type { RendererUtilityInput } from "../shared/happyAgentRendererUtilityContract";
+
+const port = process.parentPort;
+if (!port) throw new Error("Happy Agent transport requires an Electron utility parent.");
+const parent = port;
+const debug = process.argv.includes("--happy-agent-transport-debug");
+void happyAgentRendererUtilityServerCreate((message) => parent.postMessage(message), debug).then(
+    (server) => {
+        parent.on("message", (event) => {
+            // This is a private Electron process channel, not renderer IPC.
+            void server.receive(event.data as RendererUtilityInput).catch(() => process.exit(1));
+        });
+        parent.postMessage({
+            type: "ready",
+            port: server.port,
+            username: server.username,
+            password: server.password,
+        });
+    },
+    () => process.exit(1),
+);
+
+
+
+================================================
+FILE: packages/happy-desktop-gym/tsconfig.json
+================================================
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2024", "DOM", "DOM.Iterable", "ESNext.Disposable"],
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "types": ["node", "vite/client", "vitest/globals"],
+        "noEmit": true
+    },
+    "include": ["sources", "tests/playwright", "vitest.playwright.config.ts"]
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-gym/vitest.playwright.config.ts
+================================================
+import { playwright } from "@vitest/browser-playwright";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+    test: {
+        include: ["tests/playwright/**/*.test.ts"],
+        // Retina pixel sweeps run in three browsers at once and can exceed
+        // Vitest's 15s default when other local browser suites share the host.
+        testTimeout: 30_000,
+        browser: {
+            enabled: true,
+            headless: true,
+            instances: [{ browser: "chromium" }, { browser: "firefox" }, { browser: "webkit" }],
+            provider: playwright({
+                contextOptions: {
+                    deviceScaleFactor: 2,
+                    viewport: {
+                        height: 900,
+                        width: 900,
+                    },
+                },
+            }),
+            ui: false,
+            viewport: {
+                height: 800,
+                width: 800,
+            },
+        },
+    },
+});
+
+
+
+================================================
+FILE: packages/happy-desktop-gym/sources/index.ts
+================================================
+export {};
+
+
+
+================================================
+FILE: packages/happy-desktop-gym/sources/electron/index.ts
+================================================
+export * from "./cli.js";
+export * from "./fixtures.js";
+export * from "./gym.js";
+export * from "./history.js";
+export * from "./happyAgentProtocol.js";
+export * from "./inferenceServer.js";
+export * from "./manifest.js";
+export * from "./paths.js";
+export * from "./happyAgentRuntime.js";
+export * from "./types.js";
+export * from "./workloads.js";
+
+
+
+================================================
+FILE: packages/happy-desktop-state/package.json
+================================================
+{
+    "name": "happy-desktop-state",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts",
+        "./testing": "./src/testing/index.ts"
+    },
+    "scripts": {
+        "benchmark": "node --import tsx benchmarks/object-update.bench.ts",
+        "build": "tsc --project tsconfig.json",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "typecheck": "tsc --project tsconfig.json",
+        "format": "oxfmt --write .",
+        "format:check": "oxfmt --check .",
+        "lint": "oxlint .",
+        "architecture:check": "node --import tsx scripts/architecture-check.mts",
+        "clean": "rm -rf coverage"
+    },
+    "dependencies": {
+        "@sinclair/typebox": "^0.34.49",
+        "@slopus/happy-agent-client": "0.0.94",
+        "picomatch": "4.0.5",
+        "yjs": "^13.6.31",
+        "zustand": "5.0.14"
+    },
+    "devDependencies": {
+        "oxc-parser": "^0.140.0",
+        "typescript": "^7.0.2",
+        "vitest": "^4.1.10"
+    }
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-state/tsconfig.json
+================================================
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "lib": ["ES2022", "DOM", "DOM.Iterable", "ESNext.Disposable"],
+        "types": ["node", "vitest/globals"]
+    },
+    "include": ["src", "tests", "benchmarks"]
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-state/vitest.config.ts
+================================================
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+    resolve: {
+        conditions: ["browser"],
+    },
+});
+
+
+
+================================================
+FILE: packages/happy-desktop-state/src/deepReadonly.ts
+================================================
+export type DeepReadonly<Value> = Value extends (...arguments_: never[]) => unknown
+    ? Value
+    : Value extends readonly unknown[]
+      ? { readonly [Key in keyof Value]: DeepReadonly<Value[Key]> }
+      : Value extends object
+        ? { readonly [Key in keyof Value]: DeepReadonly<Value[Key]> }
+        : Value;
+
+
+
+================================================
+FILE: packages/happy-desktop-state/src/happyAgentServiceTier.test.ts
+================================================
+import { expect, it } from "vitest";
+import {
+    happyAgentServiceTierFromWire,
+    happyAgentServiceTierToWire,
+} from "./happyAgentServiceTier.js";
+
+it("preserves opaque tier IDs through the wire boundary and clears the default with null", () => {
+    expect(happyAgentServiceTierToWire(happyAgentServiceTierFromWire("ultrafast"))).toBe(
+        "ultrafast",
+    );
+    expect(happyAgentServiceTierToWire(happyAgentServiceTierFromWire("priority"))).toBe("priority");
+    expect(happyAgentServiceTierFromWire("priority")).toBe("priority");
+    expect(happyAgentServiceTierFromWire(null)).toBeUndefined();
+    expect(happyAgentServiceTierToWire(undefined)).toBeNull();
+    expect(happyAgentServiceTierFromWire("future-tier")).toBe("future-tier");
+});
+
+
+
+================================================
+FILE: packages/happy-desktop-state/src/happyAgentServiceTier.ts
+================================================
+/** An opaque service-tier ID supplied by Happy Agent, submitted unchanged. */
+export type HappyAgentServiceTier = string;
+
+/** Projects the wire's nullable default into an optional product selection. */
+export function happyAgentServiceTierFromWire(
+    value: string | null | undefined,
+): HappyAgentServiceTier | undefined {
+    return value ?? undefined;
+}
+
+/** Sends the exact selected ID, or null to select the agent's default route. */
+export function happyAgentServiceTierToWire(
+    value: HappyAgentServiceTier | undefined,
+): string | null {
+    return value ?? null;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-state/src/picomatch.d.ts
+================================================
+/**
+ * The slice of picomatch's POSIX entry the change tiers use. The package ships
+ * no declarations of its own, and the POSIX entry is the one that never reaches
+ * for Node's `path`, so it runs the same in the renderer as under test.
+ */
+declare module "picomatch/posix" {
+    interface PicomatchOptions {
+        /** Lets `*` and `**` match names that start with a dot. */
+        readonly dot?: boolean;
+        /** Matches a pattern without slashes against the last segment of the path. */
+        readonly basename?: boolean;
+    }
+    function picomatch(
+        glob: string | readonly string[],
+        options?: PicomatchOptions,
+    ): (path: string) => boolean;
+    export default picomatch;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-state/src/conversation/loadable.ts
+================================================
+import type { UserError } from "../types.js";
+
+/**
+ * The one loading vocabulary for every product surface. Promoted out of the
+ * chat module so the local (Happy Agent) stack speaks it too instead of carrying its
+ * own `"loading" | "ready" | "error"` string plus loose `error` fields.
+ */
+export type Loadable<Value> =
+    | { readonly type: "unloaded" }
+    | { readonly type: "loading" }
+    | { readonly type: "ready"; readonly value: Value }
+    | { readonly type: "error"; readonly error: UserError };
+
+
+
+================================================
+FILE: packages/happy-desktop-state/src/happyAgent/happyAgentHost.ts
+================================================
+/**
+ * Host/UI operations the Happy Agent surface may invoke on its desktop shell. This is the
+ * application-window boundary only — it never carries the daemon data connection,
+ * which flows through the injected HTTP probe on the connection loader. Keeping it
+ * a small closed interface lets Blueprint and tests run the surface standalone.
+ */
+export interface HappyAgentHost {
+    /** Remote work is created from a repository, not a folder on the reader's Mac. */
+    readonly projectSource?: "repository";
+    /** Opens the native application menu (or its dev-server equivalent). */
+    applicationMenuOpen(): void;
+    /** Prompts for a working directory; resolves to undefined when cancelled. */
+    directoryPick(): Promise<string | undefined>;
+}
+
+/** Inert host for Blueprint fixtures and tests that need no real shell integration. */
+export const happyAgentHostNoop: HappyAgentHost = {
+    applicationMenuOpen: () => undefined,
+    directoryPick: () => Promise.resolve(undefined),
+};
+
+
+
+================================================
+FILE: packages/happy-desktop-state/src/happyAgent/happyAgentTokenFormat.ts
+================================================
+/**
+ * Token counts as a reader scans them. Compaction figures run to six digits,
+ * where the exact number is noise and the magnitude is the whole point.
+ */
+export function happyAgentTokenCountFormat(tokens: number): string {
+    if (tokens < 1000) return String(Math.max(0, Math.round(tokens)));
+    const thousands = tokens / 1000;
+    return `${thousands < 100 ? thousands.toFixed(1).replace(/\.0$/, "") : String(Math.round(thousands))}k`;
+}
+
+/** The token range shown beside a running or settled compaction row. */
+export function happyAgentCompactionSubject(
+    estimatedTokensBefore: number,
+    estimatedTokensAfter?: number,
+): string {
+    const before = happyAgentTokenCountFormat(estimatedTokensBefore);
+    return estimatedTokensAfter === undefined
+        ? `from ${before} tokens`
+        : `${before} → ${happyAgentTokenCountFormat(estimatedTokensAfter)} tokens`;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-state/src/happyAgentConnection/happyAgentSyncRead.ts
+================================================
+/** Retries an authoritative surface read without touching the shared transport. */
+export async function happyAgentSyncRead<T>(
+    signal: AbortSignal,
+    read: () => Promise<T>,
+    failed: (error: unknown) => void,
+): Promise<T> {
+    let delay = 1_000;
+    while (!signal.aborted) {
+        try {
+            return await read();
+        } catch (error) {
+            if (signal.aborted) break;
+            failed(error);
+            await new Promise<void>((resolve) => {
+                const finish = (): void => {
+                    clearTimeout(timer);
+                    signal.removeEventListener("abort", finish);
+                    resolve();
+                };
+                const timer = setTimeout(finish, delay);
+                signal.addEventListener("abort", finish, { once: true });
+                if (signal.aborted) finish();
+            });
+            delay = Math.min(delay * 2, 10_000);
+        }
+    }
+    throw signal.reason;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-state/src/happyAgentConnection/index.ts
+================================================
+export { ChatStore } from "./ChatStore.js";
+export { connectHappyAgent } from "./connectHappyAgent.js";
+export type { HappyAgentSync, HappyAgentSyncInput } from "./happyAgentSync.js";
+export { happyAgentSyncRead } from "./happyAgentSyncRead.js";
+export { chatElementRequest, projectNumericIdentity } from "./projection.js";
+export {
+    CHECKING_SERVER_COMPATIBILITY,
+    MINIMUM_HAPPY_AGENT_PROTOCOL_VERSION,
+    MINIMUM_HAPPY_AGENT_VERSION,
+    describeServerCompatibility,
+    happyAgentVersionAtLeast,
+    serverCompatibility,
+} from "./compatibility.js";
+export { ProjectRegistrationError, ProjectRegistrationProtocolError } from "./errors.js";
+export type { ProjectRegistrationErrorCode } from "./errors.js";
+export type * from "./types.js";
+export type { UserProfile } from "./userProfiles.js";
+
+
+
+================================================
+FILE: packages/happy-desktop-state/src/testing/index.ts
+================================================
+export { type FakeTerminalChannel } from "./fake-terminal-channel.js";
+export {
+    fakeAgentMessage,
+    fakeHappyAgentDaemonCreate,
+    fakeRun,
+    fakeUserMessage,
+    type FakeDaemonCall,
+    type FakeHappyAgentDaemon,
+} from "./fakeHappyAgentDaemon.js";
+
+
+
+================================================
+FILE: packages/happy-desktop-state/src/utils/orderKeySequence.ts
+================================================
+import { generateKeyBetween } from "./fractionalIndexing.js";
+
+/**
+ * Mints `count` keys that sort in sequence after `after`, or from the start of
+ * the range when it is null. The result depends only on its inputs, so a client
+ * materializing a personal order optimistically derives exactly the keys the
+ * server derives from the same list.
+ */
+export function orderKeySequence(count: number, after: string | null = null): string[] {
+    const keys: string[] = [];
+    let previous = after;
+    for (let index = 0; index < count; index += 1) {
+        previous = generateKeyBetween(previous, null);
+        keys.push(previous);
+    }
+    return keys;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/index.html
+================================================
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!-- Happy's grouped background, the colour the workbench canvas paints. -->
+        <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#1e1e1e" media="(prefers-color-scheme: dark)" />
+        <title>happy-desktop-ui · Component plans</title>
+    </head>
+    <body>
+        <div id="root"></div>
+        <script type="module" src="/dev/main.tsx"></script>
+    </body>
+</html>
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/tsconfig.json
+================================================
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "types": ["vite/client"]
+    },
+    "include": ["dev", "src", "vite.config.ts"]
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/dev/kit.test.tsx
+================================================
+import { expect, it } from "vitest";
+import { createRenderer } from "../src/testing";
+import { FullScreenSpecimen } from "./kit";
+import "./workbench.css";
+
+it("hosts full product pages at the exact 1024×704 desktop minimum without scaling", async () => {
+    const view = createRenderer();
+    view.render(
+        () => (
+            <FullScreenSpecimen detail="surface-store fixture" label="Full screen" number="01">
+                <div data-testid="page">Page</div>
+            </FullScreenSpecimen>
+        ),
+        { width: 1200, height: 820 },
+    );
+    await view.ready();
+
+    expect(view.$(".full-screen-viewport").bounds()).toMatchObject({
+        width: 1024,
+        height: 704,
+    });
+    expect(view.$(".full-screen-viewport").computedStyles(["transform", "overflow"])).toEqual({
+        transform: "none",
+        overflow: "hidden",
+    });
+    expect(view.$('[data-testid="page"]').bounds()).toMatchObject({ width: 1024, height: 704 });
+});
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/dev/main.tsx
+================================================
+import { createRoot } from "react-dom/client";
+import "./workbenchDocument.css";
+import { Workbench } from "./Workbench";
+
+createRoot(document.getElementById("root")!).render(<Workbench />);
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/dev/workbenchDocument.css
+================================================
+/* Document-level rules for the standalone Blueprint page. They stay out of
+   `workbench.css` so the same workbench can be mounted inside the application
+   without repainting the document around it. The explicit heights give the
+   shell's `min-height: 100%` a resolved containing block. */
+
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+}
+
+/* Only ever seen behind overscroll: the shell paints the canvas itself. It
+   follows the system appearance rather than the header's override, which scopes
+   its theme to the shell. */
+body {
+    background: var(--groupped-background);
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/assets.ts
+================================================
+export const happyLogoBlackUrl = new URL("./assets/brand/logo-black.png", import.meta.url).href;
+export const happyLogoWhiteUrl = new URL("./assets/brand/logo-white.png", import.meta.url).href;
+export const welcomeSkyUrl = new URL("./assets/backdrops/welcome-sky.jpg", import.meta.url).href;
+export const welcomeSkyDarkUrl = new URL("./assets/backdrops/welcome-sky-dark.jpg", import.meta.url)
+    .href;
+export const happyWordmarkLightUrl = new URL(
+    "./assets/brand/happy-engineering-stacked-light.svg",
+    import.meta.url,
+).href;
+export const todoBackdropUrl = new URL("./assets/backdrops/todo-ginkgo.jpg", import.meta.url).href;
+export const todoBackdropDarkUrl = new URL(
+    "./assets/backdrops/todo-ginkgo-dark.jpg",
+    import.meta.url,
+).href;
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/componentProps.ts
+================================================
+/** Partitions component-owned props from native attributes that are forwarded to the DOM. */
+export function partitionComponentProps<
+    Props extends object,
+    Keys extends readonly (keyof Props)[],
+>(props: Props, keys: Keys): [Pick<Props, Keys[number]>, Omit<Props, Keys[number]>] {
+    const selected = {} as Pick<Props, Keys[number]>;
+    const rest = { ...props } as Props;
+    for (const key of keys) {
+        Object.assign(selected, { [key]: props[key] });
+        delete rest[key];
+    }
+    return [selected, rest];
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/ComposerAttachmentRemoveButton.tsx
+================================================
+import { Icon } from "./Icon";
+
+export type ComposerAttachmentRemoveButtonProps = {
+    name: string;
+    onRemove: () => void;
+};
+
+/**
+ * Shared remove action for compact and reading-size composer attachments. The
+ * 28px target is centered on the attachment's top-right corner; its visible
+ * 18px disc straddles that corner without covering the preview.
+ */
+export function ComposerAttachmentRemoveButton(props: ComposerAttachmentRemoveButtonProps) {
+    return (
+        <button
+            aria-label={`Remove ${props.name}`}
+            className="happy-composer-attachment-remove"
+            data-happy-desktop-ui="composer-attachment-remove"
+            onClick={props.onRemove}
+            type="button"
+        >
+            <Icon name="close" size={12} />
+        </button>
+    );
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/ConnectionSurface.tsx
+================================================
+import { Activity, type ReactNode } from "react";
+
+/** Activity retains DOM/local state while suspending hidden window listeners. */
+export function ConnectionSurface(props: {
+    readonly active: boolean;
+    readonly children: ReactNode;
+}) {
+    return (
+        <Activity mode={props.active ? "visible" : "hidden"}>
+            <div className="happy-connections__surface" data-happy-desktop-ui="connection-surface">
+                {props.children}
+            </div>
+        </Activity>
+    );
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/conversationErrorAssistanceText.ts
+================================================
+import type { ConversationErrorAssistance } from "happy-desktop-state";
+
+/** Shared by the card and its exact virtual-row text geometry. */
+export function conversationErrorAssistanceText(assistance: ConversationErrorAssistance): {
+    readonly label: string;
+    readonly detail?: string;
+    readonly disabled: boolean;
+} {
+    switch (assistance.status) {
+        case "ready":
+            return { label: "Ask Chief of Staff", disabled: false };
+        case "pending":
+            return { label: "Opening Chief of Staff…", disabled: true };
+        case "failed":
+            return {
+                label: "Ask Chief of Staff",
+                detail: `Could not prepare the draft: ${assistance.reason}`,
+                disabled: false,
+            };
+        case "unavailable":
+            return {
+                label: "Ask Chief of Staff",
+                detail: assistance.reason,
+                disabled: true,
+            };
+    }
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/conversationErrorTitle.ts
+================================================
+import type { ConversationServiceNoticeEntry } from "happy-desktop-state";
+
+/** One heading shared by the error renderer and its unmounted row-height model. */
+export function conversationErrorTitle(entry: ConversationServiceNoticeEntry): string {
+    if (entry.retry === undefined) return entry.title ?? "Error";
+    return entry.retry.attempt === undefined || entry.retry.attempt === 1
+        ? "Connection Error"
+        : `Connection Error (Attempt ${String(entry.retry.attempt)})`;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/dimensions.ts
+================================================
+export type Dimension = number | string;
+
+export function toCssDimension(value: Dimension | undefined) {
+    return typeof value === "number" ? `${value}px` : value;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/elapsedTimeFormat.ts
+================================================
+/** Formats an active elapsed clock in the smallest useful human-readable units. */
+export function elapsedTimeFormat(elapsedMs: number): string {
+    const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1_000));
+    if (totalSeconds < 60) return `${totalSeconds}s`;
+    const totalMinutes = Math.floor(totalSeconds / 60);
+    if (totalMinutes < 60) return `${totalMinutes}m ${totalSeconds % 60}s`;
+    return `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/InfoPanel.tsx
+================================================
+/** Shared height for the header row used by retained inspector surfaces. */
+export const SURFACE_HEADER_HEIGHT = 56;
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/messageListDisclosureAnchor.tsx
+================================================
+import { createContext, useContext, type ReactNode } from "react";
+
+export type MessageListDisclosureAnchor = (disclosure: HTMLElement) => void;
+
+const MessageListDisclosureAnchorContext = createContext<MessageListDisclosureAnchor | undefined>(
+    undefined,
+);
+
+/** Gives transcript disclosures the list-owned geometry action they need before resizing. */
+export function MessageListDisclosureAnchorProvider(props: {
+    children: ReactNode;
+    value: MessageListDisclosureAnchor;
+}) {
+    return (
+        <MessageListDisclosureAnchorContext.Provider value={props.value}>
+            {props.children}
+        </MessageListDisclosureAnchorContext.Provider>
+    );
+}
+
+/** Optional so the same disclosure remains fully functional outside a MessageList. */
+export function useMessageListDisclosureAnchor() {
+    return useContext(MessageListDisclosureAnchorContext);
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/react-css.d.ts
+================================================
+import "react";
+
+declare module "react" {
+    interface CSSProperties {
+        [name: `--${string}`]: string | number | undefined;
+    }
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/systemNotification.ts
+================================================
+/** The single display line for daemon-injected transcript context. */
+export const SYSTEM_NOTIFICATION_LABEL = "System notification";
+
+/** One 20px line with the same 6px vertical inset as a compact tool call. */
+export const SYSTEM_NOTIFICATION_HEIGHT = 32;
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/ThemeScope.tsx
+================================================
+import { type ReactNode } from "react";
+
+export type ThemeMode = "dark" | "light" | "system";
+export type ScrollbarVisibility = "always" | "automatic";
+
+export type ThemeScopeProps = {
+    children: ReactNode;
+    mode: ThemeMode;
+    scrollbarVisibility?: ScrollbarVisibility;
+};
+
+/**
+ * Applies one user-selected appearance to a stable product subtree while
+ * retaining the system palette when no explicit override is selected.
+ */
+export function ThemeScope(props: ThemeScopeProps) {
+    return (
+        <div
+            className={
+                props.mode === "system"
+                    ? "happy-theme-scope"
+                    : `happy-theme-scope happy-theme-${props.mode}`
+            }
+            data-happy-desktop-ui="theme-scope"
+            data-scrollbar-visibility={props.scrollbarVisibility ?? "automatic"}
+        >
+            {props.children}
+        </div>
+    );
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/toolCallStillGlyph.ts
+================================================
+/**
+ * The still mark for a tool call that holds a turn open without doing any work:
+ * a scheduled `wait`/`wait_until` sits out the clock, and `request_user_input`
+ * is stopped on the reader. Neither is work happening, so while one runs its row
+ * and the turn's footer show this glyph instead of a spinner or a shimmer.
+ * Every other tool answers `undefined` and spins while it runs.
+ */
+export function toolCallStillGlyph(toolName: string): "clock" | "question" | undefined {
+    switch (toolName) {
+        case "wait":
+        case "wait_until":
+            return "clock";
+        case "request_user_input":
+            return "question";
+        default:
+            return undefined;
+    }
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/TurnSummary.test.tsx
+================================================
+import { expect, it } from "vitest";
+import "./theme.css";
+import "./styles/icon.css";
+import "./styles/vector-icon.css";
+import "./styles/turn-summary.css";
+import { TurnSummary } from "./TurnSummary";
+import { createRenderer } from "./testing";
+
+it("describes work interrupted by compaction without claiming compaction completed", async () => {
+    const view = createRenderer().render(
+        () => <TurnSummary durationMs={81_000} reason="compaction" status="complete" />,
+        { width: 320, height: 80, padding: 16 },
+    );
+    await view.ready();
+
+    expect(view.$('[data-happy-desktop-ui="turn-summary-label"]').element.textContent).toBe(
+        "Worked for\u00a01m\u00a021s",
+    );
+});
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/usageTone.ts
+================================================
+/**
+ * How a rate-limit window is spoken about, shared by every surface that shows
+ * one. The provider-usage page and the session usage panel report the same
+ * limits from the same daemon, so the point at which a window starts saying so
+ * in colour has to be one decision rather than two constants that drift.
+ */
+export type UsageWindowTone = "ample" | "warning" | "critical";
+
+/** Above this share spent, a window says so in colour; above the second, it insists. */
+export const USAGE_WARNING_PERCENT = 75;
+export const USAGE_CRITICAL_PERCENT = 90;
+
+/** Holds a reported share inside the 0–100 a window can actually mean. */
+export function usagePercentClamp(value: number): number {
+    return Math.min(100, Math.max(0, value));
+}
+
+export function usageWindowTone(percent: number): UsageWindowTone {
+    if (percent >= USAGE_CRITICAL_PERCENT) return "critical";
+    if (percent >= USAGE_WARNING_PERCENT) return "warning";
+    return "ample";
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/ZoomIndicator.tsx
+================================================
+import type { ReactElement } from "react";
+
+/**
+ * The zoom read-out, the way a browser shows one: what scale the window is now
+ * at, said once at the top of the window and then gone.
+ *
+ * It holds no timer. The fade is a CSS animation, so a caller restarts it by
+ * giving the element a `key` that changes whenever zoom is asked for — including
+ * when the answer is the same number as last time, which is exactly when a
+ * reader most needs to be told (⌘0 at 100%, or ⌘− against the floor).
+ *
+ * Hidden from assistive technology on purpose. It is a visual echo of a command
+ * the reader has just issued, not a report they were waiting for; a live region
+ * mounted together with its own content does not announce anyway.
+ */
+export function ZoomIndicator(props: { percent: number }): ReactElement {
+    return (
+        <div aria-hidden="true" className="happy-zoom-indicator">
+            {props.percent}%
+        </div>
+    );
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/fixtures/nested-link-list.txt
+================================================
+Still-preview train:
+
+- [1.2.5-beta.0](https://github.com/slopus/happy/releases/tag/cli-1.2.5-beta.0)
+  - Session reliability and resume fixes
+  - Long Codex turns no longer appear aborted after ten minutes
+  - Later replies/diffs reach mobile
+- [1.2.5-beta.1](https://github.com/slopus/happy/releases/tag/cli-1.2.5-beta.1)
+  - Prevents duplicate resume processes
+  - Concurrent resumes share one attempt
+  - Cancelling preparation prevents launch
+- [1.2.5-beta.2](https://github.com/slopus/happy/releases/tag/cli-1.2.5-beta.2)
+  - Clearer expired-Claude-login errors
+  - Remote Claude plugins are preserved
+  - Session metadata now includes synchronized composer drafts and message mode
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/pages/settings/providerAccountName.ts
+================================================
+/**
+ * What to call one provider account.
+ *
+ * The daemon knows an account by its configured id and by nothing else: two
+ * accounts may sit behind the same vendor, so the id is the only thing that
+ * tells `kirill_claude` from `claude`. Titling its words is the whole
+ * transformation — nothing here guesses a vendor from the spelling, because a
+ * guess would put two different accounts under one name.
+ *
+ * Every surface that names an account uses this, so the Providers category and
+ * the Usage category call the same account the same thing.
+ */
+export function providerAccountName(providerId: string): string {
+    return (
+        providerId
+            .split(/[_-]/u)
+            .filter(Boolean)
+            .map((part) => (part[0] ?? "").toLocaleUpperCase() + part.slice(1))
+            .join(" ") || providerId
+    );
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/pages/surfaces/surfaceBackdropsPreload.ts
+================================================
+import { todoBackdropDarkUrl, todoBackdropUrl } from "../../assets";
+
+/**
+ * The pictures a todo list is laid over, held for the life of the page. A
+ * picture a live image element still holds stays decoded in the browser's
+ * image cache, so the list's background paints in the same frame as the list.
+ */
+const held: HTMLImageElement[] = [];
+
+/**
+ * Fetches and decodes both todo list backgrounds, the light one and the dark
+ * one, so opening a list — or switching appearance with one open — never
+ * shows the bare surface first. Calling it again does nothing.
+ */
+export function happyAgentSurfaceBackdropsPreload(): void {
+    if (held.length > 0) return;
+    for (const url of [todoBackdropUrl, todoBackdropDarkUrl]) {
+        const image = new Image();
+        image.decoding = "async";
+        image.src = url;
+        // A picture that fails to load leaves the list on its plain surface.
+        void image.decode().catch(() => undefined);
+        held.push(image);
+    }
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/admin-page.css
+================================================
+/*
+ * Administration page. The section navigation lives in the sidebar drill-down
+ * (not an in-page tab bar), so each section is a standalone component swapped in
+ * the workspace. Switching sections remounts the content (keyed by section id),
+ * which replays a short settle-in animation that mirrors the sidebar drill-in.
+ */
+
+.happy-admin-page__section {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .happy-admin-page__section {
+        animation: happy-admin-section-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+}
+
+@keyframes happy-admin-section-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/audience-toggle.css
+================================================
+/*
+ * C-065 AudienceToggle.
+ *
+ * A compact current-mode text control beneath the composer input.
+ */
+
+.happy-audience-toggle {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    height: 20px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--happy-font-ui);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    opacity: 0.5;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    transition:
+        color 120ms ease,
+        opacity 120ms ease;
+}
+
+.happy-audience-toggle:hover:not(:disabled) {
+    color: var(--text);
+    opacity: 1;
+}
+
+.happy-audience-toggle:focus-visible {
+    outline: 2px solid var(--radio-active);
+    outline-offset: 2px;
+}
+
+.happy-audience-toggle:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/avatar-brutalist.css
+================================================
+/*
+ * AvatarBrutalist — generated identity mark. The box paints the background and
+ * the inner span paints the tint through the tile's alpha as a mask, which is
+ * how a single monochrome PNG becomes a two-color mark at any size.
+ */
+
+.happy-avatar-brutalist,
+.happy-avatar-brutalist__ink {
+    box-sizing: border-box;
+}
+
+.happy-avatar-brutalist {
+    position: relative;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.happy-avatar-brutalist__ink {
+    display: block;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/brand-logo.css
+================================================
+/* The black file is the HTML fallback. Replacing its rendered content through
+ * the inherited theme value also respects explicit nested ThemeScope overrides,
+ * which a prefers-color-scheme source on a picture element cannot do. */
+.happy-brand-logo {
+    content: var(--happy-brand-logo-source);
+}
+
+/* The Happy Engineering wordmark, swapped for the dark file the same way. */
+.happy-wordmark {
+    content: var(--happy-wordmark-source);
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/code-block.css
+================================================
+/*
+ * C-174 CodeBlock — code with syntax highlighting, wherever code is read.
+ *
+ * Pierre Diffs renders inside Shadow DOM, so its typography and material are set
+ * through inherited custom properties rather than descendant selectors. These
+ * are the same declarations the working-tree diff carries, which is the point:
+ * one code type, one code surface, everywhere code appears. Token colors follow
+ * `color-scheme`, which the theme sets and the shadow tree inherits.
+ */
+
+.happy-code-block {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    --diffs-font-family: var(--happy-font-mono);
+    --diffs-header-font-family: var(--happy-font-ui);
+    --diffs-font-size: 12px;
+    --diffs-line-height: 20px;
+    --diffs-gap-inline: 10px;
+    --diffs-light-bg: var(--surface);
+    --diffs-dark-bg: var(--surface);
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/composer-dock.css
+================================================
+/*
+ * ComposerDock — the grounded chat input bar. A solid full-width surface bar
+ * whose boundary with the transcript is intentionally seamless, as in Happy.
+ * Its inner compose column centers at the same measure as the message column so
+ * the input starts flush with the transcript and retains 24px desktop breathing
+ * room below. A working turn reports itself on the transcript's last line, so
+ * nothing stacks above the Composer here.
+ */
+
+.happy-composer-dock {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    background: var(--surface);
+}
+
+.happy-composer-dock__compose {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: var(--happy-chat-measure);
+    margin: 0 auto;
+    padding: 0 20px 24px 12px;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/fade.css
+================================================
+/*
+ * Fade — full-bleed crossfade container. Layers stack absolutely inside a
+ * positioned box; the newest is last in the DOM, so it paints above the
+ * outgoing layer(s) and fades in over them. Outgoing layers hold at opacity 1
+ * (animation `both` fill) until Fade removes them, so the two screens blend
+ * rather than cutting. `isolation: isolate` keeps the stack from leaking into
+ * surrounding stacking contexts.
+ */
+
+.happy-fade {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    isolation: isolate;
+}
+
+.happy-fade__layer {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    animation: happy-fade-in var(--happy-fade-duration, 360ms) ease both;
+}
+
+@keyframes happy-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .happy-fade__layer {
+        animation-duration: 1ms;
+    }
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/gpt-live-phone.css
+================================================
+.happy-gpt-live-phone[data-status="active"] {
+    color: var(--success);
+}
+.happy-gpt-live-phone[data-status="error"],
+.happy-gpt-live-phone[data-status="unavailable"] {
+    color: var(--text-destructive);
+}
+.happy-gpt-live-settings {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/happy-agent-project-clone-dialog.css
+================================================
+/*
+ * C-256 HappyAgentProjectCloneDialog — a single GitHub repository field in the
+ * medium form card. The dialog owns no external spacing: its internal column
+ * keeps the banners, field, and clarification on one 12px rhythm.
+ */
+
+.happy-agent-project-clone-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    color: var(--text);
+    font-family: var(--happy-font-ui);
+    font-synthesis: none;
+}
+
+.happy-agent-project-clone-dialog__hint {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 20px;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/live-performance.css
+================================================
+/* Live renderer diagnostics: visible only in an explicitly debug-launched app. */
+
+.happy-live-performance {
+    /* eslint-disable-next-line happy-layout/use-flex-layout -- fixed metric/value tracks keep every changing number in one stable right-aligned column */
+    display: grid;
+    flex: none;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 2px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 2px 0;
+    color: var(--text-secondary);
+    font-family: var(--happy-font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    font-synthesis: none;
+    line-height: 15px;
+}
+
+.happy-live-performance__metric,
+.happy-live-performance__value {
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.happy-live-performance__value {
+    text-align: right;
+}
+
+.happy-live-performance__value[data-dropped="true"] {
+    color: var(--warning-critical);
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/night-sky-shader.css
+================================================
+/*
+ * C-272 NightSkyShader — a transparent GPU canvas. Its host decides the box;
+ * the canvas simply fills it without becoming an interaction surface.
+ */
+
+.happy-night-sky-shader {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/onboarding-steps.css
+================================================
+.happy-onboarding-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 560px;
+    color: var(--button-primary-tint);
+    font-family: var(--happy-font-ui);
+}
+
+/* Five steps on one line: the bar is the whole report, so nothing counts them
+   in words above it. */
+.happy-onboarding-steps {
+    max-width: 640px;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/panel-header.css
+================================================
+/*
+ * PanelHeader — the 56px band across the top of a docked panel column.
+ *
+ * Contract: 56px high, 16px x-padding, transparent, and no hairline of its own —
+ * exactly `ChannelHeader`'s band, because the point is that the two columns'
+ * headers form one band across the window. Whatever sits beneath the band owns
+ * the dividing line, as the tab bar does in both columns.
+ */
+
+.happy-panel-header,
+.happy-panel-header * {
+    box-sizing: border-box;
+}
+
+.happy-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: none;
+    width: 100%;
+    height: 56px;
+    margin: 0;
+    padding: 0 16px;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--happy-font-ui);
+}
+
+/* Chrome controls dock 12px from a panel edge, matching AppShell's sidebar
+   collapse control. Ordinary titles and content retain the standard 16px inset. */
+.happy-panel-header[data-edge-control] {
+    padding-right: 12px;
+    padding-left: 12px;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/sidebar-apps.css
+================================================
+/*
+ * C-137 SidebarAppsSection footer — stacks the sidebar-menu contribution
+ * triggers over the manage affordance. The section body itself is the shared
+ * Sidebar; only the footer composition is owned here.
+ */
+
+.happy-sidebar-apps__footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.happy-sidebar-apps__menu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/sidebar-keep-awake-menu.css
+================================================
+/*
+ * C-285 SidebarKeepAwakeMenu — the footer's coffee-cup trigger. The menu it
+ * opens is the house MenuButton popover, drawn in the window's overlay lane;
+ * what is styled here is only the trigger's ink, which carries the live state.
+ *
+ * Contract: the trigger is an ordinary 28px ghost glyph like its neighbours and
+ * paints in full ink only while the machine is actually being held awake, or
+ * while its menu is open.
+ */
+
+/* The theme menu beside it shares the trigger treatment. */
+.happy-sidebar-keep-awake,
+.happy-sidebar-theme {
+    display: flex;
+    flex: none;
+}
+
+.happy-sidebar-keep-awake[data-active] > .happy-menu-button > .happy-button,
+.happy-sidebar-keep-awake > .happy-menu-button[data-open] > .happy-button,
+.happy-sidebar-theme > .happy-menu-button[data-open] > .happy-button {
+    color: var(--text);
+}
+
+.happy-sidebar-keep-awake > .happy-menu-button[data-open] > .happy-button,
+.happy-sidebar-theme > .happy-menu-button[data-open] > .happy-button {
+    background: var(--surface-ripple);
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/visually-hidden.css
+================================================
+/*
+ * Text that is read but never drawn.
+ *
+ * It is for a fact the screen states in some more compact way than a sentence —
+ * an abbreviated diff stat, say, whose visible form is `+4.2k` and whose
+ * spoken form is "4238 lines added". The visible mark is hidden from the
+ * accessibility tree and this carries the words, rather than an `aria-label`
+ * on the visible element: the elements carrying these marks are ordinary
+ * `span`s whose implicit `generic` role prohibits an author name, so a label
+ * there may simply be dropped.
+ *
+ * It must not collapse to `display: none` or `visibility: hidden`, which take
+ * the text out of the accessibility tree along with the layout.
+ */
+.happy-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/src/styles/wait-ring.css
+================================================
+/*
+ * WaitRing: a determinate arc that stands in a spinner's box. It brings no type
+ * and no color of its own beyond the theme roles for its two strokes — the row
+ * it sits in owns the font, the size, and the spacing around it.
+ */
+
+.happy-wait-ring {
+    display: block;
+    flex: none;
+}
+
+.happy-wait-ring__track {
+    stroke: var(--divider);
+}
+
+.happy-wait-ring__fill {
+    stroke: currentcolor;
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-ui/vite/lottiePlugin.ts
+================================================
+import type { Plugin } from "vite";
+
+/**
+ * Keeps the public Vite integration boundary stable for consumers that compile
+ * the desktop UI package.
+ */
+export function lottieLocalWasmPlugin(): Plugin {
+    return { name: "happy-desktop-lottie-local-wasm" };
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-web/index.html
+================================================
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" type="image/png" href="/favicon.png" />
+        <title>Happy Place</title>
+        <!-- Happy's grouped/root surface before the bundle's CSS loads. -->
+        <style>
+            html,
+            body {
+                margin: 0;
+                background: #f2f2f7;
+            }
+
+            @media (prefers-color-scheme: dark) {
+                html,
+                body {
+                    background: #1c1c1e;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div id="root"></div>
+        <script type="module" src="/src/main.tsx"></script>
+    </body>
+</html>
+
+
+
+================================================
+FILE: packages/happy-desktop-web/package.json
+================================================
+{
+    "name": "happy-desktop-web",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite --host 127.0.0.1",
+        "build": "vite build",
+        "typecheck": "tsc --project tsconfig.json",
+        "format": "oxfmt --write .",
+        "format:check": "oxfmt --check .",
+        "lint": "oxlint .",
+        "clean": "rm -rf dist"
+    },
+    "dependencies": {
+        "happy-desktop-electron": "workspace:*"
+    },
+    "devDependencies": {
+        "typescript": "^7.0.2",
+        "vite": "^8.1.4"
+    }
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-web/tsconfig.json
+================================================
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "types": ["vite/client"]
+    },
+    "include": ["src", "vite.config.ts", "../happy-desktop-electron/sources/renderer/global.d.ts"]
+}
+
+
+
+================================================
+FILE: packages/happy-desktop-web/vite.config.ts
+================================================
+export { default } from "../happy-desktop-electron/vite.config";
+
+
+
+================================================
+FILE: packages/happy-desktop-web/src/main.tsx
+================================================
+import "happy-desktop-electron/renderer";
+
+
+
+================================================
+FILE: scripts/dev-blueprint.mjs
+================================================
+import { spawn } from "node:child_process";
+import { resolve } from "node:path";
+
+function port(value) {
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65_535) {
+        throw new Error("Portless must provide a valid PORT for the Happy (2) Blueprint");
+    }
+    return String(parsed);
+}
+
+const workspace = resolve(import.meta.dirname, "..");
+const child = spawn(
+    "pnpm",
+    [
+        "--filter",
+        "happy-desktop-ui",
+        "exec",
+        "vite",
+        "--host",
+        process.env.HOST ?? "127.0.0.1",
+        "--port",
+        port(process.env.PORT),
+        "--strictPort",
+    ],
+    { cwd: workspace, env: process.env, stdio: "inherit" },
+);
+
+for (const signal of ["SIGHUP", "SIGINT", "SIGTERM"]) {
+    process.on(signal, () => child.kill(signal));
+}
+
+const exitCode = await new Promise((resolveExit, reject) => {
+    child.once("error", reject);
+    child.once("exit", (code) => resolveExit(code ?? 1));
+});
+process.exitCode = exitCode;
+
+
+
+================================================
+FILE: scripts/dev-web.mjs
+================================================
+import { spawn } from "node:child_process";
+import { resolve } from "node:path";
+
+function port(value) {
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65_535) {
+        throw new Error("Portless must provide a valid PORT for the Happy (2) web app");
+    }
+    return String(parsed);
+}
+
+const workspace = resolve(import.meta.dirname, "..");
+const child = spawn(
+    "pnpm",
+    [
+        "--filter",
+        "happy-desktop-web",
+        "exec",
+        "vite",
+        "--host",
+        process.env.HOST ?? "127.0.0.1",
+        "--port",
+        port(process.env.PORT),
+        "--strictPort",
+    ],
+    { cwd: workspace, env: process.env, stdio: "inherit" },
+);
+const signals = ["SIGHUP", "SIGINT", "SIGTERM"];
+for (const signal of signals) process.on(signal, () => child.kill(signal));
+
+const exitCode = await new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("exit", (code) => resolve(code ?? 1));
+});
+process.exitCode = exitCode;
+
+
+
+================================================
+FILE: scripts/demo/assets/sounds/mechanical/README.md
+================================================
+# Mechanical keyboard recordings
+
+These 32 `keypress-*.wav` files are the isolated keypress recordings from
+[Keyboard Soundpack #1 (Typing and Single Keystrokes)](https://opengameart.org/content/keyboard-soundpack-1-typing-and-single-keystrokes)
+by unicaegames (OpenGameArt submission, 2021).
+
+- License: **CC0 1.0**, as stated on the source page.
+- Keyboard: Cherry KC 1000.
+- Recording: Shure SM7B; post-processed with iZotope Neutron 2 by the author.
+- Source archive: `unicae_games_keyboard_soundpack_1_0.zip`.
+
+The recorder cycles through 29 recorded transients for ordinary keys, with two
+separate samples assigned to spaces and one to Enter. The source archive also
+contains human typing takes, but the demo uses the isolated files so each cue
+remains individually placed against the typed characters.
+
+
+
+================================================
+FILE: scripts/demo/compositions/readme/backdrop.CREDITS.md
+================================================
+# README backdrop
+
+`backdrop.jpg` is an original image generated for this composition with an
+image-generation model (October 2026): a twilight lake valley, misty hills, and
+foreground pines, prompted as a photographic desktop wallpaper with no people,
+text, logos, devices, or UI. It is not derived from Apple or any other
+operating-system wallpaper.
+
+Stored as the generated 1672×941 image, re-encoded once as a quality-90 JPEG.
+The composition scales it to cover the frame and softens it slightly.
+
+
+
+================================================
+FILE: scripts/demo/compositions/readme/cues.json
+================================================
+[
+    {
+        "name": "phone-enter",
+        "seconds": 34.78333333333333
+    },
+    {
+        "name": "phone-exit",
+        "seconds": 49.56666666666667
+    }
+]
+
+
+
+================================================
+FILE: scripts/demo/demos/astra-speed/world.mjs
+================================================
+// Fork the existing core experience's actual repository/worktree world. Native
+// turns are never seeded: both filmed conversations begin empty.
+export { repository, backgroundRepositories, worktrees } from "../core/world.mjs";
+export const id = "astra-speed";
+export const sessions = [];
+export const models = { codex: ["openai/gpt-6-astra"], claude: [], grok: [] };
+export const effort = "low";
+export const prompt =
+    "Count from 1 to 1000 internally, then reply with exactly done and nothing else.";
+
+
+
+================================================
+FILE: scripts/demo/demos/astra-speed/selected/astra-speed.srt
+================================================
+1
+00:00:00,000 --> 00:00:03,033
+Regular · Low effort · Wait shortened
+
+2
+00:00:03,033 --> 00:00:05,400
+Regular · 64.867 seconds total
+
+3
+00:00:05,400 --> 00:00:08,150
+Switch to Ultrafast. Keep the same Low effort.
+
+4
+00:00:08,150 --> 00:00:08,883
+Ultrafast selected · Same Astra · Same Low effort
+
+5
+00:00:08,883 --> 00:00:11,017
+Ultrafast · Same prompt: count internally.
+
+6
+00:00:11,017 --> 00:00:13,067
+Ultrafast · Waiting footage shortened
+
+7
+00:00:13,067 --> 00:00:15,317
+Ultrafast · 9.202 seconds total
+
+8
+00:00:15,317 --> 00:00:19,317
+One live take · Regular 64.867s · Ultrafast 9.202s
+
+
+
+================================================
+FILE: scripts/demo/demos/astra-speed/selected/ffprobe.json
+================================================
+{
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+        {
+            "codec_name": "h264",
+            "width": 1950,
+            "height": 1800,
+            "r_frame_rate": "60/1",
+            "nb_frames": "1159"
+        },
+        {
+            "codec_name": "aac",
+            "r_frame_rate": "0/0",
+            "nb_frames": "907"
+        }
+    ],
+    "format": {
+        "duration": "19.316667",
+        "size": "1116291"
+    }
+}
+
+
+
+================================================
+FILE: scripts/demo/demos/astra-speed/selected/framing.json
+================================================
+{
+    "css": {
+        "x": 220,
+        "y": 88,
+        "width": 560,
+        "height": 576
+    },
+    "crop": {
+        "left": 620,
+        "top": 290,
+        "width": 1400,
+        "height": 1440
+    },
+    "restCrop": {
+        "left": 70,
+        "top": 70,
+        "width": 1950,
+        "height": 1660
+    },
+    "output": {
+        "width": 1950,
+        "height": 1660
+    },
+    "deviceScaleFactor": 2.5
+}
+
+
+
+================================================
+FILE: scripts/demo/demos/astra-speed/selected/provenance.json
+================================================
+{
+    "sourceBaseline": "f37326a5",
+    "capture": "take-07-low",
+    "inference": "native",
+    "daemonVersion": "0.4.80-preview.2",
+    "providerVersion": "0.0.33",
+    "codexVersion": "0.159.2",
+    "rawCaptureCommitted": false,
+    "portableEditorVerified": {
+        "movieByteIdentical": true,
+        "subtitlesByteIdentical": true,
+        "fullDecodePassed": true
+    },
+    "exactRecompositionRequires": [
+        "framing.json",
+        ".work/astra-speed/timeline.json",
+        ".work/astra-speed/sounds.json",
+        ".work/astra-speed/capture/ (referenced images)"
+    ],
+    "freshCaptureTiming": "Native inference is nondeterministic; choose new edit frame ranges and preserve the new measured run times.",
+    "delivery": {
+        "file": "astra-speed.mp4",
+        "bytes": 1116291,
+        "sha256": "bfdef42b875a6b5945a906f145fc3bd25b2085b01e208eb3b4bfadd3dc893d40",
+        "frames": 1159,
+        "fps": 60,
+        "width": 1950,
+        "height": 1800
+    }
+}
+
+
+
+================================================
+FILE: scripts/demo/demos/core/assets/release-coordinator.CREDITS.md
+================================================
+# Release Coordinator avatar
+
+The exact user-selected DiceBear Adventurer Neutral preview, seed `Celia`.
+
+- Artist: Lisa Wischofsky
+- Style: https://www.dicebear.com/styles/adventurer-neutral/
+- Source: https://api.dicebear.com/10.x/adventurer-neutral/png?seed=Celia&size=512
+- Original artwork: https://www.figma.com/community/file/1184595184137881796
+- License: Creative Commons Attribution 4.0 — https://creativecommons.org/licenses/by/4.0/
+
+Downloaded without visual modification. The app supplies its normal avatar crop.
+
+
+
+================================================
+FILE: scripts/demo/demos/core/patches/empty-state.patch
+================================================
+diff --git a/packages/happy-desktop-app/sources/AppHappyAgentView.tsx b/packages/happy-desktop-app/sources/AppHappyAgentView.tsx
+--- a/packages/happy-desktop-app/sources/AppHappyAgentView.tsx
++++ b/packages/happy-desktop-app/sources/AppHappyAgentView.tsx
+@@ -3232,1 +3232,0 @@
+-                            animation="chief-of-staff"
+diff --git a/packages/happy-desktop-ui/src/ConversationView.tsx b/packages/happy-desktop-ui/src/ConversationView.tsx
+--- a/packages/happy-desktop-ui/src/ConversationView.tsx
++++ b/packages/happy-desktop-ui/src/ConversationView.tsx
+@@ -518,1 +518,0 @@
+-                            animation="robot"
+
+
+================================================
+FILE: scripts/demo/demos/core/patches/model-order.patch
+================================================
+diff --git a/packages/happy-desktop-state/src/happyAgent/happyAgentMenusStore.ts b/packages/happy-desktop-state/src/happyAgent/happyAgentMenusStore.ts
+--- a/packages/happy-desktop-state/src/happyAgent/happyAgentMenusStore.ts
++++ b/packages/happy-desktop-state/src/happyAgent/happyAgentMenusStore.ts
+@@ -39,1 +39,1 @@
+-    for (const provider of catalog.providers) {
++    for (const provider of catalog.providers.filter((entry) => entry.id !== "gym")) {
+@@ -40,1 +40,1 @@
+-        for (const model of provider.models) {
++        for (const model of [...provider.models].sort((a, b) => a.name.localeCompare(b.name))) {
+
+
+================================================
+FILE: scripts/release/PackageManifest.ts
+================================================
+export interface PackageManifest {
+    name: string;
+    version: string;
+}
+
+
+
+================================================
+FILE: scripts/release/readPackageManifest.ts
+================================================
+import { readFileSync } from "node:fs";
+
+import type { PackageManifest } from "./PackageManifest.js";
+
+export function readPackageManifest(): PackageManifest {
+    return JSON.parse(
+        readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+    ) as PackageManifest;
+}
+
+

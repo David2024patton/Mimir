@@ -59,11 +59,12 @@ type oaChoice struct {
 }
 
 type oaRequest struct {
-	Model         string           `json:"model"`
-	Messages      []oaMessage      `json:"messages"`
-	Tools         []oaTool         `json:"tools,omitempty"`
-	Stream        bool             `json:"stream"`
-	StreamOptions *oaStreamOptions `json:"stream_options,omitempty"`
+	Model           string           `json:"model"`
+	Messages        []oaMessage      `json:"messages"`
+	Tools           []oaTool         `json:"tools,omitempty"`
+	Stream          bool             `json:"stream"`
+	StreamOptions   *oaStreamOptions `json:"stream_options,omitempty"`
+	ReasoningEffort string           `json:"reasoning_effort,omitempty"`
 }
 
 type oaStreamOptions struct {
@@ -220,11 +221,22 @@ func tail(s string, n int) string {
 }
 
 func (p *OpenAIProvider) post(ctx context.Context, req GenerateRequest) (*http.Response, error) {
+	msgs := toOpenAI(req.Messages)
+	if req.Effort == "off" && len(msgs) > 0 && msgs[0].Role == "system" {
+		// Qwen3 / Ollama / local reasoning models honor /no_think in the system prompt
+		// to skip chain-of-thought during fast mechanical tool loops (smolcoder pattern).
+		if !strings.Contains(msgs[0].Content, "/no_think") {
+			msgs[0].Content = "/no_think\n" + msgs[0].Content
+		}
+	}
 	oReq := oaRequest{
 		Model:    p.model(req.Model),
-		Messages: toOpenAI(req.Messages),
+		Messages: msgs,
 		Tools:    toOATools(req.Tools),
 		Stream:   req.Stream,
+	}
+	if req.Effort == "low" || req.Effort == "medium" || req.Effort == "high" {
+		oReq.ReasoningEffort = req.Effort
 	}
 	if req.Stream {
 		oReq.StreamOptions = &oaStreamOptions{IncludeUsage: true}

@@ -1,0 +1,408 @@
+Directory structure:
+└── charmbracelet-colorprofile/
+    ├── doc.go
+    ├── env_other.go
+    ├── env_windows.go
+    ├── go.mod
+    ├── .golangci.yml
+    ├── .goreleaser.yml
+    ├── examples/
+    │   ├── go.mod
+    │   └── writer/
+    │       └── writer.go
+    └── .github/
+        ├── ISSUE_TEMPLATE/
+        │   ├── bug_report.md
+        │   ├── config.yml
+        │   └── feature_request.md
+        └── workflows/
+            ├── build.yml
+            ├── coverage.yml
+            ├── dependabot-sync.yml
+            ├── lint-sync.yml
+            └── lint.yml
+
+================================================
+FILE: doc.go
+================================================
+// Package colorprofile provides a way to downsample ANSI escape sequence
+// colors and styles automatically based on output, environment variables, and
+// Terminfo databases.
+package colorprofile
+
+
+
+================================================
+FILE: env_other.go
+================================================
+//go:build !windows
+// +build !windows
+
+package colorprofile
+
+func windowsColorProfile(map[string]string) (Profile, bool) {
+	return 0, false
+}
+
+
+
+================================================
+FILE: env_windows.go
+================================================
+//go:build windows
+// +build windows
+
+package colorprofile
+
+import (
+	"strconv"
+
+	"golang.org/x/sys/windows"
+)
+
+func windowsColorProfile(env map[string]string) (Profile, bool) {
+	if env["ConEmuANSI"] == "ON" {
+		return TrueColor, true
+	}
+
+	major, _, build := windows.RtlGetNtVersionNumbers()
+	if build < 10586 || major < 10 {
+		// No ANSI support before WindowsNT 10 build 10586
+		if len(env["ANSICON"]) > 0 {
+			ansiconVer := env["ANSICON_VER"]
+			cv, err := strconv.Atoi(ansiconVer)
+			if err != nil || cv < 181 {
+				// No 8 bit color support before ANSICON 1.81
+				return ANSI, true
+			}
+
+			return ANSI256, true
+		}
+
+		return NoTTY, true
+	}
+
+	if build < 14931 {
+		// No true color support before build 14931
+		return ANSI256, true
+	}
+
+	return TrueColor, true
+}
+
+
+
+================================================
+FILE: go.mod
+================================================
+module github.com/charmbracelet/colorprofile
+
+go 1.25.0
+
+require (
+	github.com/charmbracelet/x/ansi v0.11.7
+	github.com/charmbracelet/x/term v0.2.2
+	github.com/lucasb-eyer/go-colorful v1.4.1
+	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e
+	golang.org/x/sys v0.47.0
+)
+
+require (
+	github.com/clipperhouse/displaywidth v0.11.0 // indirect
+	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/mattn/go-runewidth v0.0.23 // indirect
+)
+
+
+
+================================================
+FILE: .golangci.yml
+================================================
+version: "2"
+run:
+  tests: false
+linters:
+  enable:
+    - bodyclose
+    - exhaustive
+    - goconst
+    - godot
+    - gomoddirectives
+    - goprintffuncname
+    - gosec
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - noctx
+    - nolintlint
+    - prealloc
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - tparallel
+    - unconvert
+    - unparam
+    - whitespace
+    - wrapcheck
+  exclusions:
+    rules:
+      - text: '(slog|log)\.\w+'
+        linters:
+          - noctx
+    generated: lax
+    presets:
+      - common-false-positives
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+
+
+
+================================================
+FILE: .goreleaser.yml
+================================================
+includes:
+  - from_url:
+      url: charmbracelet/meta/main/goreleaser-lib.yaml
+
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+
+
+
+
+================================================
+FILE: examples/go.mod
+================================================
+module examples
+
+go 1.25.0
+
+replace github.com/charmbracelet/colorprofile => ../
+
+require (
+	github.com/charmbracelet/colorprofile v0.0.0-20240913192632-4a4ff4a5f48a
+	github.com/charmbracelet/x/ansi v0.11.7
+)
+
+require (
+	github.com/charmbracelet/x/term v0.2.2 // indirect
+	github.com/clipperhouse/displaywidth v0.11.0 // indirect
+	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
+	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
+	github.com/mattn/go-runewidth v0.0.23 // indirect
+	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
+	golang.org/x/sys v0.43.0 // indirect
+)
+
+
+
+================================================
+FILE: examples/writer/writer.go
+================================================
+// This package provides a writer that can be piped into to degrade the colors
+// based on the terminal capabilities and profile.
+package main
+
+import (
+	"io"
+	"log"
+	"os"
+
+	"github.com/charmbracelet/colorprofile"
+)
+
+func main() {
+	w := colorprofile.NewWriter(os.Stdout, os.Environ())
+
+	// Read from stdin and write to stdout
+	bts, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = w.Write(bts)
+}
+
+
+
+================================================
+FILE: .github/ISSUE_TEMPLATE/bug_report.md
+================================================
+---
+name: Bug report
+about: Create a report to help us improve
+title: ''
+labels: ''
+assignees: ''
+
+---
+
+**Describe the bug**
+A clear and concise description of what the bug is.
+
+**Setup**
+Please complete the following information along with version numbers, if applicable.
+ - OS [e.g. Ubuntu, macOS]
+ - Shell [e.g. zsh, fish]
+ - Terminal Emulator [e.g. kitty, iterm]
+ - Terminal Multiplexer [e.g. tmux]
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Click on '....'
+3. Scroll down to '....'
+4. See error
+
+**Source Code**
+Please include source code if needed to reproduce the behavior. 
+
+**Expected behavior**
+A clear and concise description of what you expected to happen.
+
+**Screenshots**
+Add screenshots to help explain your problem.
+
+**Additional context**
+Add any other context about the problem here.
+
+
+
+================================================
+FILE: .github/ISSUE_TEMPLATE/config.yml
+================================================
+blank_issues_enabled: true
+contact_links:
+- name: Discord
+  url: https://charm.sh/discord
+  about: Chat on our Discord.
+
+
+
+================================================
+FILE: .github/ISSUE_TEMPLATE/feature_request.md
+================================================
+---
+name: Feature request
+about: Suggest an idea for this project
+title: ''
+labels: enhancement
+assignees: ''
+
+---
+
+**Is your feature request related to a problem? Please describe.**
+A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+
+**Describe the solution you'd like**
+A clear and concise description of what you want to happen.
+
+**Describe alternatives you've considered**
+A clear and concise description of any alternative solutions or features you've considered.
+
+**Additional context**
+Add any other context or screenshots about the feature request here.
+
+
+
+================================================
+FILE: .github/workflows/build.yml
+================================================
+name: build
+on: [push, pull_request]
+
+jobs:
+  build:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+
+  build-go-mod:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+    with:
+      go-version: ""
+      go-version-file: ./go.mod
+
+
+
+================================================
+FILE: .github/workflows/coverage.yml
+================================================
+name: coverage
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+
+jobs:
+  coverage:
+    uses: charmbracelet/meta/.github/workflows/coverage.yml@main
+
+
+
+================================================
+FILE: .github/workflows/dependabot-sync.yml
+================================================
+name: dependabot-sync
+on:
+  schedule:
+    - cron: "0 0 * * 0" # every Sunday at midnight
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot-sync:
+    uses: charmbracelet/meta/.github/workflows/dependabot-sync.yml@main
+    with:
+      repo_name: ${{ github.event.repository.name }}
+    secrets:
+      gh_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+
+
+================================================
+FILE: .github/workflows/lint-sync.yml
+================================================
+name: lint-sync
+on:
+  schedule:
+    # every Sunday at midnight
+    - cron: "0 0 * * 0"
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint-sync.yml@main
+
+
+
+================================================
+FILE: .github/workflows/lint.yml
+================================================
+name: lint
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint.yml@main
+
+

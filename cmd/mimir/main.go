@@ -13,42 +13,51 @@ import (
 	"github.com/David2024patton/Mimir/internal/agent"
 	"github.com/David2024patton/Mimir/internal/config"
 	"github.com/David2024patton/Mimir/internal/cortex"
+	"github.com/David2024patton/Mimir/internal/decision"
+	"github.com/David2024patton/Mimir/internal/ingest"
 	"github.com/David2024patton/Mimir/internal/llm"
 	"github.com/David2024patton/Mimir/internal/server"
 	"github.com/David2024patton/Mimir/internal/tools"
+	"github.com/David2024patton/Mimir/internal/tui"
 )
 
-const version = "0.1.0-dev"
+const version = "0.2.0-dev"
 
-const usage = `Mímir - the agent that remembers
+const usage = `Mímir - the agent that remembers (tiny self-hosted CLI, TUI & Book-Spine Web UI)
 
 Usage:
-  mimir                       show status (provider + tools + memory file)
+  mimir                       launch interactive terminal UI (auto-discovers Ollama/LM Studio/Cloud)
+  mimir --web [--addr :8420]  launch interactive TUI + live Book-Spine Web UI simultaneously
+  mimir ingest [path|git-url] GitIngest a repo/folder into digest.txt + Yggdrasil Mind Map in Cortex
+  mimir sdlc [phase|method]   show or switch the 7-Phase SDLC board & methodology (agile/waterfall/devops)
+  mimir providers             list built-in BYOK providers + Mímir Well Subscription tiers
+  mimir setup                 bootstrap Liquid AI d1-omni-600M local System-One decision model
+  mimir -p "your prompt"      headless single-shot prompt (for scripts & CI)
   mimir "your prompt"         run one turn (final reply only)
-  mimir chat "your prompt"    same as above
   mimir trace "your prompt"   run one turn and print recalled memory + every tool call
-  mimir serve [--addr :8420]  serve the live book-spine UI + HTTP wire (E70)
+  mimir serve [--addr :8420]  serve the live book-spine UI + HTTP wire in foreground
+  mimir status                show provider, discovered models, tools, and memory status
   mimir version               print version
 
-Provider config (environment):
-  MIMIR_BASE_URL    OpenAI-compatible base URL, e.g. https://api.openai.com/v1
-  MIMIR_API_KEY     bearer key (optional for local servers)
-  MIMIR_MODEL       model id (optional)
-  MIMIR_PROVIDER_ID provider id label (default: openai-compatible)
+Flags:
+  -p, --prompt <text>         run a single prompt non-interactively and exit
+  --web                       also serve the Book-Spine Web UI while in the TUI
+  --addr <:port>              bind address for Web UI (default :8420)
+  --mode <ro|edit|bypass>     initial permission mode (default: edit; ro hides write tools)
+  --effort <off|low|med|high> reasoning effort budget (off = fast /no_think tool loops)
+  --model <model-id>          override model id
 
-Memory (the Cortex) persists across runs to a JSON file:
-  MIMIR_HOME        memory dir (default: ./.mimir in the working directory)
-  MIMIR_CORTEX      full path to the cortex file (default: <MIMIR_HOME>/cortex.json)
+Provider config (auto-discovered or environment):
+  Auto-probed local servers:  Ollama (127.0.0.1:11434), LM Studio (127.0.0.1:1234)
+  MIMIR_BASE_URL              OpenAI-compatible base URL, e.g. https://api.openai.com/v1
+  MIMIR_API_KEY               bearer key (optional for local servers; also checks MIMO_API_KEY)
+  MIMIR_MODEL                 model id (optional)
+  MIMIR_PROVIDER_ID           provider id label (default: openai-compatible)
 
-Cortex backend (E6): set MIMIR_CORTEX_BACKEND=surreal for the SurrealDB brain
-(managed sidecar + hybrid vector/full-text recall). Related env:
-  MIMIR_CORTEX_BACKEND  file (default) | surreal
-  MIMIR_SURREAL_ADDR    sidecar bind address (default 127.0.0.1:8000)
-  MIMIR_SURREAL_DATA    sidecar data dir (default <MIMIR_HOME>/surreal; "memory" = in-memory)
-  MIMIR_SURREAL_BIN     path to the surreal binary (auto-located if unset)
-  MIMIR_EMBED_URL       embeddings server (default: Ollama at MIMIR_BASE_URL or :11434)
-  MIMIR_EMBED_MODEL     embedding model (default nomic-embed-text)
-  MIMIR_EMBED_DIM       embedding dimension (default 768)`
+Memory (the Cortex) persists across runs:
+  MIMIR_HOME                  memory dir (default: ./.mimir in the working directory)
+  MIMIR_CORTEX                full path to the cortex file (default: <MIMIR_HOME>/cortex.json)
+  MIMIR_CORTEX_BACKEND        file (default) | surreal`
 
 // isLocalURL reports whether a provider base URL points at a local server (Ollama,
 // vLLM, Mímir's own gateway). Local tokens cost $0 on the dashboard (F52).
@@ -56,11 +65,7 @@ func isLocalURL(u string) bool {
 	return strings.Contains(u, "localhost") || strings.Contains(u, "127.0.0.1") || strings.Contains(u, "0.0.0.0")
 }
 
-// buildCortex creates the Cortex store for the configured backend. MIMIR_CORTEX_BACKEND
-// selects it: "surreal" starts a managed SurrealDB sidecar with an Ollama embedder for
-// hybrid vector + full-text recall (E6); anything else (default) uses the file-backed
-// store. The returned cleanup stops the sidecar, if one was started. For SurrealDB,
-// it also returns a SessionStore for F2.2 conversation persistence.
+// buildCortex creates the Cortex store for the configured backend.
 func buildCortex(home string) (cortex.Store, cortex.SessionStore, *cortex.AuthStore, string, func(), error) {
 	noop := func() {}
 	if strings.EqualFold(os.Getenv("MIMIR_CORTEX_BACKEND"), "surreal") {
@@ -158,19 +163,77 @@ func buildCortex(home string) (cortex.Store, cortex.SessionStore, *cortex.AuthSt
 	if err != nil {
 		return nil, nil, nil, "", noop, fmt.Errorf("file session store: %w", err)
 	}
-	return store, sessStore, nil, "file-backed "+cpath, noop, nil
+	return store, sessStore, nil, "file-backed " + cpath, noop, nil
+}
+
+func isInteractiveStdin() bool {
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
 func main() {
-	args := os.Args[1:]
-	if len(args) > 0 {
-		switch args[0] {
+	rawArgs := os.Args[1:]
+	if len(rawArgs) > 0 {
+		switch rawArgs[0] {
 		case "version", "--version", "-v":
 			fmt.Println("Mímir", version)
 			return
 		case "-h", "--help", "help":
 			fmt.Println(usage)
 			return
+		}
+	}
+
+	// Parse flags across any position
+	addr := ":8420"
+	webFlag := false
+	tuiFlag := false
+	statusFlag := false
+	permMode := agent.ModeEdit
+	effort := ""
+	modelOverride := ""
+	promptFlag := ""
+	var positional []string
+
+	for i := 0; i < len(rawArgs); i++ {
+		arg := rawArgs[i]
+		switch {
+		case arg == "--web":
+			webFlag = true
+		case arg == "tui" || arg == "-i" || arg == "--tui":
+			tuiFlag = true
+		case arg == "status" || arg == "--status":
+			statusFlag = true
+		case (arg == "--addr" || arg == "-addr") && i+1 < len(rawArgs):
+			addr = rawArgs[i+1]
+			i++
+		case strings.HasPrefix(arg, "--addr="):
+			addr = strings.TrimPrefix(arg, "--addr=")
+		case (arg == "-p" || arg == "--prompt") && i+1 < len(rawArgs):
+			promptFlag = rawArgs[i+1]
+			i++
+		case strings.HasPrefix(arg, "--prompt="):
+			promptFlag = strings.TrimPrefix(arg, "--prompt=")
+		case arg == "--mode" && i+1 < len(rawArgs):
+			permMode = rawArgs[i+1]
+			i++
+		case strings.HasPrefix(arg, "--mode="):
+			permMode = strings.TrimPrefix(arg, "--mode=")
+		case arg == "--effort" && i+1 < len(rawArgs):
+			effort = rawArgs[i+1]
+			i++
+		case strings.HasPrefix(arg, "--effort="):
+			effort = strings.TrimPrefix(arg, "--effort=")
+		case arg == "--model" && i+1 < len(rawArgs):
+			modelOverride = rawArgs[i+1]
+			i++
+		case strings.HasPrefix(arg, "--model="):
+			modelOverride = strings.TrimPrefix(arg, "--model=")
+		default:
+			positional = append(positional, arg)
 		}
 	}
 
@@ -187,11 +250,19 @@ func main() {
 		os.Exit(1)
 	}
 	defer cleanup()
+	if t, ok := toolReg.Get("ingest_repo"); ok {
+		if it, ok := t.(*tools.IngestRepoTool); ok {
+			it.Store = store
+		}
+	}
 
 	var provider llm.Provider
 	model := ""
 	local := false
-	if ep, ok := config.ProviderFromEnv(); ok {
+	if ep, ok := config.AutoDiscoverProvider(context.Background()); ok {
+		if modelOverride != "" {
+			ep.Model = modelOverride
+		}
 		provider = &llm.OpenAIProvider{
 			IDStr: ep.ID, BaseURL: ep.BaseURL, APIKey: ep.APIKey, Model: ep.Model,
 		}
@@ -201,20 +272,90 @@ func main() {
 	tracker := llm.NewTracker()
 
 	a := agent.New(agent.Config{
-		Provider: provider, Tools: toolReg, Cortex: store, Model: model,
-		Usage: tracker, Local: local,
+		Provider: provider,
+		Tools:    toolReg,
+		Cortex:   store,
+		Model:    model,
+		Usage:    tracker,
+		Local:    local,
+		Mode:     permMode,
+		Effort:   effort,
 	})
 
-	if len(args) > 0 && args[0] == "serve" {
-		addr := ":8420"
-		for i := 1; i < len(args); i++ {
-			if (args[i] == "--addr" || args[i] == "-addr") && i+1 < len(args) {
-				addr = args[i+1]
-				i++
-			} else if strings.HasPrefix(args[i], "--addr=") {
-				addr = strings.TrimPrefix(args[i], "--addr=")
+	if len(positional) > 0 && (positional[0] == "setup" || positional[0] == "init") {
+		fmt.Printf("Mímir %s · Bootstrapping System-One Decision Engine (%s)...\n", version, decision.PrimaryDecisionModel)
+		dm, err := decision.EnsureLocalDecisionModel(context.Background(), "", true)
+		if err != nil {
+			fmt.Printf("  note: local Ollama pull skipped (%v); zero-latency heuristic engine active.\n", err)
+		} else {
+			fmt.Printf("  ✓ Local System-One Decision Model ready: %s\n", dm)
+		}
+		return
+	}
+
+	if len(positional) > 0 && (positional[0] == "ingest" || positional[0] == "gitingest") {
+		src := "."
+		if len(positional) > 1 {
+			src = positional[1]
+		}
+		outFile := filepath.Join(home, "digest.txt")
+		res, err := ingest.Run(context.Background(), ingest.Options{
+			Source:        src,
+			WriteDigestTo: outFile,
+		}, store)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "ingest error:", err)
+			os.Exit(1)
+		}
+		fmt.Println(res.Summary)
+		fmt.Printf("Digest written to: %s\n", outFile)
+		fmt.Printf("Yggdrasil Mind Map saved to Cortex (%d neurons)\n", res.NeuronsSaved)
+		return
+	}
+
+	if len(positional) > 0 && (positional[0] == "providers" || positional[0] == "subscribe") {
+		fmt.Println("Mímir Well Subscriptions & BYOK Provider Catalog:")
+		for _, sub := range config.BuiltinSubscriptionTiers() {
+			fmt.Printf("  * %s (%s) - %s\n", sub.Name, sub.Price, sub.Description)
+		}
+		fmt.Println("\nBuilt-in Providers:")
+		for _, p := range config.BuiltinProviders() {
+			st := "unset"
+			if p.Configured {
+				st = "ready"
+			}
+			fmt.Printf("  [%s] %-28s default=%-22s (%s)\n", p.BillingMode, p.Name, p.DefaultModel, st)
+		}
+		return
+	}
+
+	if len(positional) > 0 && (positional[0] == "sdlc" || positional[0] == "phase") {
+		mgr := a.SDLC()
+		if len(positional) > 1 {
+			sub := strings.ToLower(strings.TrimSpace(positional[1]))
+			switch sub {
+			case "agile", "waterfall", "devops":
+				if err := mgr.SetMethodology(sub); err != nil {
+					fmt.Fprintln(os.Stderr, "sdlc:", err)
+					os.Exit(1)
+				}
+			case "next", "advance":
+				if _, err := mgr.Advance(); err != nil {
+					fmt.Fprintln(os.Stderr, "sdlc:", err)
+					os.Exit(1)
+				}
+			default:
+				if _, err := mgr.SetPhase(sub); err != nil {
+					fmt.Fprintln(os.Stderr, "sdlc:", err)
+					os.Exit(1)
+				}
 			}
 		}
+		fmt.Println(mgr.FormatBoard())
+		return
+	}
+
+	if len(positional) > 0 && positional[0] == "serve" {
 		fmt.Println("Mímir serving the live UI at http://localhost" + addr + "/  (Ctrl+C to stop)")
 		if err := server.Serve(server.Deps{Agent: a, Store: store, Sessions: sessStore, Auth: authStore, Usage: tracker, Addr: addr}); err != nil {
 			fmt.Fprintln(os.Stderr, "serve:", err)
@@ -224,15 +365,18 @@ func main() {
 	}
 
 	mode := "chat"
-	if len(args) > 0 && (args[0] == "chat" || args[0] == "trace") {
-		mode = args[0]
-		args = args[1:]
+	if len(positional) > 0 && (positional[0] == "chat" || positional[0] == "trace") {
+		mode = positional[0]
+		positional = positional[1:]
 	}
-	prompt := strings.TrimSpace(strings.Join(args, " "))
+	prompt := strings.TrimSpace(promptFlag)
+	if prompt == "" {
+		prompt = strings.TrimSpace(strings.Join(positional, " "))
+	}
 
 	if prompt != "" {
 		if provider == nil {
-			fmt.Fprintln(os.Stderr, "no provider configured: set MIMIR_BASE_URL (+ MIMIR_API_KEY, MIMIR_MODEL) to run a prompt")
+			fmt.Fprintln(os.Stderr, "no provider configured: run Ollama locally (:11434) or set MIMIR_BASE_URL (+ MIMIR_API_KEY, MIMIR_MODEL)")
 			os.Exit(2)
 		}
 		if mode == "trace" {
@@ -261,6 +405,38 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println(reply)
+		return
+	}
+
+	// Start background Web UI if --web was passed, or expose a callback for /web in TUI.
+	startWeb := func() (string, error) {
+		url := "http://localhost" + addr + "/app"
+		go func() {
+			_ = server.Serve(server.Deps{Agent: a, Store: store, Sessions: sessStore, Auth: authStore, Usage: tracker, Addr: addr})
+		}()
+		return url, nil
+	}
+	webURL := ""
+	if webFlag {
+		webURL, _ = startWeb()
+	}
+
+	// Launch interactive TUI when invoked as `mimir` in an interactive terminal, `mimir tui`, or `mimir --web`.
+	if !statusFlag && (tuiFlag || webFlag || isInteractiveStdin()) {
+		if err := tui.Run(context.Background(), tui.Options{
+			Version:    version,
+			Agent:      a,
+			Tools:      toolReg,
+			Cortex:     store,
+			Sessions:   sessStore,
+			Usage:      tracker,
+			StoreDesc:  storeDesc,
+			WebURL:     webURL,
+			StartWebFn: startWeb,
+		}); err != nil {
+			fmt.Fprintln(os.Stderr, "tui error:", err)
+			os.Exit(1)
+		}
 		return
 	}
 

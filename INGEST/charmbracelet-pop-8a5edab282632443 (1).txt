@@ -1,0 +1,753 @@
+Directory structure:
+└── charmbracelet-pop/
+    ├── attachments.go
+    ├── CONTRIBUTING.md
+    ├── Dockerfile
+    ├── Taskfile.yml
+    ├── .golangci-soft.yml
+    ├── .golangci.yml
+    ├── .goreleaser.yml
+    ├── examples/
+    │   ├── cli.tape
+    │   ├── contacts.txt
+    │   ├── demo.tape
+    │   ├── gum-example.tape
+    │   ├── invoice-example.tape
+    │   ├── message.md
+    │   └── mods-example.tape
+    └── .github/
+        ├── dependabot.yml
+        ├── ISSUE_TEMPLATE/
+        │   ├── bug_report.md
+        │   └── feature_request.md
+        └── workflows/
+            ├── build.yml
+            ├── dependabot-sync.yml
+            ├── goreleaser.yml
+            ├── lint.yml
+            └── nightly.yml
+
+================================================
+FILE: attachments.go
+================================================
+// Package main implements Pop, a tool for sending emails from your terminal.
+package main
+
+import (
+	"io"
+	"path/filepath"
+
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+)
+
+type attachment string
+
+func (a attachment) FilterValue() string {
+	return string(a)
+}
+
+type attachmentDelegate struct {
+	focused bool
+}
+
+func (d attachmentDelegate) Height() int {
+	return 1
+}
+
+func (d attachmentDelegate) Spacing() int {
+	return 0
+}
+
+func (d attachmentDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+	path := filepath.Base(item.(attachment).FilterValue())
+	style := textStyle
+	if m.Index() == index && d.focused {
+		style = activeTextStyle
+	}
+
+	if m.Index() == index {
+		_, _ = w.Write([]byte(style.Render("• " + path)))
+	} else {
+		_, _ = w.Write([]byte(style.Render("  " + path)))
+	}
+}
+
+func (d attachmentDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd {
+	return nil
+}
+
+
+
+================================================
+FILE: CONTRIBUTING.md
+================================================
+# Contributing
+
+Contributions are welcome!
+
+Please submit a pull request for minor changes and submit issues for major changes for discussions.
+
+### Testing
+
+Please test the following when submitting a change:
+
+1. Sending an email with the TUI
+2. Sending an email with the CLI
+
+
+
+================================================
+FILE: Dockerfile
+================================================
+FROM gcr.io/distroless/static
+COPY pop /usr/local/bin/pop
+ENTRYPOINT [ "/usr/local/bin/pop" ]
+
+
+
+================================================
+FILE: Taskfile.yml
+================================================
+version: "3"
+
+tasks:
+  default:
+    desc: Run the project
+    cmds:
+      - go run . {{.CLI_ARGS}}
+
+  build:
+    desc: Build the project
+    cmds:
+      - go build ./...
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run
+
+  lint:fix:
+    desc: Run golangci-lint with auto-fix
+    cmds:
+      - golangci-lint run --fix
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./...
+
+  tidy:
+    desc: Tidy go modules
+    cmds:
+      - go mod tidy
+
+  fmt:
+    desc: Format code
+    cmds:
+      - gofumpt -w .
+      - goimports -w .
+
+  auth:
+    desc: Authenticate with Resend via OAuth
+    cmds:
+      - go run . auth
+
+  auth:nobrowser:
+    desc: Authenticate with Resend via OAuth (simulates browser failure)
+    cmds:
+      - go run . auth --no-browser
+
+
+
+================================================
+FILE: .golangci-soft.yml
+================================================
+run:
+  tests: false
+
+issues:
+  include:
+    - EXC0001
+    - EXC0005
+    - EXC0011
+    - EXC0012
+    - EXC0013
+
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+linters:
+  enable:
+    # - dupl
+    - exhaustive
+    # - exhaustivestruct
+    - goconst
+    - godot
+    - godox
+    - gomnd
+    - gomoddirectives
+    - goprintffuncname
+    - ifshort
+    # - lll
+    - misspell
+    - nakedret
+    - nestif
+    - noctx
+    - nolintlint
+    - prealloc
+    - wrapcheck
+
+  # disable default linters, they are already enabled in .golangci.yml
+  disable:
+    - deadcode
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unused
+    - varcheck
+
+
+
+================================================
+FILE: .golangci.yml
+================================================
+version: "2"
+run:
+  tests: false
+linters:
+  enable:
+    - bodyclose
+    - exhaustive
+    - goconst
+    - godot
+    - gomoddirectives
+    - goprintffuncname
+    - gosec
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - noctx
+    - nolintlint
+    - prealloc
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - tparallel
+    - unconvert
+    - unparam
+    - whitespace
+    - wrapcheck
+  exclusions:
+    rules:
+      - text: '(slog|log)\.\w+'
+        linters:
+          - noctx
+    generated: lax
+    presets:
+      - common-false-positives
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+
+
+
+================================================
+FILE: .goreleaser.yml
+================================================
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+
+includes:
+  - from_url:
+      url: charmbracelet/meta/main/goreleaser-full.yaml
+
+variables:
+  main: "."
+  binary_name: pop
+  description: "Send emails from your terminal. 📬"
+  github_url: "https://github.com/charmbracelet/pop"
+  maintainer: "Maas Lalani <maas@charm.sh>"
+  brew_commit_author_name: "Maas Lalani"
+  brew_commit_author_email: "maas@charm.sh"
+  aur_project_name: charm-pop
+
+
+
+================================================
+FILE: examples/cli.tape
+================================================
+Output cli.gif
+Set Framerate 30
+Set Padding 70
+Set FontSize 38
+Set Width 1200
+Set Height 800
+
+Hide
+  Type "export RESEND_API_KEY=$(pass RESEND_CHARM_API_KEY)"
+  Enter
+  Sleep 1
+  Ctrl+L
+Show
+
+Type "pop < message.md \" Enter
+Type "  --from 'pop@charm.sh' \" Enter
+Type "  --to 'vt100@charm.sh' \" Enter
+Type "  --subject 'Pop' \" Enter
+Type "  --attach README.md"
+Sleep 0.5
+Enter
+Sleep 5
+
+
+
+================================================
+FILE: examples/contacts.txt
+================================================
+ayman@charm.sh
+bash@charm.sh
+carlos@charm.sh
+christian@charm.sh
+jz@charm.sh
+maas@charm.sh
+muesli@charm.sh
+pop@charm.sh
+toby@charm.sh
+vt100@charm.sh
+
+
+
+================================================
+FILE: examples/demo.tape
+================================================
+Output demo.gif
+Set Framerate 28
+Set FontSize 33
+Set Padding 50
+Set Width 1000
+Set Height 1000
+
+Hide
+  Type "export RESEND_API_KEY=$(pass RESEND_CHARM_API_KEY)"
+  Enter
+  Sleep 1
+  Ctrl+L
+Show
+
+Type "pop"
+Enter
+Sleep 2
+
+Type "pop@charm.sh"
+Sleep 0.5
+Tab
+Sleep 1
+
+Type "vt100@charm.sh"
+Sleep 0.5
+Tab
+Sleep 1
+
+Type "Pop"
+Sleep 0.5
+Tab
+Sleep 1
+
+Type "# Welcome to Pop."
+Sleep 0.5
+Enter 2
+Sleep 0.5
+Type "Send *emails* from the terminal."
+Sleep 0.5
+Enter 2
+Sleep 0.5
+Type "Sincerely,"
+Sleep 0.5
+Enter
+Sleep 0.5
+Type "Charm_"
+Sleep 2
+Tab
+Sleep 1
+Enter
+Sleep 1
+Escape
+Sleep 1
+Tab
+Sleep 1
+Enter
+Sleep 5
+
+
+
+================================================
+FILE: examples/gum-example.tape
+================================================
+Output gum-example.gif
+Set Framerate 30
+Set FontSize 28
+Set Padding 40
+Set Width 1200
+Set Height 800
+
+Hide
+  Type "export RESEND_API_KEY=$(pass RESEND_CHARM_API_KEY)"
+  Enter
+  Sleep 1
+  Ctrl+L
+Show
+
+
+Type `pop --from "$(gum choose vt{52,78,100}@charm.sh)" \` Enter
+Type `    --to "$(gum filter < contacts.txt)"` Enter
+
+Sleep 1s
+
+Down@200ms 2
+Sleep 1s
+Enter
+Sleep 1s
+
+Type "pop"
+Sleep 1s
+Enter
+
+Sleep 5s
+
+
+
+================================================
+FILE: examples/invoice-example.tape
+================================================
+Output invoice-example.gif
+Set Framerate 30
+Set FontSize 28
+Set Padding 40
+Set Width 1200
+Set Height 800
+
+Hide
+  Type "export RESEND_API_KEY=$(pass RESEND_CHARM_API_KEY)"
+  Enter
+  Sleep 1
+  Ctrl+L
+Show
+
+
+Type `invoice generate -i "Rubber Ducky" -r 25 -q 2 -o invoice.pdf` Enter
+Sleep 1s
+Type `pop --attach invoice.pdf --body "See attached invoice."` Enter
+Sleep 5s
+
+
+
+================================================
+FILE: examples/message.md
+================================================
+# Pop
+
+Send **emails** from the _terminal_.
+
+Sincerely,
+Charm_
+
+
+
+================================================
+FILE: examples/mods-example.tape
+================================================
+Output mods-example.gif
+Set Framerate 30
+Set FontSize 28
+Set Padding 40
+Set Width 1200
+Set Height 800
+
+Hide
+  Type "export RESEND_API_KEY=$(pass RESEND_CHARM_API_KEY)"
+  Enter
+  Sleep 1
+  Type "export OPENAI_API_KEY=$(pass OPENAI_API_KEY)"
+  Enter
+  Sleep 1
+  Ctrl+L
+Show
+
+
+Type `pop <<< "$(mods -f 'Explain why CLIs are awesome')" \` Enter
+Type `    --subject "The command line is the best" \` Enter
+Type `    --preview` Enter
+
+Sleep 5s
+
+Hide
+Sleep 60s
+Show
+
+Sleep 5s
+
+
+
+================================================
+FILE: .github/dependabot.yml
+================================================
+version: 2
+
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: github.com/charmbracelet/bubbletea/v2
+        versions:
+          - v2.0.0-beta1
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+
+
+================================================
+FILE: .github/ISSUE_TEMPLATE/bug_report.md
+================================================
+---
+name: Bug report
+about: Create a report to help us improve
+title: ''
+labels: ''
+assignees: ''
+
+---
+
+**Describe the bug**
+A clear and concise description of what the bug is.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Click on '....'
+3. Scroll down to '....'
+4. See error
+
+**Expected behavior**
+A clear and concise description of what you expected to happen.
+
+**Screenshots**
+If applicable, add screenshots to help explain your problem.
+
+**Desktop (please complete the following information):**
+ - OS: [e.g. iOS]
+ - Browser [e.g. chrome, safari]
+ - Version [e.g. 22]
+
+**Smartphone (please complete the following information):**
+ - Device: [e.g. iPhone6]
+ - OS: [e.g. iOS8.1]
+ - Browser [e.g. stock browser, safari]
+ - Version [e.g. 22]
+
+**Additional context**
+Add any other context about the problem here.
+
+
+
+================================================
+FILE: .github/ISSUE_TEMPLATE/feature_request.md
+================================================
+---
+name: Feature request
+about: Suggest an idea for this project
+title: ''
+labels: ''
+assignees: ''
+
+---
+
+**Is your feature request related to a problem? Please describe.**
+A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+
+**Describe the solution you'd like**
+A clear and concise description of what you want to happen.
+
+**Describe alternatives you've considered**
+A clear and concise description of any alternative solutions or features you've considered.
+
+**Additional context**
+Add any other context or screenshots about the feature request here.
+
+
+
+================================================
+FILE: .github/workflows/build.yml
+================================================
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+
+  snapshot:
+    uses: charmbracelet/meta/.github/workflows/snapshot.yml@main
+    secrets:
+      goreleaser_key: ${{ secrets.GORELEASER_KEY }}
+
+
+
+================================================
+FILE: .github/workflows/dependabot-sync.yml
+================================================
+name: dependabot-sync
+on:
+  schedule:
+    - cron: "0 0 * * 0" # every Sunday at midnight
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot-sync:
+    uses: charmbracelet/meta/.github/workflows/dependabot-sync.yml@main
+    with:
+      repo_name: ${{ github.event.repository.name }}
+    secrets:
+      gh_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+
+
+================================================
+FILE: .github/workflows/goreleaser.yml
+================================================
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: goreleaser
+
+on:
+  push:
+    tags:
+      - v*.*.*
+
+concurrency:
+  group: goreleaser
+  cancel-in-progress: true
+
+jobs:
+  goreleaser:
+    uses: charmbracelet/meta/.github/workflows/goreleaser.yml@main
+    secrets:
+      docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      docker_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      gh_pat: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      goreleaser_key: ${{ secrets.GORELEASER_KEY }}
+      fury_token: ${{ secrets.FURY_TOKEN }}
+      nfpm_gpg_key: ${{ secrets.NFPM_GPG_KEY }}
+      nfpm_passphrase: ${{ secrets.NFPM_PASSPHRASE }}
+      aur_key: ${{ secrets.AUR_KEY }}
+
+
+
+================================================
+FILE: .github/workflows/lint.yml
+================================================
+name: lint
+on:
+  push:
+  pull_request:
+
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ^1
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        env:
+          GOTOOLCHAIN: auto
+        with:
+          # Optional: golangci-lint command line arguments.
+          args: --issues-exit-code=0
+          # Optional: show only new issues if it's a pull request. The default value is `false`.
+          only-new-issues: true
+
+
+
+================================================
+FILE: .github/workflows/nightly.yml
+================================================
+name: nightly
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  nightly:
+    uses: charmbracelet/meta/.github/workflows/nightly.yml@main
+    secrets:
+      docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      docker_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      goreleaser_key: ${{ secrets.GORELEASER_KEY }}
+
+

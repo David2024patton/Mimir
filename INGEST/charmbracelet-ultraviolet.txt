@@ -1,0 +1,1379 @@
+Directory structure:
+└── charmbracelet-ultraviolet/
+    ├── cancelreader_other.go
+    ├── cancelreader_test.go
+    ├── console_unix.go
+    ├── console_windows.go
+    ├── cursor.go
+    ├── cursor_test.go
+    ├── environ.go
+    ├── go.mod
+    ├── logger.go
+    ├── poll_default.go
+    ├── poll_solaris.go
+    ├── poll_test.go
+    ├── terminal_bsdly.go
+    ├── terminal_bsdly_other.go
+    ├── terminal_other.go
+    ├── terminal_reader_other.go
+    ├── terminal_tabdly.go
+    ├── terminal_tabdly_other.go
+    ├── terminal_test.go
+    ├── tty_other.go
+    ├── tty_unix.go
+    ├── tty_windows.go
+    ├── utils.go
+    ├── winch_other.go
+    ├── winch_unix.go
+    ├── .golangci.yml
+    ├── .goreleaser.yml
+    ├── internal/
+    │   ├── conformance/
+    │   │   └── testdata/
+    │   │       └── fuzz/
+    │   │           ├── FuzzRedrawResyncs/
+    │   │           │   └── c3d2d6f0b8daa6ee
+    │   │           ├── FuzzRenderer/
+    │   │           │   ├── 01e4c2e5d0a0a18a
+    │   │           │   ├── 03c1c2969136ac42
+    │   │           │   ├── 0ba7b0cf2253d771
+    │   │           │   ├── 0ebe6c4dfe2dc334
+    │   │           │   ├── 1304d095dc75690d
+    │   │           │   ├── 25e2f9b3d67061b5
+    │   │           │   ├── 283ac3f2515b925b
+    │   │           │   ├── 2da5813835c7c50b
+    │   │           │   ├── 31d50934f50a96eb
+    │   │           │   ├── 527a4b961803b7bb
+    │   │           │   ├── 54189f396b67a971
+    │   │           │   ├── 650146855c5386c7
+    │   │           │   ├── 765a36e7c507006f
+    │   │           │   ├── 7aba49955341e128
+    │   │           │   ├── 8811f3253b926a84
+    │   │           │   ├── 8a5333da998cd2fa
+    │   │           │   ├── 8e096e0ae397d854
+    │   │           │   ├── a74b457ae4e70660
+    │   │           │   ├── b658c8931146f4d4
+    │   │           │   ├── c39596a3ee6c57bb
+    │   │           │   ├── c46a50f901957d97
+    │   │           │   ├── cb55857874c7c38e
+    │   │           │   ├── d5e5470b806d58a6
+    │   │           │   ├── ddb2994fe8f02ad1
+    │   │           │   ├── e829bd1fab170bdc
+    │   │           │   └── ea477bf024ae0883
+    │   │           ├── FuzzRendererIdempotent/
+    │   │           │   ├── 7ce35d739e3b1b1f
+    │   │           │   └── 8458bb5e60f055df
+    │   │           └── FuzzScreenShowsContent/
+    │   │               ├── 29f3127566cae9d7
+    │   │               ├── 3faf7cde87650021
+    │   │               ├── 7aa0f1249a1da7ac
+    │   │               ├── 81382bf65b85f230
+    │   │               ├── a25c3f7ff5876815
+    │   │               ├── d4ca82d1cf41dd0d
+    │   │               └── dc64a8711a734337
+    │   └── lru/
+    │       └── lru_test.go
+    ├── layout/
+    │   └── cache.go
+    └── .github/
+        ├── dependabot.yml
+        └── workflows/
+            ├── build.yml
+            ├── coverage.yml
+            ├── dependabot-sync.yml
+            ├── examples.yml
+            └── lint-sync.yml
+
+================================================
+FILE: cancelreader_other.go
+================================================
+//go:build !windows
+// +build !windows
+
+package uv
+
+import (
+	"io"
+
+	"github.com/muesli/cancelreader"
+)
+
+// NewCancelReader creates a new [cancelreader.CancelReader] that provides a
+// cancelable reader interface that can be used to cancel reads.
+func NewCancelReader(r io.Reader) (cancelreader.CancelReader, error) {
+	return cancelreader.NewReader(r) //nolint:wrapcheck
+}
+
+
+
+================================================
+FILE: cancelreader_test.go
+================================================
+package uv
+
+import "testing"
+
+func TestNewCancelReader(t *testing.T) {
+	_, _ = NewCancelReader(nil)
+}
+
+
+
+================================================
+FILE: console_unix.go
+================================================
+//go:build !windows
+// +build !windows
+
+package uv
+
+func newConsole(in File, out File, env Environ) *TTY {
+	c := &console{
+		input:   in,
+		output:  out,
+		environ: env,
+	}
+	return &TTY{console: c}
+}
+
+
+
+================================================
+FILE: console_windows.go
+================================================
+//go:build windows
+// +build windows
+
+package uv
+
+func newConsole(in File, out File, env Environ) *WinCon {
+	c := &console{
+		input:   in,
+		output:  out,
+		environ: env,
+	}
+	return &WinCon{console: c}
+}
+
+
+
+================================================
+FILE: cursor.go
+================================================
+package uv
+
+// CursorShape represents a terminal cursor shape.
+type CursorShape int
+
+// Cursor shapes.
+const (
+	CursorBlock CursorShape = iota
+	CursorUnderline
+	CursorBar
+)
+
+// Encode returns the encoded value for the cursor shape.
+func (s CursorShape) Encode(blink bool) int {
+	// We're using the ANSI escape sequence values for cursor styles.
+	// We need to map both [style] and [steady] to the correct value.
+	s = (s * 2) + 1 //nolint:mnd
+	if !blink {
+		s++
+	}
+	return int(s)
+}
+
+
+
+================================================
+FILE: cursor_test.go
+================================================
+package uv
+
+import "testing"
+
+func TestCursorShape_Encode(t *testing.T) {
+	tests := []struct {
+		shape   CursorShape
+		blink   bool
+		wantEnc int
+	}{
+		{CursorBlock, true, 1},
+		{CursorBlock, false, 2},
+		{CursorUnderline, true, 3},
+		{CursorUnderline, false, 4},
+		{CursorBar, true, 5},
+		{CursorBar, false, 6},
+	}
+
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			if gotEnc := tt.shape.Encode(tt.blink); gotEnc != tt.wantEnc {
+				t.Errorf("CursorShape.Encode() = %v, want %v", gotEnc, tt.wantEnc)
+			}
+		})
+	}
+}
+
+
+
+================================================
+FILE: environ.go
+================================================
+package uv
+
+import (
+	"strings"
+)
+
+// Environ is a slice of strings that represents the environment variables of
+// the program.
+type Environ []string
+
+// Getenv returns the value of the environment variable named by the key. If
+// the variable is not present in the environment, the value returned will be
+// the empty string.
+func (p Environ) Getenv(key string) (v string) {
+	v, _ = p.LookupEnv(key)
+	return
+}
+
+// LookupEnv retrieves the value of the environment variable named by the key.
+// If the variable is present in the environment the value (which may be empty)
+// is returned and the boolean is true. Otherwise the returned value will be
+// empty and the boolean will be false.
+func (p Environ) LookupEnv(key string) (s string, v bool) {
+	for i := len(p) - 1; i >= 0; i-- {
+		if strings.HasPrefix(p[i], key+"=") {
+			s = strings.TrimPrefix(p[i], key+"=")
+			v = true
+			break
+		}
+	}
+	return
+}
+
+
+
+================================================
+FILE: go.mod
+================================================
+module github.com/charmbracelet/ultraviolet
+
+go 1.26.0
+
+require (
+	github.com/charmbracelet/colorprofile v0.4.3
+	github.com/charmbracelet/x/ansi v0.11.9
+	github.com/charmbracelet/x/term v0.2.2
+	github.com/charmbracelet/x/termios v0.1.1
+	github.com/charmbracelet/x/windows v0.2.2
+	github.com/clipperhouse/uax29/v2 v2.7.0
+	github.com/muesli/cancelreader v0.2.2
+	github.com/rivo/uniseg v0.4.7
+	github.com/xo/terminfo v1.0.0
+	golang.org/x/sync v0.22.0
+	golang.org/x/sys v0.47.0
+)
+
+require (
+	github.com/clipperhouse/displaywidth v0.11.0 // indirect
+	github.com/mattn/go-runewidth v0.0.30 // indirect
+)
+
+require github.com/lucasb-eyer/go-colorful v1.4.1
+
+
+
+================================================
+FILE: logger.go
+================================================
+package uv
+
+// Logger is a simple logger interface.
+type Logger interface {
+	Printf(format string, v ...interface{})
+}
+
+
+
+================================================
+FILE: poll_default.go
+================================================
+//go:build !linux && !windows && !darwin && !freebsd && !netbsd && !openbsd && !dragonfly && !solaris
+// +build !linux,!windows,!darwin,!freebsd,!netbsd,!openbsd,!dragonfly,!solaris
+
+package uv
+
+import "io"
+
+// newPollReader creates a new pollReader for the given io.Reader.
+// This is the default implementation for unsupported platforms.
+func newPollReader(reader io.Reader) (pollReader, error) {
+	return newFallbackReader(reader)
+}
+
+
+
+================================================
+FILE: poll_solaris.go
+================================================
+//go:build solaris
+// +build solaris
+
+package uv
+
+import "io"
+
+// newPollReader creates a new pollReader for the given io.Reader.
+// On Solaris, we use the select API.
+func newPollReader(reader io.Reader) (pollReader, error) {
+	return newSelectPollReader(reader)
+}
+
+
+
+================================================
+FILE: poll_test.go
+================================================
+package uv
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestReaderNonFile(t *testing.T) {
+	pr, err := newPollReader(strings.NewReader(""))
+	if err != nil {
+		t.Errorf("expected no error, but got %s", err)
+	}
+
+	if !pr.Cancel() {
+		t.Errorf("expected cancellation to be success")
+	}
+}
+
+
+
+================================================
+FILE: terminal_bsdly.go
+================================================
+//go:build darwin || linux || aix
+// +build darwin linux aix
+
+package uv
+
+import "golang.org/x/sys/unix"
+
+func supportsBackspace(lflag uint64) bool {
+	return lflag&unix.BSDLY == unix.BS0
+}
+
+
+
+================================================
+FILE: terminal_bsdly_other.go
+================================================
+//go:build !darwin && !linux && !aix && !windows
+// +build !darwin,!linux,!aix,!windows
+
+package uv
+
+func supportsBackspace(uint64) bool {
+	return false
+}
+
+
+
+================================================
+FILE: terminal_other.go
+================================================
+//go:build !darwin && !dragonfly && !freebsd && !linux && !netbsd && !openbsd && !solaris && !aix && !windows
+// +build !darwin,!dragonfly,!freebsd,!linux,!netbsd,!openbsd,!solaris,!aix,!windows
+
+package uv
+
+import "github.com/charmbracelet/x/term"
+
+func makeRaw(_, _ term.File) (inTtyState, outTtyState *term.State, err error) {
+	return nil, nil, ErrPlatformNotSupported
+}
+
+func getSize(_, _ term.File) (w, h int, err error) {
+	return 0, 0, ErrPlatformNotSupported
+}
+
+func getWinsize(_, _ term.File) (ws Winsize, err error) {
+	return Winsize{}, ErrPlatformNotSupported
+}
+
+func optimizeMovements(*term.State) (useTabs, useBspace bool) {
+	return false, false
+}
+
+
+
+================================================
+FILE: terminal_reader_other.go
+================================================
+//go:build !windows
+// +build !windows
+
+package uv
+
+import (
+	"context"
+)
+
+// streamData sends data from the input stream to the event channel.
+func (d *TerminalReader) streamData(ctx context.Context, readc chan []byte) error {
+	return d.sendBytes(ctx, readc)
+}
+
+
+
+================================================
+FILE: terminal_tabdly.go
+================================================
+//go:build darwin || linux || freebsd || solaris || aix
+// +build darwin linux freebsd solaris aix
+
+package uv
+
+import "golang.org/x/sys/unix"
+
+func supportsHardTabs(oflag uint64) bool {
+	return oflag&unix.TABDLY == unix.TAB0
+}
+
+
+
+================================================
+FILE: terminal_tabdly_other.go
+================================================
+//go:build !darwin && !linux && !freebsd && !solaris && !aix && !windows
+// +build !darwin,!linux,!freebsd,!solaris,!aix,!windows
+
+package uv
+
+func supportsHardTabs(uint64) bool {
+	return false
+}
+
+
+
+================================================
+FILE: terminal_test.go
+================================================
+package uv
+
+import (
+	"testing"
+)
+
+func TestSupportsBackspace(t *testing.T) {
+	_ = supportsBackspace(0)
+}
+
+func TestSupportsHardTabs(t *testing.T) {
+	_ = supportsHardTabs(0)
+}
+
+func TestOpenTTY(t *testing.T) {
+	_, _, _ = OpenTTY()
+}
+
+func TestStopBeforeStart(t *testing.T) {
+	term := DefaultTerminal()
+	if err := term.Stop(); err != nil {
+		t.Fatalf("Stop before Start should not panic or error: %v", err)
+	}
+}
+
+func TestStopIdempotent(t *testing.T) {
+	term := DefaultTerminal()
+	for i := 0; i < 3; i++ {
+		if err := term.Stop(); err != nil {
+			t.Fatalf("Stop call %d should not panic or error: %v", i+1, err)
+		}
+	}
+}
+
+
+
+================================================
+FILE: tty_other.go
+================================================
+//go:build !darwin && !dragonfly && !freebsd && !linux && !netbsd && !openbsd && !solaris && !aix && !windows
+// +build !darwin,!dragonfly,!freebsd,!linux,!netbsd,!openbsd,!solaris,!aix,!windows
+
+package uv
+
+import (
+	"context"
+	"os"
+	"os/signal"
+)
+
+func openTTY() (*os.File, *os.File, error) {
+	return nil, nil, ErrPlatformNotSupported
+}
+
+func suspend() error {
+	return ErrPlatformNotSupported
+}
+
+func notifyWinch(c chan os.Signal, sigs ...os.Signal) {
+	signal.Notify(c, sigs...)
+}
+
+func notifyWinchContext(ctx context.Context, sigs ...os.Signal) (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(ctx, sigs...)
+}
+
+
+
+================================================
+FILE: tty_unix.go
+================================================
+//go:build darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris || aix
+// +build darwin dragonfly freebsd linux netbsd openbsd solaris aix
+
+package uv
+
+import (
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"golang.org/x/sys/unix"
+)
+
+func openTTY() (inTty, outTty *os.File, err error) {
+	f, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		return nil, nil, err //nolint:wrapcheck
+	}
+	return f, f, nil
+}
+
+func suspend() (err error) {
+	// Send SIGTSTP to the entire process group.
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGCONT)
+	err = syscall.Kill(0, syscall.SIGTSTP)
+	// blocks until a CONT happens...
+	<-c
+	return
+}
+
+func notifyWinch(c chan os.Signal, sigs ...os.Signal) {
+	signal.Notify(c, append(sigs, unix.SIGWINCH)...)
+}
+
+func notifyWinchContext(ctx context.Context, sigs ...os.Signal) (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(ctx, append(sigs, unix.SIGWINCH)...)
+}
+
+
+
+================================================
+FILE: tty_windows.go
+================================================
+//go:build windows
+// +build windows
+
+package uv
+
+import (
+	"context"
+	"os"
+	"os/signal"
+)
+
+func openTTY() (inTty, outTty *os.File, err error) {
+	// On Windows, when the input/output is redirected or piped, we need to
+	// open the console explicitly.
+	// See https://learn.microsoft.com/en-us/windows/console/getstdhandle#remarks
+	inTty, err = os.OpenFile("CONIN$", os.O_RDWR, 0o644) //nolint:gosec
+	if err != nil {
+		return nil, nil, err //nolint:wrapcheck
+	}
+	outTty, err = os.OpenFile("CONOUT$", os.O_RDWR, 0o644) //nolint:gosec
+	if err != nil {
+		return nil, nil, err //nolint:wrapcheck
+	}
+	return inTty, outTty, nil
+}
+
+func suspend() (err error) {
+	// On Windows, suspending the process group is not supported in the same
+	// way as Unix-like systems.
+	return nil
+}
+
+func notifyWinch(c chan os.Signal, sigs ...os.Signal) {
+	signal.Notify(c, sigs...)
+}
+
+func notifyWinchContext(ctx context.Context, sigs ...os.Signal) (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(ctx, sigs...)
+}
+
+
+
+================================================
+FILE: utils.go
+================================================
+package uv
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func clamp(v, low, high int) int {
+	if high < low {
+		low, high = high, low
+	}
+	return min(high, max(low, v))
+}
+
+
+
+================================================
+FILE: winch_other.go
+================================================
+//go:build !darwin && !dragonfly && !freebsd && !linux && !netbsd && !openbsd && !solaris
+// +build !darwin,!dragonfly,!freebsd,!linux,!netbsd,!openbsd,!solaris
+
+package uv
+
+func (n *SizeNotifier) start() error {
+	return ErrPlatformNotSupported
+}
+
+func (n *SizeNotifier) stop() error {
+	return ErrPlatformNotSupported
+}
+
+func (n *SizeNotifier) getWindowSize() (cells Size, pixels Size, err error) {
+	cells.Width, cells.Height, err = n.GetSize()
+	return cells, pixels, err
+}
+
+
+
+================================================
+FILE: winch_unix.go
+================================================
+//go:build darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris || zos
+// +build darwin dragonfly freebsd linux netbsd openbsd solaris zos
+
+package uv
+
+import (
+	"os/signal"
+	"syscall"
+
+	"github.com/charmbracelet/x/term"
+	"github.com/charmbracelet/x/termios"
+)
+
+func (n *SizeNotifier) start() error {
+	n.m.Lock()
+	defer n.m.Unlock()
+	if n.f == nil || !term.IsTerminal(n.f.Fd()) {
+		return ErrNotTerminal
+	}
+
+	signal.Notify(n.sig, syscall.SIGWINCH)
+	return nil
+}
+
+func (n *SizeNotifier) stop() error {
+	n.m.Lock()
+	signal.Stop(n.sig)
+	n.m.Unlock()
+	return nil
+}
+
+func (n *SizeNotifier) getWindowSize() (cells Size, pixels Size, err error) {
+	n.m.Lock()
+	defer n.m.Unlock()
+
+	winsize, err := termios.GetWinsize(int(n.f.Fd()))
+	if err != nil {
+		return Size{}, Size{}, err //nolint:wrapcheck
+	}
+
+	cells = Size{
+		Width:  int(winsize.Col),
+		Height: int(winsize.Row),
+	}
+	pixels = Size{
+		Width:  int(winsize.Xpixel),
+		Height: int(winsize.Ypixel),
+	}
+	return cells, pixels, nil
+}
+
+
+
+================================================
+FILE: .golangci.yml
+================================================
+version: "2"
+linters:
+  enable:
+    - bodyclose
+    # - exhaustive
+    # - goconst
+    # - godot
+    # - godox
+    # - gomoddirectives
+    - goprintffuncname
+    # - gosec
+    - misspell
+    # - nakedret
+    # - nestif
+    # - nilerr
+    - noctx
+    - nolintlint
+    # - prealloc
+    # - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - tparallel
+    # - unconvert
+    # - unparam
+    - whitespace
+    # - wrapcheck
+  disable:
+    - errcheck
+    - ineffassign
+    - unused
+  exclusions:
+    generated: lax
+    presets:
+      - common-false-positives
+    rules:
+      - text: '(slog|log)\.\w+'
+        linters:
+          - noctx
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+
+
+
+================================================
+FILE: .goreleaser.yml
+================================================
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+version: 2
+includes:
+  - from_url:
+      url: charmbracelet/meta/main/goreleaser-lib.yaml
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRedrawResyncs/c3d2d6f0b8daa6ee
+================================================
+go test fuzz v1
+[]byte("00$2%00000000700000AA020000")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/01e4c2e5d0a0a18a
+================================================
+go test fuzz v1
+[]byte("10000AAA***0AY0200AAA**0")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/03c1c2969136ac42
+================================================
+go test fuzz v1
+[]byte("000A\x00000AA0200*00")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/0ba7b0cf2253d771
+================================================
+go test fuzz v1
+[]byte("A01000A*00000000002A\x00021")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/0ebe6c4dfe2dc334
+================================================
+go test fuzz v1
+[]byte("0201020920100020290")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/1304d095dc75690d
+================================================
+go test fuzz v1
+[]byte("00700092%XZ%X10109")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/25e2f9b3d67061b5
+================================================
+go test fuzz v1
+[]byte("A0000000092AA0A01")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/283ac3f2515b925b
+================================================
+go test fuzz v1
+[]byte("00$%\xaa000700017011010000222%70")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/2da5813835c7c50b
+================================================
+go test fuzz v1
+[]byte("02002092A01X0A000")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/31d50934f50a96eb
+================================================
+go test fuzz v1
+[]byte("\"000000A0A000A0X021AX12A00")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/527a4b961803b7bb
+================================================
+go test fuzz v1
+[]byte("00700092%XZ")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/54189f396b67a971
+================================================
+go test fuzz v1
+[]byte("0271209AY01")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/650146855c5386c7
+================================================
+go test fuzz v1
+[]byte("00700000000000000000C011000Y000AC0Y01")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/765a36e7c507006f
+================================================
+go test fuzz v1
+[]byte("2001000A7002A00")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/7aba49955341e128
+================================================
+go test fuzz v1
+[]byte("&000101107A0AAAAAA0200009")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/8811f3253b926a84
+================================================
+go test fuzz v1
+[]byte("0000070A0200000")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/8a5333da998cd2fa
+================================================
+go test fuzz v1
+[]byte("000011900\x009200\x00A9")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/8e096e0ae397d854
+================================================
+go test fuzz v1
+[]byte("0002AA002000000")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/a74b457ae4e70660
+================================================
+go test fuzz v1
+[]byte("100001000A\x0012A00")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/b658c8931146f4d4
+================================================
+go test fuzz v1
+[]byte("0X02A0C00xA9")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/c39596a3ee6c57bb
+================================================
+go test fuzz v1
+[]byte("001000A00A\x00021")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/c46a50f901957d97
+================================================
+go test fuzz v1
+[]byte("000A000100000000000021AX22A02")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/cb55857874c7c38e
+================================================
+go test fuzz v1
+[]byte("007AY0Z")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/d5e5470b806d58a6
+================================================
+go test fuzz v1
+[]byte("A0020000000000000020000001000000")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/ddb2994fe8f02ad1
+================================================
+go test fuzz v1
+[]byte("0X200\x180A0010A002000000")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/e829bd1fab170bdc
+================================================
+go test fuzz v1
+[]byte("02700092%XZ%X10109")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRenderer/ea477bf024ae0883
+================================================
+go test fuzz v1
+[]byte("002A\x00001100200200000210")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRendererIdempotent/7ce35d739e3b1b1f
+================================================
+go test fuzz v1
+[]byte("70100000*A92Ax0")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzRendererIdempotent/8458bb5e60f055df
+================================================
+go test fuzz v1
+[]byte("000A0000AAAAAAAAA*A0AAAAAAAAA00111AA00000000022AA0")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzScreenShowsContent/29f3127566cae9d7
+================================================
+go test fuzz v1
+[]byte("70000\x17000010")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzScreenShowsContent/3faf7cde87650021
+================================================
+go test fuzz v1
+[]byte("100000010")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzScreenShowsContent/7aa0f1249a1da7ac
+================================================
+go test fuzz v1
+[]byte("7000011109A\x000")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzScreenShowsContent/81382bf65b85f230
+================================================
+go test fuzz v1
+[]byte("000009007A\x1700")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzScreenShowsContent/a25c3f7ff5876815
+================================================
+go test fuzz v1
+[]byte("00$0000011112%*001001AA700AA02C")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzScreenShowsContent/d4ca82d1cf41dd0d
+================================================
+go test fuzz v1
+[]byte("1000011802AX0")
+
+
+
+================================================
+FILE: internal/conformance/testdata/fuzz/FuzzScreenShowsContent/dc64a8711a734337
+================================================
+go test fuzz v1
+[]byte("00000AA1A0A\x000")
+
+
+
+================================================
+FILE: internal/lru/lru_test.go
+================================================
+package lru
+
+import (
+	"strconv"
+	"testing"
+)
+
+func TestLRU(t *testing.T) {
+	const size = 20
+
+	cache := New[int, string](size)
+
+	val := strconv.Itoa
+
+	for i := range size {
+		v := val(i)
+
+		if cache.Add(i, v) {
+			t.Fatalf("Cache.Add: value evicted before size limit at %d", i)
+		}
+
+		got, ok := cache.Get(i)
+		if !ok {
+			t.Fatalf("Cache.Get: value not found at key %d", i)
+		}
+
+		if v != got {
+			t.Fatalf("Cache.Get: value at key %d not equal: want %q, got %q", i, v, got)
+		}
+	}
+
+	if !cache.Add(size, val(size)) {
+		t.Fatalf("Cache.Add: value not evicted after limit at %d", size)
+	}
+
+	if _, ok := cache.Get(0); ok {
+		t.Fatalf("Cache.Get: value at key %d not evicted", 0)
+	}
+
+	for i := 1; i <= size; i++ {
+		got, ok := cache.Get(i)
+		if !ok {
+			t.Fatalf("Cache.Get: value not found at key %d", i)
+		}
+
+		want := val(i)
+
+		if want != got {
+			t.Fatalf("Cache.Get: value at key %d not equal: want %q, got %q", i, want, got)
+		}
+	}
+}
+
+
+
+================================================
+FILE: layout/cache.go
+================================================
+package layout
+
+import (
+	"sync"
+
+	uv "github.com/charmbracelet/ultraviolet"
+	"github.com/charmbracelet/ultraviolet/internal/lru"
+)
+
+// globalCacheSize is chosen to comfortably hold one entry per row and column
+// of a typical terminal, with headroom to spare. A 171-column x 51-row
+// display yields 222 unique keys; doubling and rounding up gives 500.
+const globalCacheSize = 500
+
+var (
+	globalCache   = lru.New[cacheKey, cacheValue](globalCacheSize)
+	globalCacheMu sync.Mutex
+)
+
+type cacheKey struct {
+	Area            uv.Rectangle
+	Direction       Direction
+	ConstraintsHash uint64
+	Padding         Padding
+	Spacing         int
+	Flex            Flex
+}
+
+type cacheValue struct{ Segments, Spacers Splitted }
+
+
+
+================================================
+FILE: .github/dependabot.yml
+================================================
+version: 2
+
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: github.com/charmbracelet/bubbletea/v2
+        versions:
+          - v2.0.0-beta1
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+
+
+================================================
+FILE: .github/workflows/build.yml
+================================================
+name: build
+# push is scoped to main so a push to a PR branch fires only the
+# pull_request run, not both. Merges to main still build via push.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+
+  build-go-mod:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+    with:
+      go-version: ""
+      go-version-file: ./go.mod
+
+  build-examples:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+    with:
+      go-version: ""
+      go-version-file: ./examples/go.mod
+      working-directory: ./examples
+
+
+
+================================================
+FILE: .github/workflows/coverage.yml
+================================================
+name: coverage
+# push is scoped to main so a push to a PR branch fires only the
+# pull_request run, not both. Merges to main still run via push.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  coverage:
+    strategy:
+      matrix:
+        go-version: [^1]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      GO111MODULE: "on"
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Coverage
+        run: |
+          go test -race -covermode=atomic -coverprofile='coverage.txt' ./...
+
+      - uses: codecov/codecov-action@v7
+        with:
+          file: ./coverage.txt
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+
+
+================================================
+FILE: .github/workflows/dependabot-sync.yml
+================================================
+name: dependabot-sync
+on:
+  schedule:
+    - cron: "0 0 * * 0" # every Sunday at midnight
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot-sync:
+    uses: charmbracelet/meta/.github/workflows/dependabot-sync.yml@main
+    with:
+      repo_name: ${{ github.event.repository.name }}
+    secrets:
+      gh_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+
+
+================================================
+FILE: .github/workflows/examples.yml
+================================================
+name: examples
+
+on:
+  push:
+    branches:
+      - "master"
+    paths:
+      - ".github/workflows/examples.yml"
+      - "./examples/go.mod"
+      - "./examples/go.sum"
+      - "./go.mod"
+      - "./go.sum"
+  workflow_dispatch: {}
+
+jobs:
+  tidy:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "^1"
+          cache: true
+      - shell: bash
+        run: |
+          (cd ./examples && go mod tidy)
+          (cd ./tutorials && go mod tidy)
+      - uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "chore: go mod tidy tutorials and examples"
+          branch: master
+          commit_user_name: actions-user
+          commit_user_email: actions@github.com
+
+
+
+================================================
+FILE: .github/workflows/lint-sync.yml
+================================================
+name: lint-sync
+on:
+  # schedule:
+  #   # every Sunday at midnight
+  #   - cron: "0 0 * * 0"
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint-sync.yml@main
+
+

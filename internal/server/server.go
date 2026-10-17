@@ -133,7 +133,8 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 	})
 	api.HandleFunc("/auth/me", meHandler(auth))
 	api.HandleFunc("/memory", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, map[string]any{"neurons": st.All()})
+		neurons := st.All()
+		writeJSON(w, map[string]any{"count": len(neurons), "neurons": neurons})
 	})
 	api.HandleFunc("/usage", func(w http.ResponseWriter, r *http.Request) {
 		models := []llm.ModelUsage{}

@@ -1,0 +1,248 @@
+Directory structure:
+└── charmbracelet-skate/
+    ├── .golangci.yml
+    ├── .goreleaser.yml
+    └── .github/
+        ├── dependabot.yml
+        └── workflows/
+            ├── build.yml
+            ├── dependabot-sync.yml
+            ├── goreleaser.yml
+            ├── lint-sync.yml
+            └── lint.yml
+
+================================================
+FILE: .golangci.yml
+================================================
+version: "2"
+run:
+  tests: false
+linters:
+  enable:
+    - bodyclose
+    - exhaustive
+    - goconst
+    - godot
+    - gomoddirectives
+    - goprintffuncname
+    - gosec
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - noctx
+    - nolintlint
+    - prealloc
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - tparallel
+    - unconvert
+    - unparam
+    - whitespace
+    - wrapcheck
+  exclusions:
+    rules:
+      - text: '(slog|log)\.\w+'
+        linters:
+          - noctx
+    generated: lax
+    presets:
+      - common-false-positives
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+
+
+
+================================================
+FILE: .goreleaser.yml
+================================================
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+
+version: 2
+
+includes:
+  - from_url:
+      url: charmbracelet/meta/main/goreleaser-simple.yaml
+
+variables:
+  binary_name: skate
+  description: "A personal key value store 🛼"
+  github_url: "https://github.com/charmbracelet/skate"
+  maintainer: "Ayman Bagabas <ayman@charm.sh>"
+  brew_commit_author_name: "Ayman Bagabas"
+  brew_commit_author_email: "ayman@charm.sh"
+
+
+
+================================================
+FILE: .github/dependabot.yml
+================================================
+version: 2
+
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: github.com/charmbracelet/bubbletea/v2
+        versions:
+          - v2.0.0-beta1
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+
+
+================================================
+FILE: .github/workflows/build.yml
+================================================
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+
+  snapshot:
+    uses: charmbracelet/meta/.github/workflows/snapshot.yml@main
+    secrets:
+      goreleaser_key: ${{ secrets.GORELEASER_KEY }}
+
+
+================================================
+FILE: .github/workflows/dependabot-sync.yml
+================================================
+name: dependabot-sync
+on:
+  schedule:
+    - cron: "0 0 * * 0" # every Sunday at midnight
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot-sync:
+    uses: charmbracelet/meta/.github/workflows/dependabot-sync.yml@main
+    with:
+      repo_name: ${{ github.event.repository.name }}
+    secrets:
+      gh_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+
+
+================================================
+FILE: .github/workflows/goreleaser.yml
+================================================
+name: goreleaser
+
+on:
+  push:
+    tags:
+      - v*.*.*
+
+concurrency:
+  group: goreleaser
+  cancel-in-progress: true
+
+jobs:
+  goreleaser:
+    uses: charmbracelet/meta/.github/workflows/goreleaser.yml@main
+    secrets:
+      docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      docker_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      gh_pat: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      goreleaser_key: ${{ secrets.GORELEASER_KEY }}
+      fury_token: ${{ secrets.FURY_TOKEN }}
+      nfpm_gpg_key: ${{ secrets.NFPM_GPG_KEY }}
+      nfpm_passphrase: ${{ secrets.NFPM_PASSPHRASE }}
+
+
+
+================================================
+FILE: .github/workflows/lint-sync.yml
+================================================
+name: lint-sync
+on:
+  schedule:
+    - cron: "0 0 * * 0" # every sunday at midnight
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint-sync.yml@main
+
+
+
+================================================
+FILE: .github/workflows/lint.yml
+================================================
+name: lint
+on:
+  push:
+  pull_request:
+
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9.2.0
+        with:
+          # Optional: golangci-lint command line arguments.
+          args: --issues-exit-code=0
+          # Optional: show only new issues if it's a pull request. The default value is `false`.
+          only-new-issues: true
+
+

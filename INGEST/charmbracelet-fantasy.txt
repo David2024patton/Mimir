@@ -1,0 +1,1477 @@
+Directory structure:
+└── charmbracelet-fantasy/
+    ├── crush.json
+    ├── cspell.json
+    ├── doc.go
+    ├── NOTICE
+    ├── provider.go
+    ├── util.go
+    ├── version.go
+    ├── version.txt
+    ├── .editorconfig
+    ├── .golangci.yml
+    ├── .goreleaser.yml
+    ├── examples/
+    │   └── structured-outputs/
+    │       └── go.mod
+    ├── jsonrepair/
+    │   └── escapes_regression_test.go
+    ├── providers/
+    │   ├── anthropic/
+    │   │   ├── bedrock.go
+    │   │   ├── call_useragent.go
+    │   │   └── google.go
+    │   ├── azure/
+    │   │   └── README.md
+    │   ├── bedrock/
+    │   │   └── README.md
+    │   ├── google/
+    │   │   ├── auth.go
+    │   │   └── slice.go
+    │   ├── internal/
+    │   │   └── prompttest/
+    │   │       ├── prompt_test.go
+    │   │       └── testdata/
+    │   │           ├── assistant_cache_control.json
+    │   │           ├── assistant_empty_is_dropped.json
+    │   │           ├── assistant_reasoning_anthropic.json
+    │   │           ├── assistant_reasoning_only.json
+    │   │           ├── assistant_text_and_tool_calls.json
+    │   │           ├── assistant_text_only.json
+    │   │           ├── system_cache_control.json
+    │   │           ├── system_multiple_text_parts.json
+    │   │           ├── system_single_text.json
+    │   │           ├── tool_result_cache_control.json
+    │   │           ├── tool_result_error.json
+    │   │           ├── tool_result_media_audio_mpeg.json
+    │   │           ├── tool_result_media_audio_wav.json
+    │   │           ├── tool_result_media_image.json
+    │   │           ├── tool_result_media_image_with_text.json
+    │   │           ├── tool_result_media_unsupported.json
+    │   │           ├── user_audio_wav.json
+    │   │           ├── user_cache_control.json
+    │   │           ├── user_empty_is_dropped.json
+    │   │           ├── user_pdf.json
+    │   │           ├── user_text_and_image.json
+    │   │           └── user_unsupported_media.json
+    │   ├── openrouter/
+    │   │   └── prompt.go
+    │   └── vercel/
+    │       ├── language_model_hooks_test.go
+    │       └── prompt.go
+    ├── providertests/
+    │   └── .env.sample
+    ├── scripts/
+    │   └── run-labeler.sh
+    ├── .github/
+    │   ├── CODEOWNERS
+    │   ├── dependabot.yml
+    │   └── workflows/
+    │       ├── build.yml
+    │       ├── labeler.yml
+    │       └── lint.yml
+    └── .helix/
+        └── ignore
+
+================================================
+FILE: crush.json
+================================================
+{
+  "$schema": "https://charm.land/crush.json",
+  "lsp": {
+    "gopls": {}
+  }
+}
+
+
+
+================================================
+FILE: cspell.json
+================================================
+{"flagWords":[],"words":["mapstructure","mapstructure","charmbracelet","providertests","joho","godotenv","stretchr","Quantizations","Logit","Probs","openrouter","openaisdk","Logprobs","Includable"],"version":"0.2","language":"en"}
+
+
+================================================
+FILE: doc.go
+================================================
+// Package fantasy provides a unified interface for interacting with various AI language models.
+package fantasy
+
+
+
+================================================
+FILE: NOTICE
+================================================
+Copyright 2025-2026 Charmbracelet, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+
+
+================================================
+FILE: provider.go
+================================================
+package fantasy
+
+import (
+	"context"
+)
+
+// Provider represents a provider of language models.
+type Provider interface {
+	Name() string
+	LanguageModel(ctx context.Context, modelID string) (LanguageModel, error)
+}
+
+
+
+================================================
+FILE: util.go
+================================================
+package fantasy
+
+import "github.com/go-viper/mapstructure/v2"
+
+// Opt creates a pointer to the given value.
+//
+//go:fix inline
+func Opt[T any](v T) *T {
+	return new(v)
+}
+
+// ParseOptions parses the given options map into the provided struct.
+func ParseOptions[T any](options map[string]any, m *T) error {
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		TagName: "json",
+		Result:  m,
+	})
+	if err != nil {
+		return err
+	}
+	return decoder.Decode(options)
+}
+
+
+
+================================================
+FILE: version.go
+================================================
+package fantasy
+
+import (
+	_ "embed"
+	"strings"
+)
+
+//go:embed version.txt
+var version string
+
+// Version is the SDK version, read from version.txt.
+var Version = strings.TrimSpace(version)
+
+
+
+================================================
+FILE: version.txt
+================================================
+0.45.3
+
+
+
+================================================
+FILE: .editorconfig
+================================================
+# https://editorconfig.org/
+
+root = true
+
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.go]
+indent_style = tab
+indent_size = 4
+
+[*.golden]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+
+
+================================================
+FILE: .golangci.yml
+================================================
+version: "2"
+run:
+  tests: false
+linters:
+  enable:
+    - bodyclose
+    # - exhaustive
+    # - goconst
+    - godot
+    # - gomoddirectives
+    - goprintffuncname
+    - gosec
+    - misspell
+    - nakedret
+    # - nestif
+    - nilerr
+    - noctx
+    - nolintlint
+    - prealloc
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - tparallel
+    - unconvert
+    - unparam
+    - whitespace
+    # - wrapcheck
+  exclusions:
+    rules:
+      - text: '(slog|log)\.\w+'
+        linters:
+          - noctx
+    generated: lax
+    presets:
+      - common-false-positives
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+
+
+
+================================================
+FILE: .goreleaser.yml
+================================================
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+
+version: 2
+includes:
+  - from_url:
+      url: charmbracelet/meta/main/goreleaser-lib.yaml
+
+
+
+================================================
+FILE: examples/structured-outputs/go.mod
+================================================
+module structured-outputs
+
+go 1.25.2
+
+replace charm.land/fantasy => ../..
+
+require charm.land/fantasy v0.0.0-00010101000000-000000000000
+
+require (
+	github.com/RealAlexandreAI/json-repair v0.0.14 // indirect
+	github.com/charmbracelet/x/exp/slice v0.0.0-20250904123553-b4e2667e5ad5 // indirect
+	github.com/charmbracelet/x/json v0.2.0 // indirect
+	github.com/go-json-experiment/json v0.0.0-20250910080747-cc2cfa0554c3 // indirect
+	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
+	github.com/goccy/go-yaml v1.18.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/kaptinlin/go-i18n v0.2.0 // indirect
+	github.com/kaptinlin/jsonschema v0.5.2 // indirect
+	github.com/kaptinlin/messageformat-go v0.4.5 // indirect
+	github.com/openai/openai-go/v2 v2.7.1 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
+	golang.org/x/text v0.29.0 // indirect
+)
+
+
+
+================================================
+FILE: jsonrepair/escapes_regression_test.go
+================================================
+package jsonrepair
+
+import (
+	"encoding/json"
+	"reflect"
+	"testing"
+)
+
+func TestRepairJSONStandardEscapes(t *testing.T) {
+	cases := []string{
+		`{"text":"page\fbreak"}`,
+		`{"text":"https:\/\/example.com\/path"}`,
+		`{"\f":"value"}`,
+		`["\f", "\/", "\b", "\t", "\n", "\r"]`,
+	}
+	for _, input := range cases {
+		t.Run(input, func(t *testing.T) {
+			var want, got any
+			if err := json.Unmarshal([]byte(input), &want); err != nil {
+				t.Fatal(err)
+			}
+			repaired, err := RepairJSON(input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal([]byte(repaired), &got); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("RepairJSON(%q) = %q; decoded got %#v, want %#v", input, repaired, got, want)
+			}
+		})
+	}
+}
+
+
+
+================================================
+FILE: providers/anthropic/bedrock.go
+================================================
+package anthropic
+
+import (
+	"cmp"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/smithy-go/auth/bearer"
+)
+
+func bedrockBasicAuthConfig(apiKey string, region string) aws.Config {
+	return aws.Config{
+		Region:                  cmp.Or(region, "us-east-1"),
+		BearerAuthTokenProvider: bearer.StaticTokenProvider{Token: bearer.Token{Value: apiKey}},
+	}
+}
+
+
+
+================================================
+FILE: providers/anthropic/call_useragent.go
+================================================
+package anthropic
+
+import (
+	"charm.land/fantasy"
+	"charm.land/fantasy/providers/internal/httpheaders"
+	"github.com/anthropics/anthropic-sdk-go/option"
+)
+
+func callUARequestOptions(call fantasy.Call) []option.RequestOption {
+	if ua, ok := httpheaders.CallUserAgent(call.UserAgent); ok {
+		return []option.RequestOption{option.WithHeader("User-Agent", ua)}
+	}
+	return nil
+}
+
+func callHeadersRequestOptions(call fantasy.Call) []option.RequestOption {
+	headers, ok := httpheaders.CallHeaders(call.Headers)
+	if !ok {
+		return nil
+	}
+	opts := make([]option.RequestOption, 0, len(headers))
+	for k, v := range headers {
+		opts = append(opts, option.WithHeader(k, v))
+	}
+	return opts
+}
+
+
+
+================================================
+FILE: providers/anthropic/google.go
+================================================
+package anthropic
+
+import (
+	"golang.org/x/oauth2"
+)
+
+type googleDummyTokenSource struct{}
+
+func (googleDummyTokenSource) Token() (*oauth2.Token, error) {
+	return &oauth2.Token{AccessToken: "dummy-token"}, nil
+}
+
+
+
+================================================
+FILE: providers/azure/README.md
+================================================
+# Azure
+
+* Go to https://portal.azure.com/ and log in (or sign up if you haven't already)
+* Access https://ai.azure.com/
+* Create a project / resource (or use an existing one)
+* Copy and API key
+
+
+
+================================================
+FILE: providers/bedrock/README.md
+================================================
+# Bedrock
+
+- Install the AWS CLI
+- Log in with `aws login`
+
+To see available models, run:
+
+```bash
+aws bedrock list-inference-profiles --region us-east-1
+```
+
+
+
+================================================
+FILE: providers/google/auth.go
+================================================
+// Package google provides an implementation of the fantasy AI SDK for Google's language models.
+package google
+
+import (
+	"context"
+
+	"cloud.google.com/go/auth"
+)
+
+type dummyTokenProvider struct{}
+
+// Token implements the auth.TokenProvider interface.
+func (dummyTokenProvider) Token(_ context.Context) (*auth.Token, error) {
+	return &auth.Token{Value: "dummy-token"}, nil
+}
+
+
+
+================================================
+FILE: providers/google/slice.go
+================================================
+package google
+
+func depointerSlice[T any](s []*T) []T {
+	result := make([]T, 0, len(s))
+	for _, v := range s {
+		if v != nil {
+			result = append(result, *v)
+		}
+	}
+	return result
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/prompt_test.go
+================================================
+package prompttest_test
+
+import (
+	"testing"
+
+	"charm.land/fantasy/providers/internal/prompttest"
+	"charm.land/fantasy/providers/openai"
+	"charm.land/fantasy/providers/openaicompat"
+	"charm.land/fantasy/providers/openrouter"
+	"charm.land/fantasy/providers/vercel"
+)
+
+// TestPrompt records every chat-completions converter's output for the shared
+// corpus. One file per case holds all four providers, so a divergence between
+// them is a difference between adjacent keys in the same file.
+//
+// Regenerate with: go test ./providers/internal/prompttest -update
+func TestPrompt(t *testing.T) {
+	t.Parallel()
+
+	prompttest.Golden(t, []prompttest.Converter{
+		{Name: "openai", Convert: openai.DefaultToPrompt},
+		{Name: "openaicompat", Convert: openaicompat.ToPromptFunc},
+		{Name: "openrouter", Convert: openrouter.ToPrompt},
+		{Name: "vercel", Convert: vercel.ToPrompt},
+	})
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/assistant_cache_control.json
+================================================
+{
+  "openai,openaicompat": {
+    "messages": [
+      {
+        "content": "hi",
+        "role": "user"
+      },
+      {
+        "content": "cached assistant turn",
+        "role": "assistant"
+      }
+    ],
+    "warnings": []
+  },
+  "openrouter,vercel": {
+    "messages": [
+      {
+        "content": "hi",
+        "role": "user"
+      },
+      {
+        "content": "cached assistant turn",
+        "role": "assistant",
+        "cache_control": {
+          "type": "ephemeral"
+        }
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/assistant_empty_is_dropped.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "content": "hi",
+        "role": "user"
+      },
+      {
+        "content": "still here",
+        "role": "user"
+      }
+    ],
+    "warnings": [
+      "other: dropping empty assistant message (contains neither user-facing content nor tool calls)"
+    ]
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/assistant_reasoning_anthropic.json
+================================================
+{
+  "openai": {
+    "messages": [
+      {
+        "content": "think",
+        "role": "user"
+      },
+      {
+        "content": "the answer",
+        "role": "assistant"
+      }
+    ],
+    "warnings": []
+  },
+  "openaicompat": {
+    "messages": [
+      {
+        "content": "think",
+        "role": "user"
+      },
+      {
+        "content": "the answer",
+        "role": "assistant",
+        "reasoning_content": "thinking about it"
+      }
+    ],
+    "warnings": []
+  },
+  "openrouter,vercel": {
+    "messages": [
+      {
+        "content": "think",
+        "role": "user"
+      },
+      {
+        "content": "\u003cthoughts\u003ethinking about it\u003c/thoughts\u003e\nthe answer",
+        "role": "assistant"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/assistant_reasoning_only.json
+================================================
+{
+  "openai,openaicompat": {
+    "messages": [
+      {
+        "content": "think",
+        "role": "user"
+      }
+    ],
+    "warnings": [
+      "other: dropping empty assistant message (contains neither user-facing content nor tool calls)"
+    ]
+  },
+  "openrouter,vercel": {
+    "messages": [
+      {
+        "content": "think",
+        "role": "user"
+      },
+      {
+        "content": "\u003cthoughts\u003eonly reasoning, no text\u003c/thoughts\u003e",
+        "role": "assistant"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/assistant_text_and_tool_calls.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "content": "look at these",
+        "role": "user"
+      },
+      {
+        "content": "on it",
+        "tool_calls": [
+          {
+            "id": "c1",
+            "function": {
+              "arguments": "{\"path\":\"a\"}",
+              "name": "view"
+            },
+            "type": "function"
+          },
+          {
+            "id": "c2",
+            "function": {
+              "arguments": "{\"path\":\"b\"}",
+              "name": "view"
+            },
+            "type": "function"
+          }
+        ],
+        "role": "assistant"
+      },
+      {
+        "content": "a body",
+        "tool_call_id": "c1",
+        "role": "tool"
+      },
+      {
+        "content": "b body",
+        "tool_call_id": "c2",
+        "role": "tool"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/assistant_text_only.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "content": "hi",
+        "role": "user"
+      },
+      {
+        "content": "hello there",
+        "role": "assistant"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/system_cache_control.json
+================================================
+{
+  "openai,openaicompat": {
+    "messages": [
+      {
+        "content": "cached system prompt",
+        "role": "system"
+      },
+      {
+        "content": "hello",
+        "role": "user"
+      }
+    ],
+    "warnings": []
+  },
+  "openrouter,vercel": {
+    "messages": [
+      {
+        "content": "cached system prompt",
+        "role": "system",
+        "cache_control": {
+          "type": "ephemeral"
+        }
+      },
+      {
+        "content": "hello",
+        "role": "user"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/system_multiple_text_parts.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "content": "first\nsecond",
+        "role": "system"
+      },
+      {
+        "content": "hello",
+        "role": "user"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/system_single_text.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "content": "you are helpful",
+        "role": "system"
+      },
+      {
+        "content": "hello",
+        "role": "user"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/tool_result_cache_control.json
+================================================
+{
+  "openai,openaicompat": {
+    "messages": [
+      {
+        "tool_calls": [
+          {
+            "id": "c1",
+            "function": {
+              "arguments": "{}",
+              "name": "view"
+            },
+            "type": "function"
+          }
+        ],
+        "role": "assistant"
+      },
+      {
+        "content": "cached result",
+        "tool_call_id": "c1",
+        "role": "tool"
+      }
+    ],
+    "warnings": []
+  },
+  "openrouter,vercel": {
+    "messages": [
+      {
+        "tool_calls": [
+          {
+            "id": "c1",
+            "function": {
+              "arguments": "{}",
+              "name": "view"
+            },
+            "type": "function"
+          }
+        ],
+        "role": "assistant"
+      },
+      {
+        "content": "cached result",
+        "tool_call_id": "c1",
+        "role": "tool",
+        "cache_control": {
+          "type": "ephemeral"
+        }
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/tool_result_error.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "tool_calls": [
+          {
+            "id": "c1",
+            "function": {
+              "arguments": "{}",
+              "name": "view"
+            },
+            "type": "function"
+          }
+        ],
+        "role": "assistant"
+      },
+      {
+        "content": "tool blew up",
+        "tool_call_id": "c1",
+        "role": "tool"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/tool_result_media_audio_mpeg.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "tool_calls": [
+          {
+            "id": "c1",
+            "function": {
+              "arguments": "{}",
+              "name": "say"
+            },
+            "type": "function"
+          }
+        ],
+        "role": "assistant"
+      },
+      {
+        "content": "The tool returned audio/mpeg content; see the following user message.",
+        "tool_call_id": "c1",
+        "role": "tool"
+      },
+      {
+        "content": [
+          {
+            "input_audio": {
+              "data": "AQID",
+              "format": "mp3"
+            },
+            "type": "input_audio"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/tool_result_media_audio_wav.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "tool_calls": [
+          {
+            "id": "c1",
+            "function": {
+              "arguments": "{}",
+              "name": "say"
+            },
+            "type": "function"
+          }
+        ],
+        "role": "assistant"
+      },
+      {
+        "content": "The tool returned audio/wav content; see the following user message.",
+        "tool_call_id": "c1",
+        "role": "tool"
+      },
+      {
+        "content": [
+          {
+            "input_audio": {
+              "data": "AQID",
+              "format": "wav"
+            },
+            "type": "input_audio"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/tool_result_media_image.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "tool_calls": [
+          {
+            "id": "c1",
+            "function": {
+              "arguments": "{}",
+              "name": "view"
+            },
+            "type": "function"
+          }
+        ],
+        "role": "assistant"
+      },
+      {
+        "content": "The tool returned image/png content; see the following user message.",
+        "tool_call_id": "c1",
+        "role": "tool"
+      },
+      {
+        "content": [
+          {
+            "image_url": {
+              "url": "data:image/png;base64,iVBORw=="
+            },
+            "type": "image_url"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/tool_result_media_image_with_text.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "tool_calls": [
+          {
+            "id": "c1",
+            "function": {
+              "arguments": "{}",
+              "name": "view"
+            },
+            "type": "function"
+          }
+        ],
+        "role": "assistant"
+      },
+      {
+        "content": "Screenshot of the blockquote element.",
+        "tool_call_id": "c1",
+        "role": "tool"
+      },
+      {
+        "content": [
+          {
+            "image_url": {
+              "url": "data:image/png;base64,iVBORw=="
+            },
+            "type": "image_url"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/tool_result_media_unsupported.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "tool_calls": [
+          {
+            "id": "c1",
+            "function": {
+              "arguments": "{}",
+              "name": "record"
+            },
+            "type": "function"
+          }
+        ],
+        "role": "assistant"
+      },
+      {
+        "content": "The tool returned video/mp4 content, which cannot be displayed.",
+        "tool_call_id": "c1",
+        "role": "tool"
+      }
+    ],
+    "warnings": [
+      "other: tool result media type video/mp4 not supported, sending text placeholder only"
+    ]
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/user_audio_wav.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "content": [
+          {
+            "input_audio": {
+              "data": "AQID",
+              "format": "wav"
+            },
+            "type": "input_audio"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/user_cache_control.json
+================================================
+{
+  "openai,openaicompat": {
+    "messages": [
+      {
+        "content": "cached user turn",
+        "role": "user"
+      }
+    ],
+    "warnings": []
+  },
+  "openrouter,vercel": {
+    "messages": [
+      {
+        "content": "cached user turn",
+        "role": "user",
+        "cache_control": {
+          "type": "ephemeral"
+        }
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/user_empty_is_dropped.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "content": "",
+        "role": "user"
+      },
+      {
+        "content": "real turn",
+        "role": "user"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/user_pdf.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "content": [
+          {
+            "file": {
+              "file_data": "data:application/pdf;base64,JVBERi0xLjQ=",
+              "filename": "doc.pdf"
+            },
+            "type": "file"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/user_text_and_image.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": [
+      {
+        "content": [
+          {
+            "text": "what is this",
+            "type": "text"
+          },
+          {
+            "image_url": {
+              "url": "data:image/png;base64,iVBORw=="
+            },
+            "type": "image_url"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "warnings": []
+  }
+}
+
+
+
+================================================
+FILE: providers/internal/prompttest/testdata/user_unsupported_media.json
+================================================
+{
+  "openai,openaicompat,openrouter,vercel": {
+    "messages": null,
+    "warnings": [
+      "other: file part media type video/mp4 not supported",
+      "other: dropping empty user message (contains neither user-facing content nor tool results)"
+    ]
+  }
+}
+
+
+
+================================================
+FILE: providers/openrouter/prompt.go
+================================================
+package openrouter
+
+import "charm.land/fantasy/providers/openai"
+
+// ToPrompt is the prompt converter this provider installs on its language
+// models, exported for the shared corpus in providers/internal/prompttest.
+var ToPrompt openai.LanguageModelToPromptFunc = languageModelToPrompt
+
+
+
+================================================
+FILE: providers/vercel/language_model_hooks_test.go
+================================================
+package vercel
+
+import "testing"
+
+func TestIsVertexUpstream(t *testing.T) {
+	tests := []struct {
+		provider string
+		want     bool
+	}{
+		{`"vertex"`, true},
+		{`"google"`, false},
+		{`"openai"`, false},
+		{"", false},
+		{"vertex", true}, // defensive: already-unquoted value
+	}
+	for _, tc := range tests {
+		if got := isVertexUpstream(tc.provider); got != tc.want {
+			t.Errorf("isVertexUpstream(%q) = %v, want %v", tc.provider, got, tc.want)
+		}
+	}
+}
+
+
+
+================================================
+FILE: providers/vercel/prompt.go
+================================================
+package vercel
+
+import openaipkg "charm.land/fantasy/providers/openai"
+
+// ToPrompt is the prompt converter this provider installs on its language
+// models, exported for the shared corpus in providers/internal/prompttest.
+var ToPrompt openaipkg.LanguageModelToPromptFunc = languageModelToPrompt
+
+
+
+================================================
+FILE: providertests/.env.sample
+================================================
+FANTASY_ANTHROPIC_API_KEY=
+FANTASY_AVIAN_API_KEY=
+FANTASY_AZURE_API_KEY=
+FANTASY_AZURE_BASE_URL=
+FANTASY_BEDROCK_API_KEY=
+FANTASY_GEMINI_API_KEY=
+FANTASY_GROQ_API_KEY=
+FANTASY_HUGGINGFACE_API_KEY=
+FANTASY_OPENAI_API_KEY=
+FANTASY_OPENROUTER_API_KEY=
+FANTASY_VERCEL_API_KEY=
+FANTASY_VERTEX_LOCATION=us-east5
+FANTASY_VERTEX_PROJECT=fantasy-playground-472418
+FANTASY_XAI_API_KEY=
+FANTASY_ZAI_API_KEY=
+
+
+
+================================================
+FILE: scripts/run-labeler.sh
+================================================
+ISSUES=$(gh issue list --state=all --limit=1000 --json "number" -t '{{range .}}{{printf "%.0f\n" .number}}{{end}}')
+PRS=$(gh pr list --state=all --limit=1000 --json "number" -t '{{range .}}{{printf "%.0f\n" .number}}{{end}}')
+
+for issue in $ISSUES; do
+  echo "Dispatching labeler.yml for $issue"
+  gh workflow run labeler.yml -f issue-number="$issue"
+done
+
+for pr in $PRS; do
+  echo "Dispatching labeler.yml for $pr"
+  gh workflow run labeler.yml -f issue-number="$pr"
+done
+
+
+
+================================================
+FILE: .github/CODEOWNERS
+================================================
+* @andreynering
+
+
+
+================================================
+FILE: .github/dependabot.yml
+================================================
+version: 2
+
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "area: dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - github.com/ardanlabs/kronk
+      kronk:
+        patterns:
+          - github.com/ardanlabs/kronk
+
+
+  - package-ecosystem: "gomod"
+    directory: "/examples"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "area: dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "area: dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+
+
+================================================
+FILE: .github/workflows/build.yml
+================================================
+name: build
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+    with:
+      go-version: ""
+      go-version-file: ./go.mod
+    secrets:
+      gh_pat: "${{ secrets.PERSONAL_ACCESS_TOKEN }}"
+
+
+
+================================================
+FILE: .github/workflows/labeler.yml
+================================================
+name: labeler
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue-number:
+        description: "Issue/PR #"
+        required: true
+        type: string
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: github/issue-labeler@v3.5
+        with:
+          configuration-path: .github/labeler.yml
+          enable-versioned-regex: 0
+          include-title: 1
+          include-body: 0
+          issue-number: ${{ github.event.inputs.issue-number || github.event.issue.number || github.event.pull_request.number }}
+
+
+
+================================================
+FILE: .github/workflows/lint.yml
+================================================
+name: lint
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint.yml@main
+    with:
+      golangci_path: .golangci.yml
+      golangci_version: v2.13.2
+      timeout: 10m
+      os: '["ubuntu-latest"]'
+
+
+
+================================================
+FILE: .helix/ignore
+================================================
+providertests/testdata
+
+

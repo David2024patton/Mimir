@@ -1,0 +1,1529 @@
+Directory structure:
+└── charmbracelet-soft-serve/
+    ├── browse.tape
+    ├── codecov.yml
+    ├── demo.tape
+    ├── Dockerfile
+    ├── .editorconfig
+    ├── .golangci.yml
+    ├── .goreleaser.yml
+    ├── git/
+    │   ├── command.go
+    │   ├── commit.go
+    │   ├── config.go
+    │   ├── errors.go
+    │   ├── server.go
+    │   ├── stash.go
+    │   ├── tag.go
+    │   └── types.go
+    ├── testscript/
+    │   └── testdata/
+    │       ├── anon-access.txtar
+    │       ├── config-servers-git_disabled.txtar
+    │       ├── config-servers-http_disabled.txtar
+    │       ├── config-servers-ssh_disabled.txtar
+    │       ├── config-servers-stats_disabled.txtar
+    │       ├── default-repo.txtar
+    │       ├── help.txtar
+    │       ├── http-push-create.txtar
+    │       ├── jwt.txtar
+    │       ├── repo-commit.txtar
+    │       ├── repo-delete.txtar
+    │       ├── repo-import-local-path.txtar
+    │       ├── repo-import.txtar
+    │       ├── repo-push.txtar
+    │       ├── repo-webhooks.txtar
+    │       ├── set-username.txtar
+    │       ├── settings.txtar
+    │       ├── soft-browse.txtar
+    │       ├── soft-manpages.txtar
+    │       ├── token.txtar
+    │       └── user-delete-owner.txtar
+    ├── .github/
+    │   ├── dependabot.yml
+    │   ├── ISSUE_TEMPLATE/
+    │   │   ├── bug_report.md
+    │   │   └── feature_request.md
+    │   └── workflows/
+    │       ├── dependabot-sync.yml
+    │       ├── goreleaser.yml
+    │       ├── lint-sync.yml
+    │       ├── lint.yml
+    │       └── nightly.yml
+    └── .nfpm/
+        ├── postinstall.sh
+        ├── postremove.sh
+        ├── soft-serve.conf
+        ├── sysusers.conf
+        └── tmpfiles.conf
+
+================================================
+FILE: browse.tape
+================================================
+Set Width 1600
+Set Height 900
+Set FontSize 22
+
+Output soft-serve-browse.gif
+Output soft-serve-frames/
+
+Type@300ms "soft"
+Enter
+Sleep 2s
+Type@1s "ddd"
+Sleep 2s
+Type@1s "uuu"
+Sleep 2s
+Tab@1s
+Sleep 1s
+Down@300ms 4
+Enter
+Sleep 1s
+Down@300ms 13
+Enter
+Sleep 1s
+Down@300ms 5
+Enter
+Down@300ms 20
+Sleep 2s
+Type@500ms "b"
+Sleep 2.5s
+Down@300ms 50
+Sleep 2.5s
+Tab@1s
+Down@500ms 4
+Up@500ms 2
+Enter
+Down@250ms 50
+Sleep 1s
+Tab@1s
+Down@500ms 8
+Enter
+Down@250ms 30
+Tab@2s
+Down@500ms 5
+Up@500ms 2
+Sleep 2.5s
+Tab@2s
+Down@500ms 8
+Sleep 2s
+
+
+
+================================================
+FILE: codecov.yml
+================================================
+coverage:
+  status:
+    project:
+      default:
+        target: 50%
+    patch:
+      default:
+        target: 30%
+
+
+
+================================================
+FILE: demo.tape
+================================================
+Set Width 1600
+Set Height 900
+Set FontSize 22
+
+Output soft-serve.gif
+Output soft-serve-frames/
+
+Type "ssh git.charm.sh"
+Sleep 1s
+Enter
+Sleep 2s
+Type@500ms "jjj"
+Sleep 1s
+Type@250ms "kkk"
+Enter
+Sleep 1s
+Down@300ms 10
+Sleep 1s
+Tab@1s 2
+Down@300ms 3
+Enter
+Down@250ms 30
+Sleep 1s
+Type "h"
+Sleep 1s
+Tab@1s 4
+Sleep 500ms
+Down@300ms 4
+Enter
+Down@300ms 2
+Enter
+Down
+Sleep 1s
+Enter
+Down@250ms 50
+Sleep 2.5s
+Escape
+Sleep 2s
+
+
+
+================================================
+FILE: Dockerfile
+================================================
+FROM alpine:latest
+
+# Create directories
+WORKDIR /soft-serve
+# Expose data volume
+VOLUME /soft-serve
+
+# Environment variables
+ENV SOFT_SERVE_DATA_PATH "/soft-serve"
+ENV SOFT_SERVE_INITIAL_ADMIN_KEYS ""
+# workaround to prevent slowness in docker when running with a tty
+ENV CI "1"
+
+# Expose ports
+# SSH
+EXPOSE 23231/tcp
+# HTTP
+EXPOSE 23232/tcp
+# Stats
+EXPOSE 23233/tcp
+# Git
+EXPOSE 9418/tcp
+
+# Set the default command
+ENTRYPOINT [ "/usr/local/bin/soft", "serve" ]
+
+RUN apk update && apk add --update git bash openssh && rm -rf /var/cache/apk/*
+
+COPY soft /usr/local/bin/soft
+
+
+
+================================================
+FILE: .editorconfig
+================================================
+root = true
+
+[*]
+charset=utf-8
+end_of_line=lf
+insert_final_newline=true
+trim_trailing_whitespace=true
+indent_size=2
+indent_style=space
+
+[*.go]
+indent_size=4
+indent_style=tab
+
+
+
+================================================
+FILE: .golangci.yml
+================================================
+version: "2"
+linters:
+  enable:
+    - bodyclose
+    # - exhaustive
+    # - goconst
+    # - godot
+    # - godox
+    # - gomoddirectives
+    - goprintffuncname
+    # - gosec
+    - misspell
+    # - nakedret
+    # - nestif
+    # - nilerr
+    - noctx
+    - nolintlint
+    # - prealloc
+    # - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - tparallel
+    # - unconvert
+    # - unparam
+    - whitespace
+    # - wrapcheck
+  disable:
+    - errcheck
+    - ineffassign
+    - unused
+    - staticcheck
+  exclusions:
+    generated: lax
+    presets:
+      - common-false-positives
+    rules:
+      - text: '(slog|log)\.\w+'
+        linters:
+          - noctx
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+
+
+
+================================================
+FILE: .goreleaser.yml
+================================================
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+
+version: 2
+
+includes:
+  - from_url:
+      url: charmbracelet/meta/main/goreleaser-soft-serve.yaml
+
+variables:
+  main: "./cmd/soft"
+  binary_name: soft
+  description: "A tasty, self-hostable Git server for the command line🍦"
+  github_url: "https://github.com/charmbracelet/soft-serve"
+  maintainer: "Ayman Bagabas <ayman@charm.sh>"
+  brew_commit_author_name: "Ayman Bagabas"
+  brew_commit_author_email: "ayman@charm.sh"
+
+
+
+================================================
+FILE: git/command.go
+================================================
+package git
+
+import "github.com/aymanbagabas/git-module"
+
+// RunInDirOptions are options for RunInDir.
+type RunInDirOptions = git.RunInDirOptions
+
+// NewCommand creates a new git command.
+func NewCommand(args ...string) *git.Command {
+	return git.NewCommand(args...)
+}
+
+
+
+================================================
+FILE: git/commit.go
+================================================
+package git
+
+import (
+	"regexp"
+
+	"github.com/aymanbagabas/git-module"
+)
+
+// ZeroID is the zero hash.
+const ZeroID = git.EmptyID
+
+// IsZeroHash returns whether the hash is a zero hash.
+func IsZeroHash(h string) bool {
+	pattern := regexp.MustCompile(`^0{40,}$`)
+	return pattern.MatchString(h)
+}
+
+// Commit is a wrapper around git.Commit with helper methods.
+type Commit = git.Commit
+
+// Commits is a list of commits.
+type Commits []*Commit
+
+// Len implements sort.Interface.
+func (cl Commits) Len() int { return len(cl) }
+
+// Swap implements sort.Interface.
+func (cl Commits) Swap(i, j int) { cl[i], cl[j] = cl[j], cl[i] }
+
+// Less implements sort.Interface.
+func (cl Commits) Less(i, j int) bool {
+	return cl[i].Author.When.After(cl[j].Author.When)
+}
+
+
+
+================================================
+FILE: git/config.go
+================================================
+package git
+
+import (
+	"os"
+	"path/filepath"
+
+	gcfg "github.com/go-git/go-git/v5/plumbing/format/config"
+)
+
+// Config returns the repository Git configuration.
+func (r *Repository) Config() (*gcfg.Config, error) {
+	cp := filepath.Join(r.Path, "config")
+	f, err := os.Open(cp)
+	if err != nil {
+		return nil, err
+	}
+
+	defer f.Close() //nolint: errcheck
+	d := gcfg.NewDecoder(f)
+	cfg := gcfg.New()
+	if err := d.Decode(cfg); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+// SetConfig sets the repository Git configuration.
+func (r *Repository) SetConfig(cfg *gcfg.Config) error {
+	cp := filepath.Join(r.Path, "config")
+	f, err := os.Create(cp)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close() //nolint: errcheck
+	e := gcfg.NewEncoder(f)
+	return e.Encode(cfg)
+}
+
+
+
+================================================
+FILE: git/errors.go
+================================================
+package git
+
+import (
+	"errors"
+
+	"github.com/aymanbagabas/git-module"
+)
+
+var (
+	// ErrFileNotFound is returned when a file is not found.
+	ErrFileNotFound = errors.New("file not found")
+	// ErrDirectoryNotFound is returned when a directory is not found.
+	ErrDirectoryNotFound = errors.New("directory not found")
+	// ErrReferenceNotExist is returned when a reference does not exist.
+	ErrReferenceNotExist = git.ErrReferenceNotExist
+	// ErrRevisionNotExist is returned when a revision is not found.
+	ErrRevisionNotExist = git.ErrRevisionNotExist
+	// ErrNotAGitRepository is returned when the given path is not a Git repository.
+	ErrNotAGitRepository = errors.New("not a git repository")
+)
+
+
+
+================================================
+FILE: git/server.go
+================================================
+package git
+
+import (
+	"context"
+
+	"github.com/aymanbagabas/git-module"
+)
+
+// UpdateServerInfo updates the server info file for the given repo path.
+func UpdateServerInfo(ctx context.Context, path string) error {
+	if !isGitDir(path) {
+		return ErrNotAGitRepository
+	}
+
+	cmd := git.NewCommand("update-server-info").WithContext(ctx).WithTimeout(-1)
+	_, err := cmd.RunInDir(path)
+	return err
+}
+
+
+
+================================================
+FILE: git/stash.go
+================================================
+package git
+
+import "github.com/aymanbagabas/git-module"
+
+// StashDiff returns the diff of the given stash index.
+func (r *Repository) StashDiff(index int) (*Diff, error) {
+	diff, err := r.Repository.StashDiff(index, DiffMaxFiles, DiffMaxFileLines, DiffMaxLineChars, git.DiffOptions{
+		CommandOptions: git.CommandOptions{
+			Envs: []string{"GIT_CONFIG_GLOBAL=/dev/null"},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return toDiff(diff), nil
+}
+
+
+
+================================================
+FILE: git/tag.go
+================================================
+package git
+
+import "github.com/aymanbagabas/git-module"
+
+// Tag is a git tag.
+type Tag = git.Tag
+
+
+
+================================================
+FILE: git/types.go
+================================================
+package git
+
+import "github.com/aymanbagabas/git-module"
+
+// CommandOptions contain options for running a git command.
+type CommandOptions = git.CommandOptions
+
+// CloneOptions contain options for cloning a repository.
+type CloneOptions = git.CloneOptions
+
+
+
+================================================
+FILE: testscript/testdata/anon-access.txtar
+================================================
+# vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# set settings
+soft settings allow-keyless true
+soft settings anon-access no-access
+
+# create a repo
+soft repo create repo1
+git clone ssh://localhost:$SSH_PORT/repo1 repo1
+mkfile ./repo1/README.md '# Hello\n\nwelcome'
+git -C repo1 add -A
+git -C repo1 commit -m 'first'
+git -C repo1 push origin HEAD
+
+# access repo from anon
+! ugit clone ssh://localhost:$SSH_PORT/repo1 urepo1
+stderr 'Error: you are not authorized to do this'
+
+# list repo as anon
+usoft repo list
+stdout ''
+
+# create repo as anon
+! usoft repo create urepo2
+stderr 'Error: unauthorized'
+
+# stop the server
+[windows] stopserver
+
+
+
+================================================
+FILE: testscript/testdata/config-servers-git_disabled.txtar
+================================================
+# vi: set ft=conf
+
+# disable git listening
+env SOFT_SERVE_SSH_ENABLED=true
+env SOFT_SERVE_GIT_ENABLED=false
+env SOFT_SERVE_HTTP_ENABLED=true
+env SOFT_SERVE_STATS_ENABLED=true
+
+# start soft serve
+exec soft serve --sync-hooks &
+
+# wait for the ssh + other servers to come up
+ensureserverrunning SSH_PORT
+ensureserverrunning HTTP_PORT
+ensureserverrunning STATS_PORT
+
+# ensure that the disabled server is not running
+ensureservernotrunning GIT_PORT
+
+
+
+================================================
+FILE: testscript/testdata/config-servers-http_disabled.txtar
+================================================
+# vi: set ft=conf
+
+# disable http listening
+env SOFT_SERVE_SSH_ENABLED=true
+env SOFT_SERVE_GIT_ENABLED=true
+env SOFT_SERVE_HTTP_ENABLED=false
+env SOFT_SERVE_STATS_ENABLED=true
+
+# start soft serve
+exec soft serve --sync-hooks &
+
+# wait for the ssh + other servers to come up
+ensureserverrunning SSH_PORT
+ensureserverrunning GIT_PORT
+ensureserverrunning STATS_PORT
+
+# ensure that the disabled server is not running
+ensureservernotrunning HTTP_PORT
+
+
+
+
+================================================
+FILE: testscript/testdata/config-servers-ssh_disabled.txtar
+================================================
+# vi: set ft=conf
+
+# disable ssh listening
+env SOFT_SERVE_SSH_ENABLED=false
+env SOFT_SERVE_GIT_ENABLED=true
+env SOFT_SERVE_HTTP_ENABLED=true
+env SOFT_SERVE_STATS_ENABLED=true
+
+# start soft serve
+exec soft serve --sync-hooks &
+
+# wait for the git + other servers to come up
+ensureserverrunning GIT_PORT
+ensureserverrunning HTTP_PORT
+ensureserverrunning STATS_PORT
+
+# ensure that the disabled server is not running
+ensureservernotrunning SSH_PORT
+
+
+
+================================================
+FILE: testscript/testdata/config-servers-stats_disabled.txtar
+================================================
+# vi: set ft=conf
+
+# disable stats listening
+env SOFT_SERVE_SSH_ENABLED=true
+env SOFT_SERVE_GIT_ENABLED=true
+env SOFT_SERVE_HTTP_ENABLED=true
+env SOFT_SERVE_STATS_ENABLED=false
+
+# start soft serve
+exec soft serve --sync-hooks &
+
+# wait for the ssh + other servers to come up
+ensureserverrunning SSH_PORT
+ensureserverrunning GIT_PORT
+ensureserverrunning HTTP_PORT
+
+# ensure that the disabled server is not running
+ensureservernotrunning STATS_PORT
+
+
+
+================================================
+FILE: testscript/testdata/default-repo.txtar
+================================================
+# vi: set ft=conf
+
+env SOFT_SERVE_DEFAULT_REPO=gitops
+
+# start soft serve, with no prior `repo create` call for the default repo,
+# and no anon-access overrides -- just an ordinary seeded admin key
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# the default repo must exist and be clonable with zero manual setup
+soft repo list
+stdout 'gitops'
+
+git clone ssh://localhost:$SSH_PORT/gitops gitops
+mkfile ./gitops/README.md '# gitops'
+git -C gitops add -A
+git -C gitops commit -m 'first'
+git -C gitops push origin HEAD
+
+# restart-safety: booting again against the same data dir must not error,
+# duplicate, or reset the repo's content
+stopserver
+ensureservernotrunning SSH_PORT
+exec soft serve &
+ensureserverrunning SSH_PORT
+
+soft repo list
+stdout 'gitops'
+
+git clone ssh://localhost:$SSH_PORT/gitops gitops2
+grep '# gitops' gitops2/README.md
+
+# stop the server
+[windows] stopserver
+
+
+
+================================================
+FILE: testscript/testdata/help.txtar
+================================================
+# vi: set ft=conf
+[windows] dos2unix help.txt
+
+# start soft serve
+exec soft serve --sync-hooks &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+soft --help
+cmpenv stdout help.txt
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
+-- help.txt --
+Soft Serve is a self-hostable Git server for the command line.
+
+Usage:
+  ssh -p $SSH_PORT localhost [command]
+
+Available Commands:
+  help                 Help about any command
+  info                 Show your info
+  jwt                  Generate a JSON Web Token
+  pubkey               Manage your public keys
+  repo                 Manage repositories
+  set-username         Set your username
+  settings             Manage server settings
+  token                Manage access tokens
+  user                 Manage users
+
+Flags:
+  -h, --help   help for this command
+
+Use "ssh -p $SSH_PORT localhost [command] --help" for more information about a command.
+
+
+
+================================================
+FILE: testscript/testdata/http-push-create.txtar
+================================================
+# vi: set ft=conf
+
+# FIXME: don't skip windows
+[windows] skip 'curl makes github actions hang'
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+soft settings anon-access read-write
+
+# bad credentials never create a repository
+curl http://bob:wrong@localhost:$HTTP_PORT/ghost1.git/info/refs?service=git-receive-pack
+stdout '403.*'
+
+# only the push endpoints create repositories
+curl http://localhost:$HTTP_PORT/ghost2.git/HEAD?service=git-receive-pack
+
+# the push advertisement still creates one
+curl http://localhost:$HTTP_PORT/ghost3.git/info/refs?service=git-receive-pack
+soft repo list
+stdout 'ghost3'
+! stdout 'ghost1'
+! stdout 'ghost2'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
+
+
+================================================
+FILE: testscript/testdata/jwt.txtar
+================================================
+# vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create user
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+
+# generate jwt token
+soft jwt
+stdout '.*\..*\..*'
+soft jwt repo
+stdout '.*\..*\..*'
+usoft jwt
+stdout '.*\..*\..*'
+usoft jwt repo
+stdout '.*\..*\..*'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
+
+
+================================================
+FILE: testscript/testdata/repo-commit.txtar
+================================================
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+[windows] dos2unix commit1.txt
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create a repo
+soft repo import basic1 https://github.com/git-fixtures/basic
+
+# print commit
+soft repo commit basic1 b8e471f58bcbca63b07bda20e428190409c2db47
+cmp stdout commit1.txt
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
+-- commit1.txt --
+commit b8e471f58bcbca63b07bda20e428190409c2db47
+Author: Daniel Ripolles
+Date:   Tue Mar 31 11:44:52 UTC 2015
+Creating changelog
+
+
+CHANGELOG | 1 +
+1 file changed, 1 insertion(+)
+
+diff --git a/CHANGELOG b/CHANGELOG
+new file mode 100644
+index 0000000000000000000000000000000000000000..d3ff53e0564a9f87d8e84b6e28e5060e517008aa
+--- /dev/null
++++ b/CHANGELOG
+@@ -0,0 +1 @@
++Initial changelog
+
+
+
+
+================================================
+FILE: testscript/testdata/repo-delete.txtar
+================================================
+# vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+soft repo create repo1
+soft repo create repo-to-delete
+soft repo delete repo-to-delete
+! soft repo delete nope
+stderr '.*not found.*'
+
+# missing argument should fail
+! soft repo branch delete repo1
+stderr 'Error.*accepts 2 arg.*'
+
+soft repo list
+stdout 'repo1'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
+
+
+================================================
+FILE: testscript/testdata/repo-import-local-path.txtar
+================================================
+# vi: set ft=conf
+
+[windows] skip 'uses a raw server filesystem path as the import remote'
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create a private repo and a second user
+soft repo create secret -p
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+
+# seed the private repo with content
+git clone ssh://localhost:$SSH_PORT/secret secret
+mkfile ./secret/SECRET.txt 'top secret'
+git -C secret add -A
+git -C secret commit -m 'first'
+git -C secret push origin HEAD
+
+# user1 cannot read the private repo directly
+! usoft repo info secret
+stderr 'repository not found'
+
+# user1 also must not be able to import the server-local repo path
+! usoft repo import stolen "$DATA_PATH/repos/secret.git" --lfs-endpoint http://example.com
+stderr 'remote must be a network URL'
+
+# the failed import must not create a readable repo
+! usoft repo info stolen
+stderr 'repository not found'
+
+[windows] stopserver
+[windows] ! stderr .
+
+
+
+================================================
+FILE: testscript/testdata/repo-import.txtar
+================================================
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+[windows] dos2unix repo3.txt
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# import private
+soft repo import --private repo1 https://github.com/charmbracelet/wizard-tutorial.git
+soft repo private repo1
+stdout 'true'
+
+# import hidden
+soft repo import --hidden repo2 https://github.com/charmbracelet/wizard-tutorial.git
+soft repo hidden repo2
+stdout 'true'
+
+# import with name and description
+soft repo import --name 'repo33' --description 'descriptive' repo3 https://github.com/charmbracelet/wizard-tutorial.git
+soft repo info repo3
+cmp stdout repo3.txt
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
+-- repo3.txt --
+Project Name: repo33
+Repository: repo3
+Description: descriptive
+Private: false
+Hidden: false
+Mirror: false
+Owner: admin
+Default Branch: main
+Branches:
+  - main
+
+
+
+================================================
+FILE: testscript/testdata/repo-push.txtar
+================================================
+# vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create a repo
+soft repo create repo-empty -d 'description' -H -p -n 'repo-empty'
+
+# clone repo
+git clone ssh://localhost:$SSH_PORT/repo-empty repo-empty
+
+# push repo without any commits
+! git -C repo-empty push origin HEAD
+
+# push repo with a commit
+mkfile ./repo-empty/README.md '# Hello\n\nwelcome'
+git -C repo-empty add README.md
+git -C repo-empty commit -m 'first'
+git -C repo-empty push origin HEAD
+
+# stop the server
+[windows] stopserver
+
+
+
+================================================
+FILE: testscript/testdata/repo-webhooks.txtar
+================================================
+# vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create a repo
+soft repo create repo-123
+stderr 'Created repository repo-123.*'
+stdout ssh://localhost:$SSH_PORT/repo-123.git
+
+# create webhook
+new-webhook WH_REPO_123
+soft repo webhook create repo-123 $WH_REPO_123 -e branch_tag_create -e branch_tag_delete -e collaborator -e push -e repository -e repository_visibility_change
+
+# list webhooks
+soft repo webhook list repo-123
+stdout '1.*webhook.site/.*'
+
+# clone repo and commit files
+git clone ssh://localhost:$SSH_PORT/repo-123 repo-123
+mkfile ./repo-123/README.md 'foobar'
+git -C repo-123 add -A
+git -C repo-123 commit -m 'first'
+git -C repo-123 push origin HEAD
+
+# list webhook deliveries
+soft repo webhook deliver list repo-123 1
+stdout '✅.*push.*'
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
+
+
+================================================
+FILE: testscript/testdata/set-username.txtar
+================================================
+# vi: set ft=conf
+
+# convert crlf to lf on windows
+[windows] dos2unix info1.txt info2.txt
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# get original username
+soft info
+cmpenv stdout info1.txt
+
+# set another username
+soft set-username test
+soft info
+cmpenv stdout info2.txt
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
+-- info1.txt --
+Username: admin
+Admin: true
+Public keys:
+  $ADMIN1_AUTHORIZED_KEY
+-- info2.txt --
+Username: test
+Admin: true
+Public keys:
+  $ADMIN1_AUTHORIZED_KEY
+
+
+
+================================================
+FILE: testscript/testdata/settings.txtar
+================================================
+# vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# check default allow-keyless
+soft settings allow-keyless true
+soft settings allow-keyless
+stdout 'true.*'
+
+# change allow-keyless and check
+soft settings allow-keyless false
+soft settings allow-keyless
+stdout 'false.*'
+
+# check default anon-access
+soft settings anon-access
+stdout 'read-only.*'
+
+# change anon-access to all available options, and check them
+soft settings anon-access no-access
+soft settings anon-access
+stdout 'no-access.*'
+
+soft settings anon-access read-only
+soft settings anon-access
+stdout 'read-only.*'
+
+soft settings anon-access read-write
+soft settings anon-access
+stdout 'read-write.*'
+
+soft settings anon-access admin-access
+soft settings anon-access
+stdout 'admin-access.*'
+
+# try to set a bad access
+! soft settings anon-access nope
+! stdout .
+stderr .
+
+# stop the server
+[windows] stopserver
+
+
+
+
+================================================
+FILE: testscript/testdata/soft-browse.txtar
+================================================
+# vi: set ft=conf
+
+[windows] skip
+
+# clone repo
+#git clone https://github.com/charmbracelet/wizard-tutorial.git wizard-tutorial
+
+# run soft browse
+# disable this temporarily
+#ttyin input.txt
+#exec soft browse ./wizard-tutorial
+
+# cd and run soft
+# disable this temporarily
+#cd wizard-tutorial
+#ttyin ../input.txt
+#exec soft
+
+-- input.txt --
+jjkkdduu
+
+jjkkdduu
+
+jjkkdduu
+
+jjkkdduu
+
+jjkkdduu
+
+qqq
+
+
+
+================================================
+FILE: testscript/testdata/soft-manpages.txtar
+================================================
+# vi: set ft=conf
+
+# test `soft man` output
+exec soft man
+stdout .
+
+
+
+================================================
+FILE: testscript/testdata/token.txtar
+================================================
+# vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+# create user
+soft user create user1 --key "$USER1_AUTHORIZED_KEY"
+
+# generate jwt token
+usoft token create 'test1'
+stdout 'ss_.*'
+stderr 'Access token created'
+usoft token create --expires-in 1y 'test2'
+stdout 'ss_.*'
+stderr 'Access token created'
+usoft token create --expires-in 1ns 'test3'
+stdout 'ss_.*'
+stderr 'Access token created'
+
+# list tokens
+usoft token list
+cp stdout tokens.txt
+grep '1.*test1.*-' tokens.txt
+grep '2.*test2.*1 year from now' tokens.txt
+grep '3.*est3.*expired' tokens.txt
+
+# delete token
+usoft token delete 1
+stderr 'Access token deleted'
+! usoft token delete 1
+stderr 'token not found'
+
+# stop the server
+[windows] stopserver
+
+
+
+================================================
+FILE: testscript/testdata/user-delete-owner.txtar
+================================================
+# vi: set ft=conf
+
+# start soft serve
+exec soft serve &
+# wait for SSH server to start
+ensureserverrunning SSH_PORT
+
+soft user create foo --key "$USER1_AUTHORIZED_KEY"
+usoft repo create foo-repo
+
+# a user who owns repositories cannot be removed until they are gone
+! soft user delete foo
+stderr '.*still owns repositories.*foo-repo.*'
+soft repo list
+stdout 'foo-repo'
+
+soft repo delete foo-repo
+soft user delete foo
+! soft user info foo
+stderr '.*not found.*'
+# a placeholder to reset stderr
+soft help
+
+# stop the server
+[windows] stopserver
+[windows] ! stderr .
+
+
+
+================================================
+FILE: .github/dependabot.yml
+================================================
+version: 2
+
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: github.com/charmbracelet/bubbletea/v2
+        versions:
+          - v2.0.0-beta1
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+
+
+================================================
+FILE: .github/ISSUE_TEMPLATE/bug_report.md
+================================================
+---
+name: Bug report
+about: Create a report to help us improve
+title: ''
+labels: ''
+assignees: ''
+
+---
+
+**Describe the bug**
+A clear and concise description of what the bug is.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Click on '....'
+3. Scroll down to '....'
+4. See error
+
+**Expected behavior**
+A clear and concise description of what you expected to happen.
+
+**Screenshots**
+If applicable, add screenshots to help explain your problem.
+
+**Environment (please complete the following information):**
+ - OS: [e.g. Linux]
+ - Terminal [e.g. kitty, iterm2, gnome-terminal]
+ - Version [e.g. v0.4.0]
+
+**Additional context**
+Add any other context about the problem here.
+
+
+
+================================================
+FILE: .github/ISSUE_TEMPLATE/feature_request.md
+================================================
+---
+name: Feature request
+about: Suggest an idea for this project
+title: ''
+labels: ''
+assignees: ''
+
+---
+
+**Is your feature request related to a problem? Please describe.**
+A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+
+**Describe the solution you'd like**
+A clear and concise description of what you want to happen.
+
+**Describe alternatives you've considered**
+A clear and concise description of any alternative solutions or features you've considered.
+
+**Additional context**
+Add any other context or screenshots about the feature request here.
+
+
+
+================================================
+FILE: .github/workflows/dependabot-sync.yml
+================================================
+name: dependabot-sync
+on:
+  schedule:
+    - cron: "0 0 * * 0" # every Sunday at midnight
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot-sync:
+    uses: charmbracelet/meta/.github/workflows/dependabot-sync.yml@main
+    with:
+      repo_name: ${{ github.event.repository.name }}
+    secrets:
+      gh_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+
+
+================================================
+FILE: .github/workflows/goreleaser.yml
+================================================
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: goreleaser
+
+on:
+  push:
+    tags:
+      - v*.*.*
+
+concurrency:
+  group: goreleaser
+  cancel-in-progress: true
+
+jobs:
+  goreleaser:
+    uses: charmbracelet/meta/.github/workflows/goreleaser.yml@main
+    secrets:
+      docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      docker_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      gh_pat: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      goreleaser_key: ${{ secrets.GORELEASER_KEY }}
+      fury_token: ${{ secrets.FURY_TOKEN }}
+      nfpm_gpg_key: ${{ secrets.NFPM_GPG_KEY }}
+      nfpm_passphrase: ${{ secrets.NFPM_PASSPHRASE }}
+      macos_sign_p12: ${{ secrets.MACOS_SIGN_P12 }}
+      macos_sign_password: ${{ secrets.MACOS_SIGN_PASSWORD }}
+      macos_notary_issuer_id: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+      macos_notary_key_id: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+      macos_notary_key: ${{ secrets.MACOS_NOTARY_KEY }}
+
+
+
+================================================
+FILE: .github/workflows/lint-sync.yml
+================================================
+name: lint-sync
+on:
+  # schedule:
+  #   # every Sunday at midnight
+  #   - cron: "0 0 * * 0"
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint-sync.yml@main
+
+
+
+================================================
+FILE: .github/workflows/lint.yml
+================================================
+name: lint
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint.yml@main
+    with:
+      golangci_path: .golangci.yml
+      golangci_version: latest
+      timeout: 10m
+
+
+
+================================================
+FILE: .github/workflows/nightly.yml
+================================================
+name: nightly
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  nightly:
+    uses: charmbracelet/meta/.github/workflows/nightly.yml@main
+    secrets:
+      docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      docker_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      goreleaser_key: ${{ secrets.GORELEASER_KEY }}
+      macos_sign_p12: ${{ secrets.MACOS_SIGN_P12 }}
+      macos_sign_password: ${{ secrets.MACOS_SIGN_PASSWORD }}
+      macos_notary_issuer_id: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+      macos_notary_key_id: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+      macos_notary_key: ${{ secrets.MACOS_NOTARY_KEY }}
+
+
+
+================================================
+FILE: .nfpm/postinstall.sh
+================================================
+#!/bin/sh
+set -e
+
+if ! command -V systemctl >/dev/null 2>&1; then
+	echo "Not running SystemD, ignoring"
+	exit 0
+fi
+
+systemd-sysusers
+systemd-tmpfiles --create
+
+systemctl daemon-reload
+systemctl unmask soft-serve.service
+systemctl preset soft-serve.service
+
+
+
+================================================
+FILE: .nfpm/postremove.sh
+================================================
+#!/bin/sh
+set -e
+
+if ! command -V systemctl >/dev/null 2>&1; then
+	echo "Not running SystemD, ignoring"
+	exit 0
+fi
+
+systemctl daemon-reload
+systemctl reset-failed
+
+echo "WARN: the soft-serve user/group and /var/lib/soft-serve directory were not removed"
+
+
+
+================================================
+FILE: .nfpm/soft-serve.conf
+================================================
+# Config defined here will override the config in /var/lib/soft-serve/config.yaml
+# Keys defined in `SOFT_SERVE_INITIAL_ADMIN_KEYS` will be merged with 
+# the `initial_admin_keys` from /var/lib/soft-serve/config.yaml.
+#
+#SOFT_SERVE_GIT_LISTEN_ADDR=:9418
+#SOFT_SERVE_HTTP_LISTEN_ADDR=:23232
+#SOFT_SERVE_SSH_LISTEN_ADDR=:23231
+#SOFT_SERVE_SSH_KEY_PATH=ssh/soft_serve_host_ed25519
+#SOFT_SERVE_INITIAL_ADMIN_KEYS='ssh-ed25519 AAAAC3NzaC1lZDI1...'
+
+
+
+================================================
+FILE: .nfpm/sysusers.conf
+================================================
+u soft-serve - "Soft Serve daemon user" /var/lib/soft-serve
+
+
+
+================================================
+FILE: .nfpm/tmpfiles.conf
+================================================
+d /var/lib/soft-serve 0750 soft-serve soft-serve
+
+

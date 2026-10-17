@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 )
+
+const maxShellOutputBytes = 32 * 1024 // 32 KB context cap (sausheong/harness pattern)
 
 // ShellTool runs a shell command and returns its output (E3.1).
 type ShellTool struct {
@@ -43,9 +47,26 @@ func (t *ShellTool) Run(ctx context.Context, args map[string]any) (string, error
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 	err := cmd.Run()
-	result := out.String()
+	result := capShellOutput(out.String())
 	if err != nil {
 		return result, fmt.Errorf("command failed: %w", err)
 	}
 	return result, nil
+}
+
+func capShellOutput(s string) string {
+	if len(s) <= maxShellOutputBytes {
+		return s
+	}
+	spillFile, err := os.CreateTemp("", "mimir-bash-*.log")
+	spillNote := ""
+	if err == nil {
+		_, _ = spillFile.WriteString(s)
+		_ = spillFile.Close()
+		spillNote = fmt.Sprintf(" Full output (%d bytes) saved to %s.", len(s), filepath.Clean(spillFile.Name()))
+	}
+	head := s[:16*1024]
+	tail := s[len(s)-12*1024:]
+	return fmt.Sprintf("%s\n\n... [output truncated: %d bytes omitted.%s] ...\n\n%s",
+		head, len(s)-28*1024, spillNote, tail)
 }

@@ -1,0 +1,879 @@
+Directory structure:
+└── charmbracelet-log/
+    ├── context.go
+    ├── context_test.go
+    ├── doc.go
+    ├── formatter.go
+    ├── logfmt.go
+    ├── .golangci.yml
+    ├── .goreleaser.yml
+    ├── examples/
+    │   ├── README.md
+    │   ├── app/
+    │   │   └── app.tape
+    │   ├── batch2/
+    │   │   ├── batch2.go
+    │   │   └── batch2.tape
+    │   ├── chocolate-chips/
+    │   │   └── chocolate-chips.go
+    │   ├── cookie/
+    │   │   ├── cookie.go
+    │   │   └── cookie.tape
+    │   ├── error/
+    │   │   ├── error.go
+    │   │   └── error.tape
+    │   ├── format/
+    │   │   ├── format.go
+    │   │   └── format.tape
+    │   ├── log/
+    │   │   ├── log.go
+    │   │   └── log.tape
+    │   ├── new/
+    │   │   ├── new.go
+    │   │   └── new.tape
+    │   ├── options/
+    │   │   ├── options.go
+    │   │   └── options.tape
+    │   ├── oven/
+    │   │   ├── oven.go
+    │   │   └── oven.tape
+    │   ├── slog/
+    │   │   └── main.go
+    │   ├── styles/
+    │   │   ├── styles.go
+    │   │   └── styles.tape
+    │   └── temperature/
+    │       ├── temperature.go
+    │       └── temperature.tape
+    └── .github/
+        ├── dependabot.yml
+        └── workflows/
+            ├── build.yml
+            ├── dependabot-sync.yml
+            ├── goreleaser.yml
+            ├── lint-sync.yml
+            ├── lint.yml
+            └── nightly.yml
+
+================================================
+FILE: context.go
+================================================
+package log
+
+import "context"
+
+// WithContext wraps the given logger in context.
+func WithContext(ctx context.Context, logger *Logger) context.Context {
+	return context.WithValue(ctx, ContextKey, logger)
+}
+
+// FromContext returns the logger from the given context.
+// This will return the default package logger if no logger
+// found in context.
+func FromContext(ctx context.Context) *Logger {
+	if logger, ok := ctx.Value(ContextKey).(*Logger); ok {
+		return logger
+	}
+	return Default()
+}
+
+type contextKey struct{ string }
+
+// ContextKey is the key used to store the logger in context.
+var ContextKey = contextKey{"log"}
+
+
+
+================================================
+FILE: context_test.go
+================================================
+package log
+
+import (
+	"bytes"
+	"context"
+	"io"
+	"os"
+	"testing"
+
+	"github.com/charmbracelet/colorprofile"
+	"github.com/stretchr/testify/require"
+)
+
+func TestLogContext_empty(t *testing.T) {
+	require.Equal(t, Default(), FromContext(context.TODO()))
+}
+
+func TestLogContext_simple(t *testing.T) {
+	l := New(colorprofile.NewWriter(io.Discard, os.Environ()))
+	ctx := WithContext(context.Background(), l)
+	require.Equal(t, l, FromContext(ctx))
+}
+
+func TestLogContext_fields(t *testing.T) {
+	var buf bytes.Buffer
+	l := New(colorprofile.NewWriter(&buf, os.Environ()))
+	l.SetLevel(DebugLevel)
+	ctx := WithContext(context.Background(), l.With("foo", "bar"))
+	l = FromContext(ctx)
+	require.NotNil(t, l)
+	l.Debug("test")
+	require.Equal(t, "DEBUG test foo=bar\n", buf.String())
+}
+
+
+
+================================================
+FILE: doc.go
+================================================
+// Package log provides a simple and flexible logger with support for
+// structured logging, log levels, and customizable output formats.
+package log
+
+
+
+================================================
+FILE: formatter.go
+================================================
+package log
+
+// Formatter is a formatter for log messages.
+type Formatter uint8
+
+const (
+	// TextFormatter is a formatter that formats log messages as text. Suitable for
+	// console output and log files.
+	TextFormatter Formatter = iota
+	// JSONFormatter is a formatter that formats log messages as JSON.
+	JSONFormatter
+	// LogfmtFormatter is a formatter that formats log messages as logfmt.
+	LogfmtFormatter
+)
+
+var (
+	// TimestampKey is the key for the timestamp.
+	TimestampKey = "time"
+	// MessageKey is the key for the message.
+	MessageKey = "msg"
+	// LevelKey is the key for the level.
+	LevelKey = "level"
+	// CallerKey is the key for the caller.
+	CallerKey = "caller"
+	// PrefixKey is the key for the prefix.
+	PrefixKey = "prefix"
+)
+
+
+
+================================================
+FILE: logfmt.go
+================================================
+package log
+
+import (
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/go-logfmt/logfmt"
+)
+
+func (l *Logger) logfmtFormatter(keyvals ...any) {
+	e := logfmt.NewEncoder(&l.b)
+
+	for i := 0; i < len(keyvals); i += 2 {
+		switch keyvals[i] {
+		case TimestampKey:
+			if t, ok := keyvals[i+1].(time.Time); ok {
+				keyvals[i+1] = t.Format(l.timeFormat)
+			}
+		default:
+			if key := fmt.Sprint(keyvals[i]); key != "" {
+				keyvals[i] = key
+			}
+		}
+		err := e.EncodeKeyval(keyvals[i], keyvals[i+1])
+		if err != nil && errors.Is(err, logfmt.ErrUnsupportedValueType) {
+			// If the value is not supported by logfmt, we try to convert it to a string.
+			_ = e.EncodeKeyval(keyvals[i], fmt.Sprintf("%+v", keyvals[i+1]))
+		}
+	}
+	_ = e.EndRecord()
+}
+
+
+
+================================================
+FILE: .golangci.yml
+================================================
+version: "2"
+run:
+  tests: false
+linters:
+  enable:
+    - bodyclose
+    - exhaustive
+    - goconst
+    - godot
+    - gomoddirectives
+    - goprintffuncname
+    - gosec
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - noctx
+    - nolintlint
+    - prealloc
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - tparallel
+    - unconvert
+    - unparam
+    - whitespace
+    - wrapcheck
+  exclusions:
+    rules:
+      - text: '(slog|log)\.\w+'
+        linters:
+          - noctx
+    generated: lax
+    presets:
+      - common-false-positives
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+
+
+
+================================================
+FILE: .goreleaser.yml
+================================================
+includes:
+  - from_url:
+      url: charmbracelet/meta/main/goreleaser-lib.yaml
+
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+
+
+
+
+================================================
+FILE: examples/README.md
+================================================
+# Examples
+
+For those of you who are new to Go, check out
+[pkg.go.dev](https://pkg.go.dev/github.com/charmbracelet/log) to
+view our library's API. From there, you can search the repo for more detailed
+usage examples for whichever functions match your use case.
+
+
+
+================================================
+FILE: examples/app/app.tape
+================================================
+Output app.gif
+
+Set FontSize 24
+Set Width 1200
+Set Height 600
+
+Type "./app" Enter
+
+Sleep 10s
+
+
+
+================================================
+FILE: examples/batch2/batch2.go
+================================================
+package main
+
+import (
+	"charm.land/log/v2"
+)
+
+func main() {
+	logger := log.Default().With("batch", 2, "chocolateChips", true)
+	logger.SetPrefix("baking 🍪 ")
+	logger.SetReportTimestamp(false)
+	logger.SetReportCaller(false)
+	logger.SetLevel(log.DebugLevel)
+	logger.Debug("Preparing batch 2...")
+	logger.Debug("Adding chocolate chips")
+}
+
+
+
+================================================
+FILE: examples/batch2/batch2.tape
+================================================
+Output batch2.gif
+
+Set Height 300
+Set Width 1100
+
+Type "./batch2" Sleep 500ms Enter
+
+Sleep 4s
+
+
+
+================================================
+FILE: examples/chocolate-chips/chocolate-chips.go
+================================================
+package main
+
+import (
+	"charm.land/log/v2"
+)
+
+func main() {
+	logger := log.Default().With()
+
+	logger.SetPrefix("Baking 🍪 ")
+	logger.SetReportTimestamp(false)
+	logger.SetReportCaller(false)
+	logger.SetLevel(log.DebugLevel)
+	logger.Debug("Preparing batch 2...") // DEBUG baking 🍪: Preparing batch 2...}
+
+	batch2 := logger.With("batch", 2, "chocolateChips", true)
+	batch2.Debug("Adding chocolate chips")
+}
+
+
+
+================================================
+FILE: examples/cookie/cookie.go
+================================================
+package main
+
+import "charm.land/log/v2"
+
+func main() {
+	log.Debug("Cookie 🍪")
+	log.Info("Hello World!")
+}
+
+
+
+================================================
+FILE: examples/cookie/cookie.tape
+================================================
+Output cookie.gif
+
+Set Height 250
+Set Width 700
+
+Type "./cookie" Sleep 500ms Enter
+
+Sleep 3s
+
+
+
+================================================
+FILE: examples/error/error.go
+================================================
+package main
+
+import (
+	"fmt"
+
+	"charm.land/log/v2"
+)
+
+func main() {
+	err := fmt.Errorf("too much sugar")
+	log.Error("failed to bake cookies", "err", err)
+}
+
+
+
+================================================
+FILE: examples/error/error.tape
+================================================
+Output error.gif
+
+Set Height 250
+Set Width 1100
+
+Type "./error" Sleep 500ms Enter
+
+Sleep 3s
+
+
+
+================================================
+FILE: examples/format/format.go
+================================================
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"charm.land/log/v2"
+)
+
+func main() {
+	for item := 1; item <= 100; item++ {
+		log.Info(fmt.Sprintf("Baking %d / 100 ...", item))
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+
+
+================================================
+FILE: examples/format/format.tape
+================================================
+Output format.gif
+
+Set Height 400
+Set Width 800
+
+Type "./format" Sleep 500ms Enter
+
+Sleep 6s
+
+
+
+================================================
+FILE: examples/log/log.go
+================================================
+package main
+
+import "charm.land/log/v2"
+
+func main() {
+	log.Print("Baking 101")
+}
+
+
+
+================================================
+FILE: examples/log/log.tape
+================================================
+Output log.gif
+
+Set Height 250
+Set Width 800
+
+Type "./log" Sleep 500ms Enter
+
+Sleep 3s
+
+
+
+================================================
+FILE: examples/new/new.go
+================================================
+package main
+
+import (
+	"os"
+
+	"charm.land/log/v2"
+)
+
+func main() {
+	logger := log.New(os.Stderr)
+	logger.Warn("chewy!", "butter", true)
+}
+
+
+
+================================================
+FILE: examples/new/new.tape
+================================================
+Output new.gif
+
+Set Height 250
+Set Width 500
+
+Type "./new" Sleep 500ms Enter
+
+Sleep 3s
+
+
+
+================================================
+FILE: examples/options/options.go
+================================================
+package main
+
+import (
+	"os"
+	"time"
+
+	"charm.land/log/v2"
+)
+
+func main() {
+	logger := log.New(os.Stderr)
+	logger.SetPrefix("Baking 🍪 ")
+	logger.SetTimeFormat(time.Kitchen)
+	logger.SetReportTimestamp(true)
+	logger.SetReportCaller(true)
+	logger.Info("Starting oven!", "degree", 375)
+	time.Sleep(3 * time.Second)
+	logger.Info("Finished baking")
+}
+
+
+
+================================================
+FILE: examples/options/options.tape
+================================================
+Output options.gif
+
+Set Height 300
+Set Width 1200
+
+Type "./options" Sleep 500ms Enter
+
+Sleep 6s
+
+
+
+================================================
+FILE: examples/oven/oven.go
+================================================
+package main
+
+import "charm.land/log/v2"
+
+func startOven(degree int) {
+	log.Helper()
+	log.Info("Starting oven", "degree", degree)
+}
+
+func main() {
+	log.SetReportCaller(true)
+	startOven(400)
+}
+
+
+
+================================================
+FILE: examples/oven/oven.tape
+================================================
+Output oven.gif
+
+Set Height 250
+Set Width 1200
+
+Type "./oven" Sleep 500ms Enter
+
+Sleep 3s
+
+
+
+================================================
+FILE: examples/slog/main.go
+================================================
+package main
+
+import (
+	"fmt"
+	"log/slog"
+	"os"
+	"time"
+
+	"charm.land/log/v2"
+)
+
+func main() {
+	// baseline
+	fmt.Println(time.Now().UTC().Format(time.RFC3339), "foo")
+	fmt.Println(time.Now().Format(time.RFC3339), "bar")
+
+	handler := log.NewWithOptions(os.Stdout, log.Options{
+		ReportTimestamp: true,
+		TimeFunction:    log.NowUTC,
+		TimeFormat:      time.RFC3339,
+	})
+	handler.Info("foobar")
+
+	logger := slog.New(handler)
+	logger.Info("foobar")
+}
+
+
+
+================================================
+FILE: examples/styles/styles.go
+================================================
+package main
+
+import (
+	"os"
+	"time"
+
+	"charm.land/lipgloss/v2"
+	"charm.land/log/v2"
+)
+
+func main() {
+	// Set up our custom styles
+	styles := log.DefaultStyles()
+	styles.Levels[log.ErrorLevel] = lipgloss.NewStyle().
+		SetString("ERROR!!").
+		Padding(0, 1, 0, 1).
+		Background(lipgloss.Color("204")).
+		Foreground(lipgloss.Color("0"))
+	styles.Keys["err"] = lipgloss.NewStyle().Foreground(lipgloss.Color("204"))
+	styles.Values["err"] = lipgloss.NewStyle().Bold(true)
+	logger := log.New(os.Stderr)
+	logger.SetStyles(styles)
+	logger.Error("Whoops!", "err", "kitchen on fire")
+	time.Sleep(3 * time.Second)
+}
+
+
+
+================================================
+FILE: examples/styles/styles.tape
+================================================
+Output styles.gif
+
+Set Height 250
+Set Width 700
+
+Type "./styles" Sleep 500ms Enter
+
+Sleep 3s
+
+
+
+================================================
+FILE: examples/temperature/temperature.go
+================================================
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"charm.land/log/v2"
+)
+
+func main() {
+	for temp := 375; temp <= 400; temp++ {
+		log.Info("Increasing temperature", "degree", fmt.Sprintf("%d°F", temp))
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+
+
+================================================
+FILE: examples/temperature/temperature.tape
+================================================
+Output temperature.gif
+
+Set Height 400
+Set Width 1100
+
+Type "./temperature" Sleep 500ms Enter
+
+Sleep 6s
+
+
+
+================================================
+FILE: .github/dependabot.yml
+================================================
+version: 2
+
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: github.com/charmbracelet/bubbletea/v2
+        versions:
+          - v2.0.0-beta1
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+
+
+================================================
+FILE: .github/workflows/build.yml
+================================================
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+    secrets:
+      gh_pat: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+  snapshot:
+    uses: charmbracelet/meta/.github/workflows/snapshot.yml@main
+    secrets:
+      goreleaser_key: ${{ secrets.GORELEASER_KEY }}
+
+  coverage:
+    uses: charmbracelet/meta/.github/workflows/coverage.yml@main
+
+
+
+================================================
+FILE: .github/workflows/dependabot-sync.yml
+================================================
+name: dependabot-sync
+on:
+  schedule:
+    - cron: "0 0 * * 0" # every Sunday at midnight
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot-sync:
+    uses: charmbracelet/meta/.github/workflows/dependabot-sync.yml@main
+    with:
+      repo_name: ${{ github.event.repository.name }}
+    secrets:
+      gh_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+
+
+================================================
+FILE: .github/workflows/goreleaser.yml
+================================================
+name: goreleaser
+
+on:
+  push:
+    tags:
+      - v*.*.*
+
+concurrency:
+  group: goreleaser
+  cancel-in-progress: true
+
+jobs:
+  goreleaser:
+    uses: charmbracelet/meta/.github/workflows/goreleaser.yml@main
+    secrets:
+      docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      docker_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      gh_pat: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      goreleaser_key: ${{ secrets.GORELEASER_KEY }}
+      fury_token: ${{ secrets.FURY_TOKEN }}
+      nfpm_gpg_key: ${{ secrets.NFPM_GPG_KEY }}
+      nfpm_passphrase: ${{ secrets.NFPM_PASSPHRASE }}
+
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+
+
+================================================
+FILE: .github/workflows/lint-sync.yml
+================================================
+name: lint-sync
+on:
+  schedule:
+    # every Sunday at midnight
+    - cron: "0 0 * * 0"
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint-sync.yml@main
+
+
+
+================================================
+FILE: .github/workflows/lint.yml
+================================================
+name: lint
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint.yml@main
+    with:
+      golangci_path: .golangci.yml
+
+
+
+================================================
+FILE: .github/workflows/nightly.yml
+================================================
+name: nightly
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  nightly:
+    uses: charmbracelet/meta/.github/workflows/nightly.yml@main
+    secrets:
+      docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      docker_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      goreleaser_key: ${{ secrets.GORELEASER_KEY }}
+
+

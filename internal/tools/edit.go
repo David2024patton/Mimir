@@ -49,7 +49,24 @@ func (t *EditBlockTool) Run(ctx context.Context, args map[string]any) (string, e
 
 	count := strings.Count(content, oldStr)
 	if count == 0 {
-		// Whitespace-normalized fallback: collapse runs of spaces/tabs.
+		// 1. CRLF / LF line-ending normalization fallback (critical on Windows).
+		if strings.Contains(content, "\r\n") && !strings.Contains(oldStr, "\r\n") {
+			crlfOld := strings.ReplaceAll(oldStr, "\n", "\r\n")
+			crlfNew := strings.ReplaceAll(newStr, "\n", "\r\n")
+			if c := strings.Count(content, crlfOld); c > 0 {
+				if n == 0 {
+					content = strings.ReplaceAll(content, crlfOld, crlfNew)
+				} else {
+					content = replaceN(content, crlfOld, crlfNew, n)
+				}
+				if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+					return "", err
+				}
+				return fmt.Sprintf("edited %s (CRLF-normalized, %d replacement(s))", path, min(n, c)), nil
+			}
+		}
+
+		// 2. Whitespace-normalized fallback: collapse runs of spaces/tabs.
 		norm := func(s string) string { return strings.Join(strings.Fields(s), " ") }
 		nOld, nNew, nContent := norm(oldStr), norm(newStr), norm(content)
 		if c := strings.Count(nContent, nOld); c > 0 {
@@ -59,7 +76,7 @@ func (t *EditBlockTool) Run(ctx context.Context, args map[string]any) (string, e
 			}
 			return fmt.Sprintf("edited %s (normalized fallback, %d replacement(s))", path, min(n, c)), nil
 		}
-		return "", notFoundErr(path, content)
+		return "", notFoundErr(path, content, oldStr)
 	}
 	if n == 0 {
 		content = strings.ReplaceAll(content, oldStr, newStr)
@@ -79,17 +96,51 @@ func (t *EditBlockTool) Run(ctx context.Context, args map[string]any) (string, e
 	return fmt.Sprintf("edited %s (%d replacement(s))", path, replaced), nil
 }
 
-// notFoundErr builds a self-healing error: when the model's old_string doesn't match
-// (often because it mangled a non-ASCII character while copying), we echo the real file
-// content back so the model can copy the exact bytes and retry instead of giving up.
-func notFoundErr(path, content string) error {
+// notFoundErr builds a self-healing error with smolcoder-style bounded line/offset
+// location hints so small and fast models immediately see where the target block
+// actually lives without re-reading the entire file.
+func notFoundErr(path, content, oldStr string) error {
+	hint := closestBlockHint(content, oldStr)
 	preview := content
 	if r := []rune(preview); len(r) > 1500 {
 		preview = string(r[:1500]) + "\n...[truncated]"
 	}
+	if hint != "" {
+		return fmt.Errorf(
+			"old_string not found in %s. %s\nDo NOT give up or reply yet: copy the EXACT text from the hint or call read_file on %s, then retry edit_block. Current file preview:\n-----\n%s\n-----",
+			path, hint, path, preview)
+	}
 	return fmt.Errorf(
 		"old_string not found in %s. Do NOT give up or reply yet: call read_file on %s and copy the EXACT text (including any accented or special characters, byte-for-byte) into old_string, then retry edit_block. Current file content:\n-----\n%s\n-----",
 		path, path, preview)
+}
+
+// closestBlockHint finds the line number and character offset in content that best
+// matches the first non-empty line of oldStr (inspired by smolcoder's editFile offset hints).
+func closestBlockHint(content, oldStr string) string {
+	var needle string
+	for _, l := range strings.Split(oldStr, "\n") {
+		trimmed := strings.TrimSpace(l)
+		if len(trimmed) >= 4 {
+			needle = trimmed
+			break
+		}
+	}
+	if needle == "" {
+		return ""
+	}
+	lines := strings.Split(content, "\n")
+	offset := 0
+	for i, line := range lines {
+		if strings.Contains(line, needle) || strings.Contains(strings.ToLower(line), strings.ToLower(needle)) {
+			start := max(0, i-2)
+			end := min(len(lines), i+6)
+			snippet := strings.Join(lines[start:end], "\n")
+			return fmt.Sprintf("Closest match is at line %d (byte offset %d):\n```text\n%s\n```", i+1, offset, snippet)
+		}
+		offset += len(line) + 1
+	}
+	return ""
 }
 
 func replaceN(s, old, new string, n int) string {

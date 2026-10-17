@@ -20,9 +20,13 @@ type Question struct {
 }
 
 // QuestionTool lets the agent ask the user structured multiple-choice questions (F45).
-// The GUI/chat renders the options as clickable choices; a "type your own answer"
-// option is always added. Used in Discovery and for any decision/clarification.
-type QuestionTool struct{}
+// The TUI (Charmbracelet Huh-style selector) or GUI renders the options as interactive
+// choices; a "type your own answer" option is always added.
+type QuestionTool struct {
+	// AskFunc, when set by the TUI or HTTP server, blocks to let the user pick
+	// an option interactively and returns their formatted answer.
+	AskFunc func(ctx context.Context, questions []Question) (string, error)
+}
 
 func (t *QuestionTool) Name() string { return "question" }
 func (t *QuestionTool) Description() string {
@@ -61,8 +65,46 @@ func (t *QuestionTool) Parameters() any {
 }
 
 func (t *QuestionTool) Run(ctx context.Context, args map[string]any) (string, error) {
-	// The GUI/chat renders the questions and collects the user's selections (F45 + F9).
-	// Skeleton placeholder: the real implementation wires to the interactive flow.
-	qs, _ := args["questions"].([]any)
-	return fmt.Sprintf("posed %d question(s) to the user (awaiting selection)", len(qs)), nil
+	rawQs, _ := args["questions"].([]any)
+	questions := parseQuestions(rawQs)
+	if t.AskFunc != nil && len(questions) > 0 {
+		return t.AskFunc(ctx, questions)
+	}
+	return fmt.Sprintf("posed %d question(s) to the user (awaiting selection)", len(rawQs)), nil
+}
+
+func parseQuestions(raw []any) []Question {
+	var out []Question
+	for _, item := range raw {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		q := Question{
+			Question: strField(m, "question"),
+			Header:   strField(m, "header"),
+		}
+		if mult, ok := m["multiple"].(bool); ok {
+			q.Multiple = mult
+		}
+		if opts, ok := m["options"].([]any); ok {
+			for _, ro := range opts {
+				if om, ok := ro.(map[string]any); ok {
+					q.Options = append(q.Options, Option{
+						Label:       strField(om, "label"),
+						Description: strField(om, "description"),
+					})
+				}
+			}
+		}
+		if q.Question != "" {
+			out = append(out, q)
+		}
+	}
+	return out
+}
+
+func strField(m map[string]any, key string) string {
+	v, _ := m[key].(string)
+	return v
 }

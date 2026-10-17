@@ -15,6 +15,13 @@ const ctxUserID contextKey = "user_id"
 
 func authMiddleware(auth *cortex.AuthStore) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
+		if auth == nil {
+			// Local self-hosted mode (file-backed Cortex): no auth wall required.
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				ctx := context.WithValue(r.Context(), ctxUserID, "local")
+				next.ServeHTTP(w, r.WithContext(ctx))
+			})
+		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ah := r.Header.Get("Authorization")
 			if ah == "" || !strings.HasPrefix(ah, "Bearer ") {
@@ -40,6 +47,10 @@ func userIDFromContext(ctx context.Context) string {
 
 func sendCodeHandler(auth *cortex.AuthStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if auth == nil {
+			writeJSON(w, map[string]string{"status": "local-mode"})
+			return
+		}
 		var req struct {
 			Email string `json:"email"`
 		}
@@ -61,6 +72,13 @@ func sendCodeHandler(auth *cortex.AuthStore) http.HandlerFunc {
 
 func verifyCodeHandler(auth *cortex.AuthStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if auth == nil {
+			writeJSON(w, map[string]any{
+				"user":  map[string]any{"id": "local", "email": "local@mimir"},
+				"token": "local-dev-token",
+			})
+			return
+		}
 		var req struct {
 			Email string `json:"email"`
 			Code  string `json:"code"`
@@ -87,6 +105,13 @@ func verifyCodeHandler(auth *cortex.AuthStore) http.HandlerFunc {
 
 func meHandler(auth *cortex.AuthStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if auth == nil {
+			writeJSON(w, map[string]any{
+				"id":    "local",
+				"email": "local@mimir",
+			})
+			return
+		}
 		userID := userIDFromContext(r.Context())
 		rows, err := auth.Query(r.Context(), "SELECT * FROM user WHERE id = user:"+userID)
 		if err != nil || len(rows) == 0 {

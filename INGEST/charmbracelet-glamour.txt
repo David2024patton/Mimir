@@ -1,0 +1,2143 @@
+Directory structure:
+└── charmbracelet-glamour/
+    ├── CONTRIBUTING.md
+    ├── examples.sh
+    ├── gallery.sh
+    ├── Taskfile.yml
+    ├── .editorconfig
+    ├── .golangci.yml
+    ├── .goreleaser.yml
+    ├── ansi/
+    │   ├── ansi.go
+    │   ├── codespan.go
+    │   ├── context.go
+    │   ├── listitem.go
+    │   ├── task.go
+    │   └── testdata/
+    │       ├── TestRenderer/
+    │       │   ├── block_quote.golden
+    │       │   ├── code.golden
+    │       │   ├── code_block.golden
+    │       │   ├── emoji.golden
+    │       │   ├── emph.golden
+    │       │   ├── heading.golden
+    │       │   ├── hr.golden
+    │       │   ├── image.golden
+    │       │   ├── link.golden
+    │       │   ├── ordered_list.golden
+    │       │   ├── strikethrough.golden
+    │       │   ├── strong.golden
+    │       │   ├── table.golden
+    │       │   ├── table_align.golden
+    │       │   └── table_truncate.golden
+    │       └── TestRendererIssues/
+    │           └── 47.golden
+    ├── examples/
+    │   ├── custom_renderer/
+    │   │   └── main.go
+    │   ├── helloworld/
+    │   │   └── main.go
+    │   ├── stdin-stdout/
+    │   │   └── main.go
+    │   └── stdin-stdout-custom-styles/
+    │       └── main.go
+    ├── internal/
+    │   └── generate-style-json/
+    │       └── main.go
+    ├── styles/
+    │   ├── examples/
+    │   │   ├── block_quote.md
+    │   │   ├── block_quote.style
+    │   │   ├── code.md
+    │   │   ├── code.style
+    │   │   ├── code_block.md
+    │   │   ├── code_block.style
+    │   │   ├── document.style
+    │   │   ├── emoji.md
+    │   │   ├── emoji.style
+    │   │   ├── emph.md
+    │   │   ├── emph.style
+    │   │   ├── enumeration.md
+    │   │   ├── enumeration.style
+    │   │   ├── heading.md
+    │   │   ├── heading.style
+    │   │   ├── hr.md
+    │   │   ├── hr.style
+    │   │   ├── image.md
+    │   │   ├── image.style
+    │   │   ├── link.md
+    │   │   ├── link.style
+    │   │   ├── list.md
+    │   │   ├── list.style
+    │   │   ├── ordered_list.md
+    │   │   ├── ordered_list.style
+    │   │   ├── paragraph.style
+    │   │   ├── strikethrough.md
+    │   │   ├── strikethrough.style
+    │   │   ├── strong.md
+    │   │   ├── strong.style
+    │   │   ├── table.md
+    │   │   ├── table.style
+    │   │   ├── table_align.md
+    │   │   ├── table_align.style
+    │   │   ├── table_truncate.md
+    │   │   ├── table_truncate.style
+    │   │   ├── table_with_background.md
+    │   │   ├── table_with_background.style
+    │   │   ├── table_with_footer_auto_links.md
+    │   │   ├── table_with_footer_auto_links.style
+    │   │   ├── table_with_footer_auto_links_short.style
+    │   │   ├── table_with_footer_images.md
+    │   │   ├── table_with_footer_images.style
+    │   │   ├── table_with_footer_images_no_alt.md
+    │   │   ├── table_with_footer_images_no_alt.style
+    │   │   ├── table_with_footer_images_same_alt.md
+    │   │   ├── table_with_footer_images_same_alt.style
+    │   │   ├── table_with_footer_links.md
+    │   │   ├── table_with_footer_links.style
+    │   │   ├── table_with_footer_links_complex.style
+    │   │   ├── table_with_footer_links_huge.md
+    │   │   ├── table_with_footer_links_huge.style
+    │   │   ├── table_with_footer_links_no_color.md
+    │   │   ├── table_with_footer_links_no_color.style
+    │   │   ├── table_with_footer_links_repeated.md
+    │   │   ├── table_with_footer_links_repeated.style
+    │   │   ├── table_with_inline_links.md
+    │   │   ├── table_with_inline_links.style
+    │   │   ├── table_wrap.md
+    │   │   ├── table_wrap.style
+    │   │   ├── task.md
+    │   │   ├── task.style
+    │   │   └── text.style
+    │   └── gallery/
+    │       └── README.md
+    ├── testdata/
+    │   ├── empty.style
+    │   ├── preserved_newline.in
+    │   ├── TestWithChromaFormatter.md
+    │   ├── TestWithPreservedNewLines.golden
+    │   └── issues/
+    │       ├── 106.md
+    │       ├── 107.md
+    │       ├── 117.md
+    │       ├── 149.md
+    │       ├── 172.md
+    │       ├── 237.md
+    │       ├── 239.md
+    │       ├── 257.md
+    │       ├── 290.md
+    │       ├── 312.md
+    │       ├── 313.md
+    │       ├── 315.md
+    │       ├── 316.md
+    │       ├── 42.md
+    │       ├── 43.md
+    │       ├── 44.md
+    │       ├── 46_1.md
+    │       ├── 46_2.md
+    │       ├── 47.md
+    │       ├── 48.md
+    │       ├── 493.md
+    │       ├── 637.md
+    │       ├── 79.md
+    │       └── glow-1054.md
+    └── .github/
+        ├── dependabot.yml
+        └── workflows/
+            ├── build.yml
+            ├── coverage.yml
+            ├── dependabot-sync.yml
+            ├── lint-sync.yml
+            └── lint.yml
+
+================================================
+FILE: CONTRIBUTING.md
+================================================
+# Contributing
+
+Contributions are welcome!
+
+Please submit a pull request for minor changes and submit issues for major changes for discussions.
+
+## Testing
+
+When providing a new feature or bug fix, please provide tests that demonstrate the issue along with your fix.
+
+### Golden Files
+
+If golden files need to be updated, you can do so with `-update`.
+
+Usage: `go test ./pkg/... -update`.
+
+## Themes
+
+New styles need to be implemented in `styles/<style-name>.go`, and then `go generate
+./...` will create the JSON files from it.
+
+You can look up all references of another theme (e.g. Dracula), and add your
+theme accordingly.
+
+
+
+================================================
+FILE: examples.sh
+================================================
+#!/bin/bash
+
+set -e
+
+for element in ./styles/examples/*.md; do
+    echo "Generating screenshot for element ${element}"
+    basename="`basename -s .md ${element}`"
+    stylename="${basename}.style"
+    filename="${basename}.png"
+
+    # take screenshot
+    ./termshot -o ./styles/examples/ -f "$filename" glow -s ./styles/examples/${stylename} ${element}
+
+    # add border
+    convert -bordercolor black -border 16x16 "./styles/examples/$filename" "./styles/examples/$filename"
+
+    # optimize filesize
+    pngcrush -ow "./styles/examples/$filename"
+done
+
+
+
+================================================
+FILE: gallery.sh
+================================================
+#!/bin/bash
+
+if ! command -v freeze &> /dev/null; then
+    echo "freeze not found. Please install freeze to capture images."
+    echo "https://github.com/charmbracelet/freeze/"
+    exit 1
+fi
+
+defaultStyles=("ascii" "auto" "dark" "dracula" "light" "notty" "pink")
+
+for style in "${defaultStyles[@]}"; do
+    echo "Generating screenshot for ${style}"
+    # take screenshot
+    if [[ $style == *"light"* ]]; then
+        # Provide a light background to images
+        freeze  -x "go run ./examples/artichokes ${style}" -b "#FAFAFA" -o "./styles/gallery/${style}.png"
+    else
+        freeze  -x "go run ./examples/artichokes ${style}" -o "./styles/gallery/${style}.png"
+    fi
+
+    # optimize filesize
+    pngcrush -ow "./styles/gallery/$style.png"
+done
+
+
+
+================================================
+FILE: Taskfile.yml
+================================================
+# https://taskfile.dev
+
+version: '3'
+
+tasks:
+  lint:all:
+    desc: Run all linters
+    cmds:
+      - task: lint
+      - task: lint:soft
+
+  lint:
+    desc: Run base linters
+    cmds:
+      - golangci-lint run
+
+  lint:soft:
+    desc: Run soft linters
+    cmds:
+      - golangci-lint run --config=.golangci-soft.yml
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./... {{.CLI_ARGS}}
+
+
+
+================================================
+FILE: .editorconfig
+================================================
+# https://editorconfig.org/
+
+root = true
+
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.go]
+indent_style = tab
+indent_size = 8
+
+[*.golden]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+
+
+================================================
+FILE: .golangci.yml
+================================================
+version: "2"
+run:
+  tests: false
+linters:
+  enable:
+    - bodyclose
+    - exhaustive
+    - goconst
+    - godot
+    - gomoddirectives
+    - goprintffuncname
+    - gosec
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - noctx
+    - nolintlint
+    - prealloc
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - tparallel
+    - unconvert
+    - unparam
+    - whitespace
+    - wrapcheck
+  exclusions:
+    rules:
+      - text: '(slog|log)\.\w+'
+        linters:
+          - noctx
+    generated: lax
+    presets:
+      - common-false-positives
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+
+
+
+================================================
+FILE: .goreleaser.yml
+================================================
+includes:
+  - from_url:
+      url: charmbracelet/meta/main/goreleaser-lib.yaml
+
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+
+
+
+
+================================================
+FILE: ansi/ansi.go
+================================================
+// Package ansi handle conversion of markdown to pretty ANSI output on the
+// terminal.
+package ansi
+
+
+
+================================================
+FILE: ansi/codespan.go
+================================================
+package ansi
+
+import "io"
+
+// A CodeSpanElement is used to render codespan.
+type CodeSpanElement struct {
+	Text  string
+	Style StylePrimitive
+}
+
+// Render renders a CodeSpanElement.
+func (e *CodeSpanElement) Render(w io.Writer, _ RenderContext) error {
+	_, _ = renderText(w, e.Style, e.Style.Prefix+e.Text+e.Style.Suffix)
+	return nil
+}
+
+
+
+================================================
+FILE: ansi/context.go
+================================================
+package ansi
+
+import (
+	"html"
+	"strings"
+
+	"github.com/microcosm-cc/bluemonday"
+)
+
+// RenderContext holds the current rendering options and state.
+type RenderContext struct {
+	options Options
+
+	blockStack *BlockStack
+	table      *TableElement
+
+	stripper *bluemonday.Policy
+}
+
+// NewRenderContext returns a new RenderContext.
+func NewRenderContext(options Options) RenderContext {
+	return RenderContext{
+		options:    options,
+		blockStack: &BlockStack{},
+		table:      &TableElement{},
+		stripper:   bluemonday.StrictPolicy(),
+	}
+}
+
+// SanitizeHTML sanitizes HTML content.
+func (ctx RenderContext) SanitizeHTML(s string, trimSpaces bool) string {
+	s = ctx.stripper.Sanitize(s)
+	if trimSpaces {
+		s = strings.TrimSpace(s)
+	}
+
+	return html.UnescapeString(s)
+}
+
+
+
+================================================
+FILE: ansi/listitem.go
+================================================
+package ansi
+
+import (
+	"io"
+	"strconv"
+)
+
+// An ItemElement is used to render items inside a list.
+type ItemElement struct {
+	IsOrdered   bool
+	Enumeration uint
+}
+
+// Render renders an ItemElement.
+func (e *ItemElement) Render(w io.Writer, ctx RenderContext) error {
+	var el *BaseElement
+	if e.IsOrdered {
+		el = &BaseElement{
+			Style:  ctx.options.Styles.Enumeration,
+			Prefix: strconv.FormatInt(int64(e.Enumeration), 10), //nolint:gosec
+		}
+	} else {
+		el = &BaseElement{
+			Style: ctx.options.Styles.Item,
+		}
+	}
+
+	return el.Render(w, ctx)
+}
+
+
+
+================================================
+FILE: ansi/task.go
+================================================
+package ansi
+
+import (
+	"io"
+)
+
+// A TaskElement is used to render tasks inside a todo-list.
+type TaskElement struct {
+	Checked bool
+}
+
+// Render renders a TaskElement.
+func (e *TaskElement) Render(w io.Writer, ctx RenderContext) error {
+	var el *BaseElement
+
+	pre := ctx.options.Styles.Task.Unticked
+	if e.Checked {
+		pre = ctx.options.Styles.Task.Ticked
+	}
+
+	el = &BaseElement{
+		Prefix: pre,
+		Style:  ctx.options.Styles.Task.StylePrimitive,
+	}
+
+	return el.Render(w, ctx)
+}
+
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/block_quote.golden
+================================================
+                                                                                
+=> [38;5;200mFirst line of[m[38;5;200m quote [m[38;5;200mSecond[m[38;5;200m line[m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m [m[38;5;200m[m
+
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/code.golden
+================================================
+This is a [38;5;200mcode[m.                                                                 
+
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/code_block.golden
+================================================
+                                                                                
+[38;5;247mThis is a code block.[m                                                           
+[38;5;247m[m[38;5;247m[0m
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/emoji.golden
+================================================
+🐙 ⚡ 🐱 = ❤️                                                                   
+
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/emph.golden
+================================================
+This text is [3memphasized[m.                                                        
+
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/heading.golden
+================================================
+[97;48;5;69;1m=> [m[97;48;5;69;1mh1[m[97;48;5;69;1m <=[m                                                                        
+[97;48;5;57m## [m[97;48;5;57mh2[m                                                                           
+[97;48;5;57m### [m[97;48;5;57mh3[m
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/hr.golden
+================================================
+---
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/image.golden
+================================================
+[90m]8;id=3463374637;https://charm.sh/logo.pngImage]8;;[m [Image: [38;5;123m]8;id=3463374637;https://charm.sh/logo.pnghttps://charm.sh/logo.png]8;;[m].                                       
+
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/link.golden
+================================================
+This is a ]8;id=2239008578;https://charm.sh[38;5;123;1mlink[m]8;; ([38;5;123;4m]8;id=2239008578;https://charm.shhttps://charm.sh]8;;[m).                                              
+
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/ordered_list.golden
+================================================
+                                                                                
+3. 3 is first and numbered 3                                                    
+4. 4 is second and numbered 4                                                   
+5. ten is third and numbered 5                                                  
+
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/strikethrough.golden
+================================================
+[9mScratch this[m.                                                                   
+
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/strong.golden
+================================================
+This text is [1mstrong[m.                                                            
+
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/table.golden
+================================================
+                                                                                
+     Label                │     Value                │     URL                  
+──────────────────────────┼──────────────────────────┼──────────────────────────
+     First                │     foo                  │     ]8;id=2239008578;https://charm.shcharm.sh[1]]8;;          
+     Second               │     bar                  │     ]8;id=2239008578;https://charm.shcharm.sh[1]]8;;          
+                                                                                
+[1]: charm.sh ]8;id=2239008578;https://charm.shhttps://charm.sh]8;;                                                  
+
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/table_align.golden
+================================================
+                                                                                
+     Label                │          Value           │                  URL     
+──────────────────────────┼──────────────────────────┼──────────────────────────
+     First                │           foo            │             charm.sh     
+     Second               │           bar            │          ]8;id=2239008578;https://charm.shcharm.sh[1]]8;;     
+                                                                                
+[1]: charm.sh ]8;id=2239008578;https://charm.shhttps://charm.sh]8;;                                                  
+
+
+
+================================================
+FILE: ansi/testdata/TestRenderer/table_truncate.golden
+================================================
+                                                                                
+ Name    │ Description                              │ Type │ Required │ Default 
+─────────┼──────────────────────────────────────────┼──────┼──────────┼─────────
+ command │ A command to be executed inside the con… │ yes  │ hello    │ yep     
+
+
+
+================================================
+FILE: ansi/testdata/TestRendererIssues/47.golden
+================================================
+
+  [38;5;252mExample: [m[38;5;203;48;5;236m <some directory> [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m[38;5;252m [m
+
+
+
+
+================================================
+FILE: examples/custom_renderer/main.go
+================================================
+package main
+
+import (
+	"fmt"
+
+	"charm.land/glamour/v2"
+)
+
+func main() {
+	in := `# Custom Renderer
+
+Word-wrapping will occur when lines exceed the limit of 40 characters.
+`
+
+	r, _ := glamour.NewTermRenderer(
+		glamour.WithStandardStyle("dark"),
+		glamour.WithWordWrap(40),
+	)
+
+	out, _ := r.Render(in)
+	fmt.Print(out)
+}
+
+
+
+================================================
+FILE: examples/helloworld/main.go
+================================================
+package main
+
+import (
+	"fmt"
+
+	"charm.land/glamour/v2"
+)
+
+func main() {
+	in := `# Hello World
+
+This is a simple example of Markdown rendering with Glamour!
+Check out the [other examples](https://github.com/charmbracelet/glamour/tree/master/examples) too.
+
+Bye!
+`
+
+	out, _ := glamour.Render(in, "dark")
+	fmt.Print(out)
+}
+
+
+
+================================================
+FILE: examples/stdin-stdout/main.go
+================================================
+package main
+
+// A simple example that renders input through a pipe.
+//
+// Usage:
+//     echo "# Hello, world!" | go run main.go
+//
+//     cat README.md | go run main.go
+//
+//     go run main.go < README.md
+
+import (
+	"fmt"
+	"io"
+	"os"
+
+	"charm.land/glamour/v2"
+)
+
+const defaultWidth = 80
+
+func main() {
+	// Read from stdin.
+	in, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading stdin: %s\n", err)
+	}
+
+	// Create a new renderer.
+	r, err := glamour.NewTermRenderer(glamour.WithWordWrap(defaultWidth))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating renderer: %s\n", err)
+	}
+
+	// Render markdown.
+	md, err := r.RenderBytes(in)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error rendering markdown: %s\n", err)
+	}
+
+	// Write markdown to stdout.
+	fmt.Fprintf(os.Stdout, "%s\n", md)
+}
+
+
+
+================================================
+FILE: examples/stdin-stdout-custom-styles/main.go
+================================================
+package main
+
+// A simple example that renders input through a pipe.
+//
+// Usage:
+//     echo "# Hello, world!" | go run main.go
+//
+//     cat README.md | go run main.go
+//
+//     go run main.go < README.md
+
+import (
+	"fmt"
+	"io"
+	"os"
+
+	"charm.land/glamour/v2"
+)
+
+const defaultWidth = 80
+
+func main() {
+	// Read from stdin.
+	in, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading stdin: %s\n", err)
+	}
+
+	// Create a new renderer.
+	r, err := glamour.NewTermRenderer(
+		glamour.WithEnvironmentConfig(),
+		glamour.WithWordWrap(defaultWidth),
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating renderer: %s\n", err)
+	}
+
+	// Render markdown.
+	md, err := r.RenderBytes(in)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error rendering markdown: %s\n", err)
+	}
+
+	// Write markdown to stdout.
+	fmt.Fprintf(os.Stdout, "%s\n", md)
+}
+
+
+
+================================================
+FILE: internal/generate-style-json/main.go
+================================================
+package main //nolint:revive
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"charm.land/glamour/v2/ansi"
+	styles "charm.land/glamour/v2/styles"
+)
+
+func writeStyleJSON(filename string, styleConfig *ansi.StyleConfig) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("glamour: error creating file: %w", err)
+	}
+	defer f.Close() //nolint: errcheck
+
+	e := json.NewEncoder(f)
+	e.SetIndent("", "  ")
+	if err := e.Encode(styleConfig); err != nil {
+		return fmt.Errorf("glamour: error encoding json: %w", err)
+	}
+	return nil
+}
+
+func run() error {
+	for style, styleConfig := range styles.DefaultStyles {
+		if err := writeStyleJSON(filepath.Join(style+".json"), styleConfig); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+
+
+================================================
+FILE: styles/examples/block_quote.md
+================================================
+> First line of quote
+> Second line
+
+
+
+================================================
+FILE: styles/examples/block_quote.style
+================================================
+{
+    "block_quote": {
+        "color": "200",
+        "indent": 1,
+        "indent_token": "=> "
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/code.md
+================================================
+This is a `code`.
+
+
+
+================================================
+FILE: styles/examples/code.style
+================================================
+{
+    "code": {
+        "color": "200"
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/code_block.md
+================================================
+```
+This is a code block.
+```
+
+
+
+================================================
+FILE: styles/examples/code_block.style
+================================================
+{
+    "code_block": {
+        "color": "200",
+        "theme": "solarized-dark"
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/document.style
+================================================
+{
+    "document": {
+        "indent": 2,
+        "background_color": "234",
+        "block_prefix": "\n",
+        "block_suffix": "\n"
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/emoji.md
+================================================
+:octopus: :zap: :cat: = :heart:
+
+
+
+================================================
+FILE: styles/examples/emoji.style
+================================================
+{ "emoji": {} }
+
+
+
+================================================
+FILE: styles/examples/emph.md
+================================================
+This text is *emphasized*.
+
+
+
+================================================
+FILE: styles/examples/emph.style
+================================================
+{
+    "emph": {
+        "italic": true
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/enumeration.md
+================================================
+1. First Item
+2. Second Item
+
+
+
+================================================
+FILE: styles/examples/enumeration.style
+================================================
+{
+    "list": {
+        "color": "15",
+        "background_color": "52"
+    },
+    "enumeration": {
+        "block_prefix": ". "
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/heading.md
+================================================
+# h1
+
+## h2
+
+### h3
+
+
+
+================================================
+FILE: styles/examples/heading.style
+================================================
+{
+    "heading": {
+        "color": "15",
+        "background_color": "57"
+    },
+    "h1": {
+        "prefix": "=> ",
+        "suffix": " <=",
+        "margin": 2,
+        "bold": true,
+        "background_color": "69"
+    },
+    "h2": {
+        "prefix": "## ",
+        "margin": 4
+    },
+    "h3": {
+        "prefix": "### ",
+        "margin": 6
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/hr.md
+================================================
+---
+
+
+
+================================================
+FILE: styles/examples/hr.style
+================================================
+{
+    "hr": {
+        "prefix": "---"
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/image.md
+================================================
+![Image](https://charm.sh/logo.png).
+
+
+
+================================================
+FILE: styles/examples/image.style
+================================================
+{
+    "image": {
+        "color": "123",
+        "block_prefix": "[Image: ",
+        "block_suffix": "]"
+    },
+    "image_text": {
+        "color": "8"
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/link.md
+================================================
+This is a [link](https://charm.sh).
+
+
+
+================================================
+FILE: styles/examples/link.style
+================================================
+{
+    "link": {
+        "color": "123",
+        "underline": true,
+        "block_prefix": "(",
+        "block_suffix": ")"
+    },
+    "link_text": {
+        "color": "123",
+        "bold": true
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/list.md
+================================================
+- First Item
+    - Nested List Item
+- Second Item
+
+
+
+================================================
+FILE: styles/examples/list.style
+================================================
+{
+    "list": {
+        "color": "15",
+        "background_color": "52",
+        "level_indent": 4
+    },
+    "item": {
+        "block_prefix": "• "
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/ordered_list.md
+================================================
+3. 3 is first and numbered 3
+4. 4 is second and numbered 4
+10. ten is third and numbered 5
+
+
+
+================================================
+FILE: styles/examples/ordered_list.style
+================================================
+{
+    "list": {
+        "level_indent": 1
+    },
+    "enumeration": {
+        "block_prefix": ". "
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/paragraph.style
+================================================
+{
+    "paragraph": {
+        "margin": 4,
+        "color": "15",
+        "background_color": "235"
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/strikethrough.md
+================================================
+~~Scratch this~~.
+
+
+
+================================================
+FILE: styles/examples/strikethrough.style
+================================================
+{
+    "strikethrough": {
+        "crossed_out": true
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/strong.md
+================================================
+This text is **strong**.
+
+
+
+================================================
+FILE: styles/examples/strong.style
+================================================
+{
+    "strong": {
+        "bold": true
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/table.md
+================================================
+| Label  | Value | URL              |
+| ------ | ----- | ---------------- |
+| First  | foo   | https://charm.sh |
+| Second | bar   | https://charm.sh |
+
+
+
+================================================
+FILE: styles/examples/table.style
+================================================
+{
+    "table": {
+        "margin": 4
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/table_align.md
+================================================
+| Label | Value | URL |
+| :----- | :---: | ------: |
+| First | foo | charm.sh |
+| Second | bar | https://charm.sh |
+
+
+
+================================================
+FILE: styles/examples/table_align.style
+================================================
+{
+    "table": {
+        "margin": 4
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/table_truncate.md
+================================================
+|  Name   | Description | Type | Required | Default |
+|---------|----------------------------------------|------|----------|---------|
+| command | A command to be executed inside the container to assess its health. Each space delimited token of the command is a separate array element. Commands exiting 0 are considered to be successful probes, whilst all other exit codes are considered failures. | yes  | hello | yep |
+
+
+
+================================================
+FILE: styles/examples/table_truncate.style
+================================================
+{}
+
+
+
+================================================
+FILE: styles/examples/table_with_background.md
+================================================
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+
+| LANGUAGE | FORMAL       | INFORMAL  |
+| -------- | ------------ | --------- |
+| Chinese  | Nǐn hǎo      | Nǐ hǎo    |
+| French   | Bonjour      | Salut     |
+| Russian  | Zdravstvuyte | Privet    |
+| Spanish  | Hola         | ¿Qué tal? |
+
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+
+
+================================================
+FILE: styles/examples/table_with_background.style
+================================================
+{
+  "document": {
+    "background_color": "18",
+    "color": "15"
+  }
+}
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_auto_links.md
+================================================
+| Name | Role | Handle |
+| ---- | ---- | ------ |
+| Andrey | Engineering | https://github.com/andreynering |
+| Ayman | Engineering | https://github.com/aymanbagabas |
+| Bash | Engineering | https://github.com/bashbunni |
+| Carlos | Engineering | https://github.com/caarlos0 |
+| Christian | Product | https://github.com/meowgorithm |
+| Rapha | Intern | https://github.com/raphamorim |
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_auto_links.style
+================================================
+{
+  "link": {
+    "color": "30",
+    "underline": true
+  },
+  "link_text": {
+    "color": "35",
+    "bold": true
+  }
+}
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_auto_links_short.style
+================================================
+{
+  "link": {
+    "color": "30",
+    "underline": true
+  },
+  "link_text": {
+    "color": "35",
+    "bold": true
+  }
+}
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_images.md
+================================================
+| Name | Role | Handle | Image |
+| ---- | ---- | ------ | ----- |
+| Andrey | Engineering | [@andreynering](https://github.com/andreynering) | ![@andreynering's avatar](https://github.com/andreynering.png) |
+| Ayman | Engineering | [@aymanbagabas](https://github.com/aymanbagabas) | ![@aymanbagabas's avatar](https://github.com/aymanbagabas.png) |
+| Bash | Engineering | [@bashbunni](https://github.com/bashbunni) | ![@bashbunni's avatar](https://github.com/bashbunni.png) |
+| Carlos | Engineering | [@caarlos0](https://github.com/caarlos0) | ![@caarlos0's avatar](https://github.com/caarlos0.png) |
+| Christian | Product | [@meowgorithm](https://github.com/meowgorithm) | ![@meowgorithm's avatar](https://github.com/meowgorithm.png) |
+| Rapha | Intern | [@raphamorim](https://github.com/raphamorim) | ![@raphamorim's avatar](https://github.com/raphamorim.png) |
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_images.style
+================================================
+{
+  "link": {
+    "color": "30",
+    "underline": true
+  },
+  "link_text": {
+    "color": "35",
+    "bold": true
+  },
+  "image": {
+    "color": "212",
+    "underline": true
+  },
+  "image_text": {
+    "color": "243",
+    "format": "Image: {{.text}} →"
+  }
+}
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_images_no_alt.md
+================================================
+| Name | Role | Handle | Image |
+| ---- | ---- | ------ | ----- |
+| Andrey | Engineering | [@andreynering](https://github.com/andreynering) | ![](https://github.com/andreynering.png) |
+| Ayman | Engineering | [@aymanbagabas](https://github.com/aymanbagabas) | ![](https://github.com/aymanbagabas.png) |
+| Bash | Engineering | [@bashbunni](https://github.com/bashbunni) | ![](https://github.com/bashbunni.png) |
+| Carlos | Engineering | [@caarlos0](https://github.com/caarlos0) | ![](https://github.com/caarlos0.png) |
+| Christian | Product | [@meowgorithm](https://github.com/meowgorithm) | ![](https://github.com/meowgorithm.png) |
+| Rapha | Intern | [@raphamorim](https://github.com/raphamorim) | ![](https://github.com/raphamorim.png) |
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_images_no_alt.style
+================================================
+{
+  "link": {
+    "color": "30",
+    "underline": true
+  },
+  "link_text": {
+    "color": "35",
+    "bold": true
+  },
+  "image": {
+    "color": "212",
+    "underline": true
+  },
+  "image_text": {
+    "color": "243",
+    "format": "Image: {{.text}} →"
+  }
+}
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_images_same_alt.md
+================================================
+| Name | Role | Handle | Image |
+| ---- | ---- | ------ | ----- |
+| Andrey | Engineering | [@andreynering](https://github.com/andreynering) | ![GitHub avatar](https://github.com/andreynering.png) |
+| Ayman | Engineering | [@aymanbagabas](https://github.com/aymanbagabas) | ![GitHub avatar](https://github.com/aymanbagabas.png) |
+| Bash | Engineering | [@bashbunni](https://github.com/bashbunni) | ![GitHub avatar](https://github.com/bashbunni.png) |
+| Carlos | Engineering | [@caarlos0](https://github.com/caarlos0) | ![GitHub avatar](https://github.com/caarlos0.png) |
+| Christian | Product | [@meowgorithm](https://github.com/meowgorithm) | ![GitHub avatar](https://github.com/meowgorithm.png) |
+| Rapha | Intern | [@raphamorim](https://github.com/raphamorim) | ![GitHub avatar](https://github.com/raphamorim.png) |
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_images_same_alt.style
+================================================
+{
+  "link": {
+    "color": "30",
+    "underline": true
+  },
+  "link_text": {
+    "color": "35",
+    "bold": true
+  },
+  "image": {
+    "color": "212",
+    "underline": true
+  },
+  "image_text": {
+    "color": "243",
+    "format": "Image: {{.text}} →"
+  }
+}
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_links.md
+================================================
+| Name | Role | Handle |
+| ---- | ---- | ------ |
+| Andrey | Engineering | [@andreynering](https://github.com/andreynering) |
+| Ayman | Engineering | [@aymanbagabas](https://github.com/aymanbagabas) |
+| Bash | Engineering | [@bashbunni](https://github.com/bashbunni) |
+| Carlos | Engineering | [@caarlos0](https://github.com/caarlos0) |
+| Christian | Product | [@meowgorithm](https://github.com/meowgorithm) |
+| Rapha | Intern | [@raphamorim](https://github.com/raphamorim) |
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_links.style
+================================================
+{
+  "link": {
+    "color": "30",
+    "underline": true
+  },
+  "link_text": {
+    "color": "35",
+    "bold": true
+  }
+}
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_links_complex.style
+================================================
+{
+  "link": {
+    "color": "30",
+    "underline": true
+  },
+  "link_text": {
+    "color": "35",
+    "bold": true
+  },
+  "image": {
+    "color": "212",
+    "underline": true
+  },
+  "image_text": {
+    "color": "243",
+    "format": "Image: {{.text}} →"
+  }
+}
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_links_huge.md
+================================================
+| Word | Link |
+| ---- | ---- |
+| foo | [foo](https://www.pudim.com.br/huge-0/huge-1/huge-2/huge-3/huge-4/huge-5/huge-6/huge-7/huge-8/huge-9/) |
+| bar | [bar](https://www.pudim.com.br/huge-0/huge-1/huge-2/huge-3/huge-4/huge-5/huge-6/huge-7/huge-8/huge-9/) |
+| baz | [baz](https://www.pudim.com.br/huge-0/huge-1/huge-2/huge-3/huge-4/huge-5/huge-6/huge-7/huge-8/huge-9/) |
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_links_huge.style
+================================================
+{
+  "link": {
+    "color": "30",
+    "underline": true
+  },
+  "link_text": {
+    "color": "35",
+    "bold": true
+  }
+}
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_links_no_color.md
+================================================
+| Name | Role | Handle |
+| ---- | ---- | ------ |
+| Andrey | Engineering | [@andreynering](https://github.com/andreynering) |
+| Ayman | Engineering | [@aymanbagabas](https://github.com/aymanbagabas) |
+| Bash | Engineering | [@bashbunni](https://github.com/bashbunni) |
+| Carlos | Engineering | [@caarlos0](https://github.com/caarlos0) |
+| Christian | Product | [@meowgorithm](https://github.com/meowgorithm) |
+| Rapha | Intern | [@raphamorim](https://github.com/raphamorim) |
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_links_no_color.style
+================================================
+{}
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_links_repeated.md
+================================================
+| Word | Link |
+| ---- | ---- |
+| foo | [link](https://www.pudim.com.br) |
+| bar | [link](https://www.pudim.com.br) |
+| baz | [link](https://www.pudim.com.br) |
+
+
+
+================================================
+FILE: styles/examples/table_with_footer_links_repeated.style
+================================================
+{
+  "link": {
+    "color": "30",
+    "underline": true
+  },
+  "link_text": {
+    "color": "35",
+    "bold": true
+  }
+}
+
+
+
+================================================
+FILE: styles/examples/table_with_inline_links.md
+================================================
+| Name | Role | Handle |
+| ---- | ---- | ------ |
+| Andrey | Engineering | [@andreynering](https://github.com/andreynering) |
+| Ayman | Engineering | [@aymanbagabas](https://github.com/aymanbagabas) |
+| Bash | Engineering | [@bashbunni](https://github.com/bashbunni) |
+| Carlos | Engineering | [@caarlos0](https://github.com/caarlos0) |
+| Christian | Product | [@meowgorithm](https://github.com/meowgorithm) |
+| Rapha | Intern | [@raphamorim](https://github.com/raphamorim) |
+
+
+
+================================================
+FILE: styles/examples/table_with_inline_links.style
+================================================
+{
+  "link": {
+    "color": "30",
+    "underline": true
+  },
+  "link_text": {
+    "color": "35",
+    "bold": true
+  }
+}
+
+
+
+================================================
+FILE: styles/examples/table_wrap.md
+================================================
+|  Name   | Description | Type | Required | Default |
+|---------|----------------------------------------|------|----------|---------|
+| command | A command to be executed inside the container to assess its health. Each space delimited token of the command is a separate array element. Commands exiting 0 are considered to be successful probes, whilst all other exit codes are considered failures. | yes  | hello | yep |
+
+
+
+================================================
+FILE: styles/examples/table_wrap.style
+================================================
+{}
+
+
+
+================================================
+FILE: styles/examples/task.md
+================================================
+- [x] Finished Task
+- [ ] Outstanding Task
+
+
+
+================================================
+FILE: styles/examples/task.style
+================================================
+{
+    "list": {
+        "color": "15",
+        "background_color": "52"
+    },
+    "task": {
+        "ticked": "✓ ",
+        "unticked": "✗ "
+    }
+}
+
+
+
+================================================
+FILE: styles/examples/text.style
+================================================
+{
+    "text": {
+        "bold": true,
+        "color": "15",
+        "background_color": "57"
+    }
+}
+
+
+
+================================================
+FILE: styles/gallery/README.md
+================================================
+# Glamour Style Section
+
+## Dark
+
+![Glamour Dark Style](./dark.png)
+
+## Light
+
+![Glamour Light Style](./light.png)
+
+## NoTTY
+
+Pronounced _naughty_.
+
+![Glamour NoTTY Style](./notty.png)
+
+## Dracula
+
+![Dracula Style](./dracula.png)
+
+## Tokyo Night
+
+![Tokyo Night Style](./tokyo-night.png)
+
+
+
+================================================
+FILE: testdata/empty.style
+================================================
+{}
+
+
+
+================================================
+FILE: testdata/preserved_newline.in
+================================================
+Preserving line breaks will ensure
+that this text displays on two separate lines
+
+While this text appears on one line, it will wrap when the text meets the renderer's default value of 80 characters
+
+
+================================================
+FILE: testdata/TestWithChromaFormatter.md
+================================================
+## Usage
+
+```go
+import "github.com/charmbracelet/glamour"
+
+in := `# Hello World
+
+This is a simple example of Markdown rendering with Glamour!
+Check out the [other examples](https://github.com/charmbracelet/glamour/tree/master/examples) too.
+
+Bye!
+`
+
+out, err := glamour.Render(in, "dark")
+fmt.Print(out)
+```
+
+
+
+================================================
+FILE: testdata/TestWithPreservedNewLines.golden
+================================================
+Preserving line breaks will ensure                                              
+that this text displays on two separate lines                                   
+                                                                                
+While this text appears on one line, it will wrap when the text meets the       
+renderer's default value of 80 characters                                       
+
+
+
+================================================
+FILE: testdata/issues/106.md
+================================================
+- \`hi\`
+- \\hi
+- \*hi
+- \_hi
+- \{hi\}
+- \[hi\]
+- \<hi\>
+- \(hi\)
+- \# hi
+- \+ hi
+- \- hi
+- \. hi
+- \! hi
+- \| hi
+
+
+
+================================================
+FILE: testdata/issues/107.md
+================================================
+```ini
+[Mount]
+Options=reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,noauto,_netdev,allow_other,uid=1000,gid=1000,IdentityFile=/PATH/TO/SSH-KEY/id_rsa,StrictHostKeyChecking=no
+```
+
+
+
+================================================
+FILE: testdata/issues/117.md
+================================================
+| cmd           | descr            |
+| ------------- | ---------------- |
+| `glow config` | open glow config |
+
+
+
+================================================
+FILE: testdata/issues/149.md
+================================================
+[a](http://example.com/with-a-big-path/likely-to-use-more-than-one-line?why-not=after-all-why-not-use-queryparams-too&abc=123)
+
+<!--FIXME: still a valid issue-->
+
+
+
+================================================
+FILE: testdata/issues/172.md
+================================================
+<!-- TODO: still an issue -->
+
+> The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.
+
+
+
+================================================
+FILE: testdata/issues/237.md
+================================================
+> Content Security Policy (CSP) is an added layer of security that helps to detect and mitigate certain types of attacks, including Cross-Site Scripting (XSS) and data injection attacks. These attacks are used for everything from data theft, to site defacement, to malware distribution.
+>
+> from MDN
+
+
+
+================================================
+FILE: testdata/issues/239.md
+================================================
+First term
+: Definition one of first term.
+
+Second term
+: Definition one of second term.
+
+
+
+================================================
+FILE: testdata/issues/257.md
+================================================
+```vim
+set runtimepath^=$XDG_CONFIG_HOME/vim
+```
+
+
+
+================================================
+FILE: testdata/issues/290.md
+================================================
+- **test@example.com**
+- https://google.com
+- _https://google.com_
+
+
+
+================================================
+FILE: testdata/issues/312.md
+================================================
+# File
+
+**bold text with [URL](https://www.example.com)**
+
+_italic text with [URL](https://www.example.com)_
+
+[URL](https://www.example.com)
+
+[url with **bold** within](https://www.example.com)
+
+[url with _italic_ within](https://www.example.com)
+
+[**entire url text is bold**](https://www.example.com)
+
+[_entire url text is italic_](https://www.example.com)
+
+
+
+================================================
+FILE: testdata/issues/313.md
+================================================
+> This is a block quote
+>
+> > This is the nested quote
+>
+> This is part of the outer block quote.
+
+
+
+================================================
+FILE: testdata/issues/315.md
+================================================
+| Expression                        | Value | Type |
+| --------------------------------- | ----- | ---- |
+| `(1 >= 26) \|\| (12 >= 6)`{.java} | s     | a    |
+
+
+
+================================================
+FILE: testdata/issues/316.md
+================================================
+|                           A | B     |
+| --------------------------: | ----- |
+| [Here](https://example.com) | hello |
+|        https://autolink.com | world |
+
+
+
+================================================
+FILE: testdata/issues/42.md
+================================================
+If you want to make a more significant change, please first [open an
+issue](https://github.com/twpayne/chezmoi/issues/new) to discuss the change that
+you want to make. Dave Cheney gives a [good
+rationale](https://dave.cheney.net/2019/02/18/talk-then-code) as to why this is
+important.
+
+
+
+================================================
+FILE: testdata/issues/43.md
+================================================
+* [Getting started](#getting-started)
+* [Developing locally](#developing-locally)
+* [Documentation changes](#documentation-changes)
+* [Contributing changes](#contributing-changes)
+* [Managing releases](#managing-releases)
+* [Packaging](#packaging)
+* [Updating the website](#updating-the-website)
+
+
+
+================================================
+FILE: testdata/issues/44.md
+================================================
+| Distribution | Architectures                                             | Package                                                                   |
+| ------------ | --------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Debian       | `amd64`, `arm64`, `armel`, `i386`, `ppc64`, `ppc64le`     | [`deb`](https://github.com/twpayne/chezmoi/releases/latest)               |
+| RedHat       | `aarch64`, `armhfp`, `i686`, `ppc64`, `ppc64le`, `x86_64` | [`rpm`](https://github.com/twpayne/chezmoi/releases/latest)               |
+| OpenSUSE     | `aarch64`, `armhfp`, `i686`, `ppc64`, `ppc64le`, `x86_64` | [`rpm`](https://github.com/twpayne/chezmoi/releases/latest)               |
+| Ubuntu       | `amd64`, `arm64`, `armel`, `i386`, `ppc64`, `ppc64le`     | [`deb`](https://github.com/twpayne/chezmoi/releases/latest)               |
+
+
+
+================================================
+FILE: testdata/issues/46_1.md
+================================================
+- Navigation
+  - Familiar shortcuts (arrows, <kbd>~</kbd>, <kbd>-</kbd>, <kbd>@</kbd>), quick reference
+
+
+
+================================================
+FILE: testdata/issues/46_2.md
+================================================
+| Dependency | Installation | Operation |
+| --- | --- | --- |
+| xdg-open (Linux), open(1) (macOS), cygstart (Cygwin) | base | desktop opener |
+| file, coreutils (cp, mv, rm), xargs | base | file type, copy, move and remove |
+| tar, (un)zip [atool/bsdtar for more formats] | base | create, list, extract tar, gzip, bzip2, zip |
+| archivemount, fusermount(3) | optional | mount, unmount archives |
+| sshfs, [rclone](https://rclone.org/), fusermount(3) | optional | mount, unmount remotes |
+| trash-cli | optional | trash files (default action: rm) |
+| vlock (Linux), bashlock (macOS), lock(1) (BSD) | optional | terminal locker (fallback: [cmatrix](https://github.com/abishekvashok/cmatrix)) |
+| advcpmv (Linux) ([integration](https://github.com/jarun/nnn/wiki/Advanced-use-cases#show-cp-mv-progress)) | optional | copy, move progress |
+| `$VISUAL` (else `$EDITOR`), `$PAGER`, `$SHELL` | optional | fallback vi, less, sh |
+
+
+
+================================================
+FILE: testdata/issues/47.md
+================================================
+Example: `<some directory>`
+
+
+
+================================================
+FILE: testdata/issues/48.md
+================================================
+emoji in text
+
+:octopus: :zap: :cat: = :heart:
+
+emoji in header
+
+## :octopus: :zap: :cat: = :heart:
+
+no emoji in code blocks
+```
+:octopus: :zap: :cat: = :heart:
+```
+
+no emoji in inline code
+
+`:octopus: :zap: :cat: = :heart:`
+
+
+
+================================================
+FILE: testdata/issues/493.md
+================================================
+| Avatar | Name | Role | Handle
+| ------ | ---- | ---- | ------
+| ![@andreynering](https://avatars.githubusercontent.com/andreynering?s=80) | Andrey | Engineering | [@andreynering](https://github.com/andreynering)
+| ![@aymanbagabas](https://avatars.githubusercontent.com/aymanbagabas?s=80) | Ayman | Engineering | [@aymanbagabas](https://github.com/aymanbagabas)
+| ![@bashbunni](https://avatars.githubusercontent.com/bashbunni?s=80) | Bash | Engineering | [@bashbunni](https://github.com/bashbunni)
+| ![@caarlos0](https://avatars.githubusercontent.com/caarlos0?s=80) | Carlos | Engineering | [@caarlos0](https://github.com/caarlos0)
+| ![@meowgorithm](https://avatars.githubusercontent.com/meowgorithm?s=80) | Christian | Engineering | [@meowgorithm](https://github.com/meowgorithm)
+| ![@raphamorim](https://avatars.githubusercontent.com/raphamorim?s=80) | Rapha | Product | [@raphamorim](https://github.com/raphamorim)
+
+
+================================================
+FILE: testdata/issues/637.md
+================================================
+[Relative URL](issues/637) with [base URL](https://github.com/charmbracelet/glamour).
+
+[![Relative image](assets/image.png)](issues/637) with [base URL](https://github.com/charmbracelet/glamour).
+
+
+
+================================================
+FILE: testdata/issues/79.md
+================================================
+Preceding blockquote paragraph
+
+<!-- TODO: still an issue -->
+
+> 1st blockquote paragraph
+>
+>     quoted code block
+>
+> 2nd blockquote paragraph
+
+
+
+================================================
+FILE: testdata/issues/glow-1054.md
+================================================
+| Name | Description | Idle |
+| --- | --- | --- |
+| [keybase&#45;client](/keybase-client) | Keybase Go Library | 14 hours ago |
+
+
+
+================================================
+FILE: .github/dependabot.yml
+================================================
+version: 2
+
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: github.com/charmbracelet/bubbletea/v2
+        versions:
+          - v2.0.0-beta1
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      all:
+        patterns:
+          - "*"
+
+
+
+================================================
+FILE: .github/workflows/build.yml
+================================================
+name: build
+on: [push, pull_request]
+
+jobs:
+  build:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+    secrets:
+      gh_pat: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+  semgrep:
+    uses: charmbracelet/meta/.github/workflows/semgrep.yml@main
+
+  ruleguard:
+    uses: charmbracelet/meta/.github/workflows/ruleguard.yml@main
+    with:
+      go-version: "1.26"
+
+
+
+================================================
+FILE: .github/workflows/coverage.yml
+================================================
+name: coverage
+on: [push, pull_request]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: "on"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      - name: Coverage
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          go test -race -covermode atomic -coverprofile=profile.cov ./...
+          go install github.com/mattn/goveralls@latest
+          goveralls -coverprofile=profile.cov -service=github
+
+
+
+================================================
+FILE: .github/workflows/dependabot-sync.yml
+================================================
+name: dependabot-sync
+on:
+  schedule:
+    - cron: "0 0 * * 0" # every Sunday at midnight
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot-sync:
+    uses: charmbracelet/meta/.github/workflows/dependabot-sync.yml@main
+    with:
+      repo_name: ${{ github.event.repository.name }}
+    secrets:
+      gh_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+
+
+================================================
+FILE: .github/workflows/lint-sync.yml
+================================================
+name: lint-sync
+on:
+  schedule:
+    # every Sunday at midnight
+    - cron: "0 0 * * 0"
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint-sync.yml@main
+
+
+
+================================================
+FILE: .github/workflows/lint.yml
+================================================
+name: lint
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint.yml@main
+    with:
+      golangci_path: .golangci.yml
+
+

@@ -1,0 +1,1961 @@
+Directory structure:
+└── charmbracelet-huh/
+    ├── accessor.go
+    ├── huh.go
+    ├── Makefile
+    ├── option.go
+    ├── run.go
+    ├── wrap.go
+    ├── .golangci.yml
+    ├── .goreleaser.yml
+    ├── examples/
+    │   ├── accessibility/
+    │   │   ├── accessible.tape
+    │   │   └── main.go
+    │   ├── accessibility-secure-input/
+    │   │   └── main.go
+    │   ├── bubbletea/
+    │   │   └── demo.tape
+    │   ├── bubbletea-options/
+    │   │   └── main.go
+    │   ├── burger/
+    │   │   └── demo.tape
+    │   ├── dynamic/
+    │   │   ├── demo.tape
+    │   │   ├── dynamic-increment/
+    │   │   │   └── main.go
+    │   │   └── dynamic-markdown/
+    │   │       └── main.go
+    │   ├── filepicker/
+    │   │   ├── artichoke.hs
+    │   │   ├── demo.tape
+    │   │   └── main.go
+    │   ├── filepicker-picking/
+    │   │   └── main.go
+    │   ├── gum/
+    │   │   └── main.go
+    │   ├── help/
+    │   │   └── main.go
+    │   ├── hide/
+    │   │   ├── hide.tape
+    │   │   └── main.go
+    │   ├── layout/
+    │   │   ├── columns/
+    │   │   │   └── main.go
+    │   │   ├── default/
+    │   │   │   └── main.go
+    │   │   ├── grid/
+    │   │   │   └── main.go
+    │   │   └── stack/
+    │   │       └── main.go
+    │   ├── readme/
+    │   │   ├── confirm/
+    │   │   │   ├── confirm.tape
+    │   │   │   └── main.go
+    │   │   ├── input/
+    │   │   │   ├── input.tape
+    │   │   │   ├── main.go
+    │   │   │   └── suggestions.tape
+    │   │   ├── multiselect/
+    │   │   │   ├── main.go
+    │   │   │   └── multiselect.tape
+    │   │   ├── note/
+    │   │   │   └── main.go
+    │   │   ├── select/
+    │   │   │   ├── main.go
+    │   │   │   ├── select.tape
+    │   │   │   └── scroll/
+    │   │   │       ├── scroll.go
+    │   │   │       └── scroll.tape
+    │   │   └── text/
+    │   │       ├── main.go
+    │   │       └── text.tape
+    │   ├── scroll/
+    │   │   └── main.go
+    │   ├── skip/
+    │   │   └── main.go
+    │   ├── spinner/
+    │   │   ├── accessible/
+    │   │   │   └── main.go
+    │   │   ├── context/
+    │   │   │   └── main.go
+    │   │   ├── context-and-action/
+    │   │   │   └── main.go
+    │   │   ├── context-and-action-and-error/
+    │   │   │   └── main.go
+    │   │   ├── loading/
+    │   │   │   ├── demo.tape
+    │   │   │   └── main.go
+    │   │   └── static/
+    │   │       └── main.go
+    │   └── theme/
+    │       └── theme.tape
+    ├── internal/
+    │   └── compat/
+    │       └── model.go
+    └── .github/
+        └── workflows/
+            ├── build.yml
+            ├── dependabot-sync.yml
+            ├── lint-sync.yml
+            └── lint.yml
+
+================================================
+FILE: accessor.go
+================================================
+package huh
+
+// Accessor give read/write access to field values.
+type Accessor[T any] interface {
+	Get() T
+	Set(value T)
+}
+
+// EmbeddedAccessor is a basic accessor, acting as the default one for fields.
+type EmbeddedAccessor[T any] struct {
+	value T
+}
+
+// Get gets the value.
+func (a *EmbeddedAccessor[T]) Get() T {
+	return a.value
+}
+
+// Set sets the value.
+func (a *EmbeddedAccessor[T]) Set(value T) {
+	a.value = value
+}
+
+// PointerAccessor allows field value to be exposed as a pointed variable.
+type PointerAccessor[T any] struct {
+	value *T
+}
+
+// NewPointerAccessor returns a new pointer accessor.
+func NewPointerAccessor[T any](value *T) *PointerAccessor[T] {
+	return &PointerAccessor[T]{
+		value: value,
+	}
+}
+
+// Get gets the value.
+func (a *PointerAccessor[T]) Get() T {
+	return *a.value
+}
+
+// Set sets the value.
+func (a *PointerAccessor[T]) Set(value T) {
+	*a.value = value
+}
+
+
+
+================================================
+FILE: huh.go
+================================================
+// Package huh provides components to build terminal-based forms and prompts.
+package huh
+
+
+
+================================================
+FILE: Makefile
+================================================
+.PHONY: spinner
+
+$(V).SILENT:
+test:
+	go test ./...
+
+spinner:
+	cd spinner/examples/loading && go run .
+
+burger:
+	cd examples/burger && go run .
+
+theme:
+	cd examples/theme && go run .
+
+gh:
+	cd examples/gh && go run .
+
+
+
+================================================
+FILE: option.go
+================================================
+package huh
+
+import "fmt"
+
+// Option is an option for select fields.
+type Option[T comparable] struct {
+	Key      string
+	Value    T
+	selected bool
+}
+
+// NewOptions returns new options from a list of values.
+func NewOptions[T comparable](values ...T) []Option[T] {
+	options := make([]Option[T], len(values))
+	for i, o := range values {
+		options[i] = Option[T]{
+			Key:   fmt.Sprint(o),
+			Value: o,
+		}
+	}
+	return options
+}
+
+// NewOption returns a new select option.
+func NewOption[T comparable](key string, value T) Option[T] {
+	return Option[T]{Key: key, Value: value}
+}
+
+// Selected sets whether the option is currently selected.
+func (o Option[T]) Selected(selected bool) Option[T] {
+	o.selected = selected
+	return o
+}
+
+// String returns the key of the option.
+func (o Option[T]) String() string {
+	return o.Key
+}
+
+
+
+================================================
+FILE: run.go
+================================================
+package huh
+
+// Run runs a single field by wrapping it within a group and a form.
+func Run(field Field) error {
+	group := NewGroup(field)
+	form := NewForm(group).WithShowHelp(false)
+	return form.Run()
+}
+
+
+
+================================================
+FILE: wrap.go
+================================================
+package huh
+
+import "charm.land/lipgloss/v2"
+
+func wrap(s string, limit int) string {
+	return lipgloss.Wrap(s, limit, ",.-; ")
+}
+
+
+
+================================================
+FILE: .golangci.yml
+================================================
+version: "2"
+run:
+  tests: false
+linters:
+  enable:
+    - bodyclose
+    - exhaustive
+    - goconst
+    - godot
+    - gomoddirectives
+    - goprintffuncname
+    - gosec
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - noctx
+    - nolintlint
+    - prealloc
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - tparallel
+    - unconvert
+    - unparam
+    - whitespace
+    - wrapcheck
+  exclusions:
+    rules:
+      - text: '(slog|log)\.\w+'
+        linters:
+          - noctx
+    generated: lax
+    presets:
+      - common-false-positives
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+
+
+
+================================================
+FILE: .goreleaser.yml
+================================================
+includes:
+  - from_url:
+      url: charmbracelet/meta/main/goreleaser-lib.yaml
+
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+
+
+
+
+================================================
+FILE: examples/accessibility/accessible.tape
+================================================
+Output accessible.gif
+
+Set Height 600
+Set Width 1000
+
+Hide
+  Type "go build -o accessible ." Enter
+  Type "export ACCESSIBLE=true" Enter
+  Type "clear && ./accessible"
+  Enter
+  Sleep 1s
+Show
+
+Sleep 1s
+
+Type "2"
+Sleep 500ms
+Enter
+Sleep 1.5s
+
+Type "Souvlaki"
+Sleep 1.5s
+Enter
+Sleep 1.5s
+
+Hide
+Type "rm accessible" Enter
+Sleep 1s
+
+
+
+================================================
+FILE: examples/accessibility/main.go
+================================================
+package main
+
+import (
+	"log"
+
+	"charm.land/huh/v2"
+)
+
+func main() {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Options(huh.NewOptions("Italian", "Greek", "Indian", "Japanese", "American")...).
+				Title("Favorite Cuisine?"),
+		),
+
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Favorite Meal?").
+				Placeholder("Breakfast"),
+		),
+	).WithAccessible(true)
+
+	err := form.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+
+
+================================================
+FILE: examples/accessibility-secure-input/main.go
+================================================
+package main
+
+import (
+	"errors"
+	"log"
+
+	"charm.land/huh/v2"
+)
+
+func validate(s string) error {
+	if s == "" {
+		return errors.New("input cannot be empty")
+	}
+	return nil
+}
+
+func main() {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().
+				Title("Welcome!").
+				Description("This is an accessible form example!"),
+			huh.NewInput().
+				Validate(validate).
+				Title("Name:"),
+			huh.NewInput().
+				EchoMode(huh.EchoModePassword).
+				Validate(validate).
+				Title("Password:"),
+			huh.NewMultiSelect[string]().
+				Options(huh.NewOptions(
+					"Red",
+					"Green",
+					"Yellow",
+				)...).
+				Limit(2).
+				Title("Choose some colors:"),
+			huh.NewSelect[string]().
+				Options(huh.NewOptions(
+					"Red",
+					"Green",
+					"Yellow",
+				)...).
+				Title("Choose the best color:"),
+			huh.NewFilePicker().
+				Title("Which file?"),
+			huh.NewConfirm().
+				Title("Send something?"),
+		),
+	).WithAccessible(true)
+
+	err := form.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+
+
+================================================
+FILE: examples/bubbletea/demo.tape
+================================================
+Set Height 775
+Set Padding 60
+Set Width 1200
+Set FontSize 20
+
+Hide
+  Type "clear && go run ."
+  Enter
+  Sleep 1s
+Show
+Sleep 2s
+
+Down Sleep 1s
+Enter Sleep 1s
+Down Sleep 1s
+Enter Sleep 1s
+Enter Sleep 1.5s
+Left Sleep 2s
+Enter Sleep 3s
+
+
+
+================================================
+FILE: examples/bubbletea-options/main.go
+================================================
+package main
+
+import (
+	"fmt"
+
+	tea "charm.land/bubbletea/v2"
+	"charm.land/huh/v2"
+)
+
+func main() {
+	var name string
+	form := huh.NewForm(
+		huh.NewGroup(huh.NewInput().Description("What should we call you?").Value(&name)),
+	).WithViewHook(func(v tea.View) tea.View {
+		v.AltScreen = true
+		return v
+	})
+
+	err := form.Run()
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+
+	fmt.Println("Welcome, " + name + "!")
+}
+
+
+
+================================================
+FILE: examples/burger/demo.tape
+================================================
+Output burger.gif
+
+Set Height 700
+Set Width 1000
+
+Hide
+Type "go build -o burger ." Enter
+Ctrl+L
+Sleep 1s
+
+Type "clear && ./burger"
+Sleep 500ms
+Enter
+Sleep 500ms
+
+Show
+
+Sleep 1s
+Type "n"
+Sleep 1s
+Down 2
+Sleep 500ms Enter
+Sleep 1s
+Up@500ms
+Sleep 500ms Enter
+Sleep 500ms
+Down@300ms 3
+Sleep 300ms
+Space
+Sleep 750ms Enter
+Sleep 500ms
+Down@300ms 2
+Sleep 500ms Enter
+Sleep 750ms
+Down@300ms
+Sleep 500ms Enter
+
+Sleep 1s
+
+Type "Hilda"
+Sleep 500ms Enter
+
+Sleep 1s
+Type "Extra spicy please!"
+Sleep 500ms Tab
+
+Sleep 750ms
+Left
+Sleep 750ms Enter
+
+Sleep 5s
+
+Hide
+Type "rm burger" Enter
+Sleep 1s
+
+
+
+================================================
+FILE: examples/dynamic/demo.tape
+================================================
+Output dynamic.gif
+
+Set Shell "bash"
+Set FontSize 28
+Set Width 1000
+Set Height 700
+
+Hide
+  Type "clear && go build -o dynamic ./dynamic-country"
+  Enter
+  Sleep 1s
+Show
+
+Sleep 1s
+Type "./dynamic" Sleep 500ms  Enter
+
+Sleep 3.5s
+Down
+Sleep 2.5s
+Down
+Sleep 2.5s
+Enter
+Sleep 1s
+Down@150ms 12
+Up@150ms 2
+
+Sleep 1s
+
+Enter
+
+Sleep 3s
+
+Hide
+  Type "rm dynamic"
+Show
+
+
+
+================================================
+FILE: examples/dynamic/dynamic-increment/main.go
+================================================
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"charm.land/huh/v2"
+)
+
+func main() {
+	count := 0
+	go func() {
+		for {
+			count++
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
+	descriptionFunc := func() string {
+		return fmt.Sprintf("The count is: %d", count)
+	}
+
+	huh.NewForm(huh.NewGroup(
+		huh.NewInput().
+			Title("Fill in the input").
+			DescriptionFunc(descriptionFunc, &count),
+		huh.NewInput().
+			Title("Fill in the input").
+			DescriptionFunc(descriptionFunc, &count),
+	)).Run()
+}
+
+
+
+================================================
+FILE: examples/dynamic/dynamic-markdown/main.go
+================================================
+package main
+
+import (
+	"log"
+
+	"charm.land/glamour/v2"
+	"charm.land/huh/v2"
+)
+
+func main() {
+	var md string
+	err := huh.NewForm(
+		huh.NewGroup(
+			huh.NewText().Title("Markdown").Value(&md),
+			huh.NewNote().Height(20).Title("Preview").
+				DescriptionFunc(func() string {
+					fmd, err := glamour.Render(md, "dark")
+					if err != nil {
+						return md
+					}
+					return fmd
+				}, &md),
+		),
+	).Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+
+
+================================================
+FILE: examples/filepicker/artichoke.hs
+================================================
+[Empty file]
+
+
+================================================
+FILE: examples/filepicker/demo.tape
+================================================
+Set Shell bash
+
+Set Width 800
+Set Height 725
+
+Hide
+  Type "clear && go build -o file"
+  Enter
+Show
+
+Sleep .5s
+Type "./file" Sleep .5s
+Enter
+
+Sleep 1s
+Type "Frank" Sleep 500ms
+Enter
+
+Sleep 1s
+Type "_frank" Sleep 500ms
+Enter
+
+Sleep 1s
+Enter
+Sleep 1s
+Type@200ms "jjjj"
+Sleep 1s
+Enter
+
+Sleep 1.5s
+Type "hunter2"
+Sleep 4s
+
+
+
+================================================
+FILE: examples/filepicker/main.go
+================================================
+package main
+
+import (
+	"charm.land/huh/v2"
+)
+
+func main() {
+	var file string
+
+	huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Name").
+				Description("What's your name?"),
+
+			huh.NewInput().
+				Title("Username").
+				Description("Select your username."),
+
+			huh.NewFilePicker().
+				Title("Profile").
+				Description("Select your profile picture.").
+				AllowedTypes([]string{".png", ".jpeg", ".webp", ".gif"}).
+				Value(&file),
+
+			huh.NewInput().
+				Title("Password").
+				EchoMode(huh.EchoModePassword).
+				Description("Set your Password."),
+		),
+	).WithShowHelp(true).Run()
+}
+
+
+
+================================================
+FILE: examples/filepicker-picking/main.go
+================================================
+package main
+
+import (
+	"fmt"
+
+	"charm.land/huh/v2"
+)
+
+func main() {
+	var file string
+	huh.NewForm(
+		huh.NewGroup(
+			huh.NewFilePicker().
+				Picking(true).
+				Title("Code").
+				Description("Select a .go file").
+				AllowedTypes([]string{".go"}).
+				Value(&file),
+		),
+	).WithShowHelp(true).Run()
+	fmt.Println(file)
+}
+
+
+
+================================================
+FILE: examples/gum/main.go
+================================================
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"charm.land/huh/v2"
+)
+
+func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("gum <input | text>")
+		os.Exit(1)
+	}
+	switch os.Args[1] {
+	case "input":
+		huh.NewInput().Run()
+	case "text":
+		huh.NewText().Run()
+	case "confirm":
+		huh.NewConfirm().Run()
+	case "select":
+		huh.NewSelect[string]().Options(huh.NewOptions(os.Args[2:]...)...).Run()
+	case "multiselect":
+		huh.NewMultiSelect[string]().Options(huh.NewOptions(os.Args[2:]...)...).Run()
+	}
+}
+
+
+
+================================================
+FILE: examples/help/main.go
+================================================
+package main
+
+import "charm.land/huh/v2"
+
+func main() {
+	f := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("Dynamic Help"),
+			huh.NewInput().Title("Dynamic Help"),
+			huh.NewInput().Title("Dynamic Help"),
+		),
+	)
+	f.Run()
+}
+
+
+
+================================================
+FILE: examples/hide/hide.tape
+================================================
+Output hide.gif
+
+Set Width 700
+Set Padding 40
+Set Height 350
+Set FontSize 28
+
+Hide
+  Type "go build ."
+  Sleep 500ms
+  Enter
+  Ctrl+L
+  Sleep 500ms
+  Type "clear && ./hide"
+  Sleep 500ms
+  Enter
+  Sleep 500ms
+Show
+
+Type@500ms "llllllll"
+
+Hide
+Type "rm hide" Enter
+
+
+
+
+================================================
+FILE: examples/hide/main.go
+================================================
+package main
+
+import (
+	"fmt"
+
+	"charm.land/huh/v2"
+)
+
+func main() {
+	var isAllergic bool
+	var allergies string
+
+	huh.NewForm(
+		huh.NewGroup(huh.NewNote().Title("Just for fun!")).WithHideFunc(func() bool { return true }),
+		huh.NewGroup(huh.NewNote().Title("Just for fun!")).WithHide(true),
+
+		huh.NewGroup(huh.NewConfirm().
+			Title("Do you have any allergies?").
+			Description("If so, please list them.").
+			Value(&isAllergic)),
+		huh.NewGroup(
+			huh.NewText().
+				Title("Allergies").
+				Description("Please list all your allergies...").
+				Value(&allergies),
+		).WithHideFunc(func() bool {
+			return !isAllergic
+		}),
+		huh.NewGroup(huh.NewNote().Title("Invisible")).WithHide(true),
+	).Run()
+
+	if isAllergic {
+		fmt.Println(allergies)
+	}
+}
+
+
+
+================================================
+FILE: examples/layout/columns/main.go
+================================================
+package main
+
+import "charm.land/huh/v2"
+
+func main() {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("First"),
+			huh.NewInput().Title("Second"),
+			huh.NewInput().Title("Third"),
+		),
+		huh.NewGroup(
+			huh.NewInput().Title("Fourth"),
+			huh.NewInput().Title("Fifth"),
+			huh.NewInput().Title("Sixth"),
+		),
+		huh.NewGroup(
+			huh.NewInput().Title("Seventh"),
+			huh.NewInput().Title("Eighth"),
+			huh.NewInput().Title("Nineth"),
+			huh.NewInput().Title("Tenth"),
+		),
+	).WithLayout(huh.LayoutColumns(2))
+	form.Run()
+}
+
+
+
+================================================
+FILE: examples/layout/default/main.go
+================================================
+package main
+
+import "charm.land/huh/v2"
+
+func main() {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("First"),
+			huh.NewInput().Title("Second"),
+			huh.NewInput().Title("Third"),
+		),
+		huh.NewGroup(
+			huh.NewInput().Title("Fourth"),
+			huh.NewInput().Title("Fifth"),
+			huh.NewInput().Title("Sixth"),
+		),
+		huh.NewGroup(
+			huh.NewInput().Title("Seventh"),
+			huh.NewInput().Title("Eighth"),
+			huh.NewInput().Title("Nineth"),
+			huh.NewInput().Title("Tenth"),
+		),
+	)
+	form.Run()
+}
+
+
+
+================================================
+FILE: examples/layout/grid/main.go
+================================================
+package main
+
+import "charm.land/huh/v2"
+
+func main() {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("First"),
+			huh.NewInput().Title("Second"),
+			huh.NewInput().Title("Third"),
+		),
+		huh.NewGroup(
+			huh.NewInput().Title("Fourth"),
+			huh.NewInput().Title("Fifth"),
+			huh.NewInput().Title("Sixth"),
+		),
+		huh.NewGroup(
+			huh.NewInput().Title("Seventh"),
+			huh.NewInput().Title("Eighth"),
+			huh.NewInput().Title("Nineth"),
+			huh.NewInput().Title("Tenth"),
+		),
+		huh.NewGroup(
+			huh.NewInput().Title("Eleventh"),
+			huh.NewInput().Title("Twelveth"),
+			huh.NewInput().Title("Thirteenth"),
+		),
+	).WithLayout(huh.LayoutGrid(2, 2))
+	form.Run()
+}
+
+
+
+================================================
+FILE: examples/layout/stack/main.go
+================================================
+package main
+
+import "charm.land/huh/v2"
+
+func main() {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("First"),
+			huh.NewInput().Title("Second"),
+			huh.NewInput().Title("Third"),
+		),
+		huh.NewGroup(
+			huh.NewInput().Title("Fourth"),
+			huh.NewInput().Title("Fifth"),
+			huh.NewInput().Title("Sixth"),
+		),
+		huh.NewGroup(
+			huh.NewInput().Title("Seventh"),
+			huh.NewInput().Title("Eighth"),
+			huh.NewInput().Title("Nineth"),
+			huh.NewInput().Title("Tenth"),
+		),
+	).WithLayout(huh.LayoutStack)
+	form.Run()
+}
+
+
+
+================================================
+FILE: examples/readme/confirm/confirm.tape
+================================================
+Output confirm.gif
+
+Set Width 1100
+Set Padding 40
+Set Height 375
+Set FontSize 36
+
+Hide
+  Type "go build ."
+  Sleep 500ms
+  Enter
+  Ctrl+L
+  Sleep 500ms
+  Type "clear && ./confirm"
+  Sleep 500ms
+  Enter
+  Sleep 500ms
+Show
+
+Sleep 1s
+Left@500ms 6
+Sleep 2s
+
+Hide
+Type "rm confirm"
+Enter
+Sleep 500ms
+
+
+
+================================================
+FILE: examples/readme/confirm/main.go
+================================================
+package main
+
+import (
+	"charm.land/huh/v2"
+)
+
+func main() {
+	var happy bool
+
+	confirm := huh.NewConfirm().
+		Title("Are you sure? ").
+		Description("Please confirm. ").
+		Affirmative("Yes!").
+		Negative("No.").
+		Value(&happy)
+
+	huh.NewForm(huh.NewGroup(confirm)).Run()
+}
+
+
+
+================================================
+FILE: examples/readme/input/input.tape
+================================================
+Output input.gif
+
+Set Width 1000
+Set Padding 30
+Set Height 275
+Set FontSize 38
+
+Hide
+  Type "go build ."
+  Sleep 500ms
+  Enter
+  Ctrl+L
+  Sleep 500ms
+  Type "./input"
+  Sleep 500ms
+  Enter
+  Sleep 500ms
+Show
+
+Sleep 1s
+Type "Spaghetti"
+Sleep 2s
+
+Hide
+Type "rm input"
+Enter
+
+
+
+================================================
+FILE: examples/readme/input/main.go
+================================================
+package main
+
+import (
+	"fmt"
+
+	"charm.land/huh/v2"
+)
+
+func isFood(_ string) error {
+	return nil
+}
+
+func main() {
+	var lunch string
+
+	input := huh.NewInput().
+		Title("What's for lunch?").
+		Prompt("? ").
+		Suggestions([]string{
+			"Artichoke",
+			"Baking Flour",
+			"Bananas",
+			"Barley",
+			"Bean Sprouts",
+			"Bitter Melon",
+			"Black Cod",
+			"Blood Orange",
+			"Brown Sugar",
+			"Cashew Apple",
+			"Cashews",
+			"Cat Food",
+			"Coconut Milk",
+			"Cucumber",
+			"Curry Paste",
+			"Currywurst",
+			"Dill",
+			"Dragonfruit",
+			"Dried Shrimp",
+			"Eggs",
+			"Fish Cake",
+			"Furikake",
+			"Garlic",
+		}).
+		Validate(isFood).
+		Value(&lunch)
+
+	huh.NewForm(huh.NewGroup(input)).Run()
+
+	fmt.Printf("Yummy, %s!\n", lunch)
+}
+
+
+
+================================================
+FILE: examples/readme/input/suggestions.tape
+================================================
+Output suggestions.gif
+
+Set Width 1000
+Set Padding 30
+Set Height 275
+Set FontSize 38
+
+Hide
+  Type "go build ."
+  Sleep 500ms
+  Enter
+  Ctrl+L
+  Sleep 500ms
+  Type "./input"
+  Sleep 500ms
+  Enter
+  Sleep 500ms
+Show
+
+Sleep 1s
+Type@300ms "Curryw"
+Sleep 1.5s
+Ctrl+E
+Sleep 3s
+
+Hide
+Type "rm input"
+Enter
+Sleep 0.5s
+
+
+
+
+================================================
+FILE: examples/readme/multiselect/main.go
+================================================
+package main
+
+import "charm.land/huh/v2"
+
+func main() {
+	var toppings []string
+	s := huh.NewMultiSelect[string]().
+		Options(
+			huh.NewOption("Lettuce", "Lettuce").Selected(true),
+			huh.NewOption("Tomatoes", "Tomatoes").Selected(true),
+			huh.NewOption("Charm Sauce", "Charm Sauce"),
+			huh.NewOption("Jalapeños", "Jalapeños"),
+			huh.NewOption("Cheese", "Cheese"),
+			huh.NewOption("Vegan Cheese", "Vegan Cheese"),
+			huh.NewOption("Nutella", "Nutella"),
+		).
+		Title("Toppings").
+		Limit(4).
+		Value(&toppings)
+
+	huh.NewForm(huh.NewGroup(s)).Run()
+}
+
+
+
+================================================
+FILE: examples/readme/multiselect/multiselect.tape
+================================================
+Output multiselect.gif
+
+Set Width 1150
+Set Padding 40
+Set Height 480
+Set FontSize 28
+
+Hide
+  Type "go build ."
+  Sleep 500ms
+  Enter
+  Ctrl+L
+  Sleep 500ms
+  Type "clear && ./multiselect"
+  Sleep 500ms
+  Enter
+  Sleep 500ms
+Show
+
+Sleep 1s
+Down@500ms 3
+Sleep 1s
+Type "x"
+Sleep 1s
+Up@500ms 2
+Sleep 1s
+
+Type "x"
+Sleep 2s
+
+Hide
+Type "rm multiselect" Enter
+Sleep 1s
+
+
+
+================================================
+FILE: examples/readme/note/main.go
+================================================
+package main
+
+import "charm.land/huh/v2"
+
+func main() {
+	note := huh.NewNote().Description(
+		"# Heading\n" + "This is _italic_, *bold*" +
+			"\n\n# Heading\n" + "`This is _italic_, *bold*`",
+	)
+	huh.NewForm(
+		huh.NewGroup(note),
+	).Run()
+}
+
+
+
+================================================
+FILE: examples/readme/select/main.go
+================================================
+package main
+
+import "charm.land/huh/v2"
+
+func main() {
+	var country string
+	s := huh.NewSelect[string]().
+		Title("Pick a country.").
+		Options(
+			huh.NewOption("United States", "US"),
+			huh.NewOption("Germany", "DE"),
+			huh.NewOption("Brazil", "BR"),
+			huh.NewOption("Canada", "CA"),
+		).
+		Value(&country)
+
+	huh.NewForm(huh.NewGroup(s)).Run()
+}
+
+
+
+================================================
+FILE: examples/readme/select/select.tape
+================================================
+Output select.gif
+
+Set Width 1100
+Set Padding 40
+Set Height 375
+Set FontSize 28
+
+Hide
+  Type "go build ."
+  Sleep 500ms
+  Enter
+  Ctrl+L
+  Sleep 500ms
+  Type "clear && ./select"
+  Sleep 500ms
+  Enter
+  Sleep 500ms
+Show
+
+Sleep 1s
+Down@500ms 3
+Sleep 1s
+Up@500ms 2
+Sleep 1s
+
+Type "/"
+Sleep 1s
+Type "cana"
+Sleep 2s
+
+Hide
+Type "rm select" Enter
+
+
+
+================================================
+FILE: examples/readme/select/scroll/scroll.go
+================================================
+package main
+
+import "charm.land/huh/v2"
+
+type Pokemon struct {
+	id   int
+	name string
+}
+
+var pokemons = []Pokemon{
+	{1, "Bulbasaur"},
+	{2, "Ivysaur"},
+	{3, "Venusaur"},
+	{4, "Charmander"},
+	{5, "Charmeleon"},
+	{6, "Charizard"},
+	{7, "Squirtle"},
+	{8, "Wartortle"},
+	{9, "Blastoise"},
+	{10, "Caterpie"},
+	{11, "Metapod"},
+	{12, "Butterfree"},
+	{13, "Weedle"},
+	{14, "Kakuna"},
+	{15, "Beedrill"},
+	{16, "Pidgey"},
+	{17, "Pidgeotto"},
+	{18, "Pidgeot"},
+	{19, "Rattata"},
+	{20, "Raticate"},
+	{21, "Spearow"},
+	{22, "Fearow"},
+	{23, "Ekans"},
+	{24, "Arbok"},
+	{25, "Pikachu"},
+	{26, "Raichu"},
+	{27, "Sandshrew"},
+	{28, "Sandslash"},
+}
+
+func (p Pokemon) String() string {
+	return p.name
+}
+
+func main() {
+	var pokemon Pokemon
+
+	s := huh.NewSelect[Pokemon]().
+		Title("Choose your starter").
+		Options(huh.NewOptions(pokemons...)...).
+		Value(&pokemon).
+		WithHeight(7)
+
+	huh.NewForm(huh.NewGroup(s)).Run()
+}
+
+
+
+================================================
+FILE: examples/readme/select/scroll/scroll.tape
+================================================
+Output scroll.gif
+
+Set Width 800
+Set Padding 40
+Set Height 375
+Set FontSize 28
+
+Hide
+  Type "go build scroll.go"
+  Sleep 500ms
+  Enter
+  Ctrl+L
+  Sleep 500ms
+  Type "clear && ./scroll"
+  Sleep 500ms
+  Enter
+  Sleep 500ms
+Show
+
+Down@250ms 20
+
+Hide
+Type "rm scroll" Enter
+
+
+
+================================================
+FILE: examples/readme/text/main.go
+================================================
+package main
+
+import "charm.land/huh/v2"
+
+// TODO: ensure input is not plagiarized.
+func checkForPlagiarism(s string) error { return nil }
+
+func main() {
+	var story string
+
+	text := huh.NewText().
+		Title("Tell me a story.").
+		Validate(checkForPlagiarism).
+		Placeholder("What's on your mind?").
+		Value(&story)
+
+	// Create a form to show help.
+	form := huh.NewForm(huh.NewGroup(text))
+	form.Run()
+}
+
+
+
+================================================
+FILE: examples/readme/text/text.tape
+================================================
+Output text.gif
+
+Set Width 1000
+Set Padding 40
+Set Height 450
+Set FontSize 28
+
+Hide
+  Type "go build ." Enter
+  Ctrl+L
+  Type "./text" Enter
+  Sleep 500ms
+Show
+
+Sleep 1s
+Type "Once upon a time, in the heart of a lush, enchanted forest, there existed a peculiar village named Charm Dale. This village was unlike any other; its cobblestone streets were lined with houses crafted from the timber of ancient, towering trees that sparkled under the sunlight."
+Sleep 4s
+
+Hide
+Type "rm text" Enter
+
+
+
+================================================
+FILE: examples/scroll/main.go
+================================================
+package main
+
+import "charm.land/huh/v2"
+
+func main() {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("First"),
+			huh.NewInput().Title("Second"),
+			huh.NewInput().Title("Third"),
+			huh.NewInput().Title("Fourth"),
+			huh.NewInput().Title("Fifth"),
+			huh.NewInput().Title("Sixth"),
+			huh.NewInput().Title("Seventh"),
+			huh.NewInput().Title("Eighth"),
+			huh.NewInput().Title("Nineth"),
+			huh.NewInput().Title("Tenth"),
+		),
+	).WithHeight(5)
+	form.Run()
+}
+
+
+
+================================================
+FILE: examples/skip/main.go
+================================================
+package main
+
+import (
+	"charm.land/huh/v2"
+)
+
+func main() {
+	f := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().
+				Title("Charmburger").
+				Description("Welcome to _Charmburger™_."),
+
+			huh.NewSelect[string]().
+				Options(huh.NewOptions("Charmburger Classic", "Chickwich", "Fishburger", "Charmpossible™ Burger")...).
+				Title("Choose your burger").
+				Description("At Charm we truly have a burger for everyone."),
+
+			huh.NewNote().
+				Title("🍔"),
+		),
+
+		huh.NewGroup(
+			huh.NewNote().
+				Title("Buy 1 get 1 free").
+				Description("Welcome back to _Charmburger™_."),
+
+			huh.NewSelect[string]().
+				Options(huh.NewOptions("Charmburger Classic", "Chickwich", "Fishburger", "Charmpossible™ Burger")...).
+				Title("Choose your burger").
+				Description("At Charm we truly have a burger for everyone."),
+
+			huh.NewNote().
+				Title("🍔"),
+		),
+	)
+
+	f.Run()
+}
+
+
+
+================================================
+FILE: examples/spinner/accessible/main.go
+================================================
+package main
+
+import (
+	"context"
+	"log"
+	"time"
+
+	"charm.land/huh/v2/spinner"
+)
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second/2)
+	defer cancel()
+
+	err := spinner.New().
+		Context(ctx).
+		WithAccessible(true).
+		Run()
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
+
+
+================================================
+FILE: examples/spinner/context/main.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"charm.land/huh/v2/spinner"
+)
+
+func main() {
+	action := func() { time.Sleep(5 * time.Second) }
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	go action()
+	spinner.New().Context(ctx).Run()
+	fmt.Println("Done!")
+}
+
+
+
+================================================
+FILE: examples/spinner/context-and-action/main.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"math/rand"
+	"time"
+
+	"charm.land/huh/v2/spinner"
+)
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	err := spinner.New().
+		Context(ctx).
+		Action(func() {
+			time.Sleep(time.Minute)
+		}).
+		WithAccessible(rand.Int()%2 == 0).
+		Run()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fmt.Println("Done!")
+}
+
+
+
+================================================
+FILE: examples/spinner/context-and-action-and-error/main.go
+================================================
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+
+	"charm.land/huh/v2/spinner"
+)
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	err := spinner.New().
+		Context(ctx).
+		ActionWithErr(func(context.Context) error {
+			time.Sleep(5 * time.Second)
+			return nil
+		}).
+		WithAccessible(false).
+		Run()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fmt.Println("Done!")
+}
+
+
+
+================================================
+FILE: examples/spinner/loading/demo.tape
+================================================
+Output spinner.gif
+
+Set FontSize 32
+Set Height 225
+Set Width 800
+
+Hide
+Type "go build -o spinner ." Enter
+Ctrl+L
+Sleep 1s
+Show
+
+Type "./spinner"
+Sleep 500ms
+Enter
+
+Sleep 4s
+
+
+
+================================================
+FILE: examples/spinner/loading/main.go
+================================================
+package main
+
+import (
+	"fmt"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+	"charm.land/huh/v2/spinner"
+)
+
+func main() {
+	action := func() {
+		time.Sleep(1 * time.Second)
+	}
+	if err := spinner.New().
+		Title("Preparing your burger...").
+		Action(action).
+		WithViewHook(func(v tea.View) tea.View {
+			v.ProgressBar = tea.NewProgressBar(tea.ProgressBarIndeterminate, 1)
+			return v
+		}).
+		Run(); err != nil {
+		fmt.Println("Failed:", err)
+		return
+	}
+	fmt.Println("Order up!")
+}
+
+
+
+================================================
+FILE: examples/spinner/static/main.go
+================================================
+package main
+
+import (
+	"fmt"
+
+	"charm.land/huh/v2/spinner"
+)
+
+func main() {
+	_ = spinner.New().Title("Loading").WithAccessible(true).Run()
+	fmt.Println("Done!")
+}
+
+
+
+================================================
+FILE: examples/theme/theme.tape
+================================================
+Output theme.gif
+
+Set Width 800
+Set Height 740
+Set Padding 80
+
+Hide
+Type "go build -o theme ."
+Enter
+Ctrl+L
+Sleep 500ms
+Type "clear && ./theme" Enter
+Show
+
+Sleep 2s
+
+Enter
+
+Screenshot default-theme.png
+
+Tab 4
+Down 1
+Enter
+
+Screenshot dracula-theme.png
+
+Tab 4
+Down 2
+Enter
+
+Screenshot basesixteen-theme.png
+
+Tab 4
+Down 3
+Enter
+
+Screenshot charm-theme.png
+
+Tab 4
+Down 4
+Enter
+
+Screenshot catppuccin-theme.png
+
+Sleep 1s
+
+Hide
+Type "rm theme"
+Enter
+
+
+
+================================================
+FILE: internal/compat/model.go
+================================================
+// Package compat provides common types used across the application.
+package compat
+
+import tea "charm.land/bubbletea/v2"
+
+// Model is a bubbletea v1 [tea.Model].
+type Model interface {
+	Init() tea.Cmd
+	Update(msg tea.Msg) (Model, tea.Cmd)
+	View() string
+}
+
+// ViewHook is a function that modifies a [tea.View].
+type ViewHook = func(tea.View) tea.View
+
+// ViewModel wraps a [Model] and [ViewHook].
+type ViewModel struct {
+	Model
+	ViewHook ViewHook
+}
+
+// Update implements [tea.Model].
+func (w ViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m, cmd := w.Model.Update(msg)
+	return ViewModel{
+		Model:    m,
+		ViewHook: w.ViewHook,
+	}, cmd
+}
+
+// View implements [tea.Model].
+func (w ViewModel) View() tea.View {
+	var view tea.View
+	if w.ViewHook != nil {
+		view = w.ViewHook(view)
+	}
+	view.SetContent(w.Model.View())
+	return view
+}
+
+
+
+================================================
+FILE: .github/workflows/build.yml
+================================================
+name: build
+on: [push, pull_request]
+jobs:
+  build:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+
+  build-go-mod:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+    with:
+      go-version: ""
+      go-version-file: ./go.mod
+
+  build-examples:
+    uses: charmbracelet/meta/.github/workflows/build.yml@main
+    with:
+      go-version: ""
+      go-version-file: ./examples/go.mod
+      working-directory: ./examples
+
+
+
+================================================
+FILE: .github/workflows/dependabot-sync.yml
+================================================
+name: dependabot-sync
+on:
+  schedule:
+    - cron: "0 0 * * 0" # every Sunday at midnight
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot-sync:
+    uses: charmbracelet/meta/.github/workflows/dependabot-sync.yml@main
+    with:
+      repo_name: ${{ github.event.repository.name }}
+    secrets:
+      gh_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+
+
+================================================
+FILE: .github/workflows/lint-sync.yml
+================================================
+name: lint-sync
+on:
+  schedule:
+    # every Sunday at midnight
+    - cron: "0 0 * * 0"
+  workflow_dispatch: # allows manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint-sync.yml@main
+
+
+
+================================================
+FILE: .github/workflows/lint.yml
+================================================
+name: lint
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    uses: charmbracelet/meta/.github/workflows/lint.yml@main
+    with:
+      golangci_path: .golangci.yml
+      timeout: 10m
+
+

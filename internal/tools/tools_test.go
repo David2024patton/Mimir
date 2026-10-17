@@ -37,9 +37,27 @@ func TestTodoToolRun(t *testing.T) {
 
 func TestDefaultRegistryHasCoreTools(t *testing.T) {
 	r := Default(t.TempDir())
-	for _, name := range []string{"bash", "read_file", "write_file", "list_directory", "todo"} {
+	for _, name := range []string{"bash", "read_file", "write_file", "list_directory", "todo", "question", "load_skill"} {
 		if _, ok := r.Get(name); !ok {
 			t.Errorf("default registry missing tool %q", name)
 		}
+	}
+}
+
+func TestRegistryForModeReadOnlyHidesWriteTools(t *testing.T) {
+	r := Default(t.TempDir())
+	roTools := r.ForMode("ro")
+	for _, tl := range roTools {
+		if IsWriteTool(tl.Name()) {
+			t.Errorf("read-only mode exposed write tool %q", tl.Name())
+		}
+	}
+}
+
+func TestClosestBlockHint(t *testing.T) {
+	content := "package main\n\nfunc main() {\n\tfmt.Println(\"hello world\")\n}\n"
+	hint := closestBlockHint(content, "func main() {\n\tfmt.Println(\"wrong\")\n}")
+	if hint == "" {
+		t.Fatal("expected non-empty closestBlockHint")
 	}
 }
