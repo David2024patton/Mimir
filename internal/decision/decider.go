@@ -237,8 +237,20 @@ func (d *Decider) AssessCommandSafety(_ context.Context, command string) SafetyD
 		return SafetyDecision{SafeScore: 1.0, AutoApprove: true, Reason: "empty command"}
 	}
 
+	// Detect dangerous compound commands: chained with ; && || | ` $(
+	compoundOperators := []string{";", "&&", "||", "|", "`", "$("}
+	for _, op := range compoundOperators {
+		if strings.Contains(lower, op) {
+			return SafetyDecision{
+				SafeScore:   0.30,
+				AutoApprove: false,
+				Reason:      fmt.Sprintf("compound or piped command (%s) requires manual confirmation", op),
+			}
+		}
+	}
+
 	highRisk := []string{
-		"rm -rf", "del /s", "format ", "mkfs", "dd if=", "git push --force",
+		"rm -rf", "rm -fr", "rm -r", "del /s", "del /f", "format ", "mkfs", "dd if=", "git push --force",
 		"git reset --hard", "drop table", "truncate ", "shutdown", "reboot",
 		"curl | sh", "wget | sh", "invoke-expression", "iex ",
 	}
