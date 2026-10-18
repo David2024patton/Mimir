@@ -205,7 +205,7 @@ func main() {
 	}
 
 	// Parse flags across any position
-	addr := ":8420"
+	addr := "127.0.0.1:8420"
 	webFlag := false
 	tuiFlag := false
 	statusFlag := false

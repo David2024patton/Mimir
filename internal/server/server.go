@@ -27,7 +27,7 @@ type Deps struct {
 func Serve(d Deps) error {
 	addr := d.Addr
 	if addr == "" {
-		addr = ":8420"
+		addr = "127.0.0.1:8420"
 	}
 	return http.ListenAndServe(addr, Handler(d.Agent, d.Store, d.Sessions, d.Auth, d.Usage))
 }
