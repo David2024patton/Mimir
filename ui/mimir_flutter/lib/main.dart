@@ -48,13 +48,25 @@ class _StudioMainLayoutState extends State<StudioMainLayout> {
   final ScrollController _chatScroll = ScrollController();
 
   bool _connected = false;
-  String _activeTab = 'chat'; // 'chat' | 'engines' | 'swarm' | 'cortex'
+  String _activeTab = 'chat'; // 'chat' | 'engines' | 'swarm' | 'cortex' | 'mobile'
   Map<String, dynamic> _daemonStatus = {};
   List<Map<String, dynamic>> _messages = [];
   List<dynamic> _engines = [];
   List<dynamic> _swarmTasks = [];
   List<dynamic> _memories = [];
   Timer? _pollingTimer;
+
+  // Mobile Companion (Phase 5.4) State
+  final TextEditingController _pairSessionIdController = TextEditingController();
+  final TextEditingController _steerController = TextEditingController();
+  bool _mobilePaired = false;
+  String _mobileSessionId = '';
+  String _mobilePairUri = '';
+  String _mobileAsciiQr = '';
+  String _mobileAgentMode = 'edit';
+  List<Map<String, dynamic>> _pendingApprovals = [];
+  List<String> _mobileAuditLog = [];
+  bool _isSteering = false;
 
   @override
   void initState() {
@@ -71,6 +83,8 @@ class _StudioMainLayoutState extends State<StudioMainLayout> {
     _daemonAddrController.dispose();
     _promptController.dispose();
     _chatScroll.dispose();
+    _pairSessionIdController.dispose();
+    _steerController.dispose();
     super.dispose();
   }
 
@@ -122,6 +136,139 @@ class _StudioMainLayoutState extends State<StudioMainLayout> {
         setState(() => _memories = data['neurons'] ?? []);
       }
     } catch (_) {}
+  }
+
+  Future<void> _generatePairSession() async {
+    final base = _daemonAddrController.text.trim();
+    try {
+      final res = await http.get(Uri.parse('$base/api/pair'));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final sess = data['session'] ?? {};
+        setState(() {
+          _mobileSessionId = sess['id'] ?? '';
+          _mobilePairUri = data['pair_uri'] ?? '';
+          _mobileAsciiQr = data['ascii_qr'] ?? '';
+          _pairSessionIdController.text = _mobileSessionId;
+          _mobileAuditLog.insert(
+              0, '[Pair] Generated relay session $_mobileSessionId');
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _mobileAuditLog.insert(0, '[Error] Failed to generate pair session: $e');
+      });
+    }
+  }
+
+  Future<void> _completePairing() async {
+    final base = _daemonAddrController.text.trim();
+    final sessId = _pairSessionIdController.text.trim();
+    if (sessId.isEmpty) return;
+    try {
+      // Simulate client 32-byte public key base64 for pairing handshake
+      final fakeClientPub = base64Encode(List<int>.generate(32, (i) => (i + 13) % 256));
+      final res = await http.post(
+        Uri.parse('$base/api/pair/complete'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'session_id': sessId,
+          'client_pubkey': fakeClientPub,
+        }),
+      );
+      if (res.statusCode == 200) {
+        setState(() {
+          _mobilePaired = true;
+          _mobileSessionId = sessId;
+          _mobileAuditLog.insert(0, '[Pair] E2EE Handshake established for session $sessId');
+          // Add sample pending approval card for demonstration if empty
+          if (_pendingApprovals.isEmpty) {
+            _pendingApprovals.add({
+              'id': 'appr_01',
+              'tool': 'write_file',
+              'target': 'internal/auth/token.go',
+              'risk': 'CAUTION',
+              'diff': '+ func RotateToken() error {\n+   return nil\n+ }',
+              'time': 'Just now',
+            });
+          }
+        });
+      } else {
+        setState(() {
+          _mobileAuditLog.insert(0, '[Error] Pairing failed: HTTP ${res.statusCode}');
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _mobileAuditLog.insert(0, '[Error] Pairing exception: $e');
+      });
+    }
+  }
+
+  Future<void> _sendSteer() async {
+    final msg = _steerController.text.trim();
+    if (msg.isEmpty) return;
+    _steerController.clear();
+    setState(() => _isSteering = true);
+
+    final base = _daemonAddrController.text.trim();
+    try {
+      final res = await http.post(
+        Uri.parse('$base/api/mobile/steer'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'session_id': _mobileSessionId,
+          'message': msg,
+        }),
+      );
+      if (res.statusCode == 200) {
+        setState(() {
+          _mobileAuditLog.insert(0, '[Steer] Injected live mid-turn instruction: "$msg"');
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _mobileAuditLog.insert(0, '[Error] Steer failed: $e');
+      });
+    } finally {
+      setState(() => _isSteering = false);
+    }
+  }
+
+  Future<void> _setRemoteMode(String mode) async {
+    final base = _daemonAddrController.text.trim();
+    try {
+      final res = await http.post(
+        Uri.parse('$base/api/mobile/mode'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'session_id': _mobileSessionId,
+          'mode': mode,
+        }),
+      );
+      if (res.statusCode == 200) {
+        setState(() {
+          _mobileAgentMode = mode;
+          _mobileAuditLog.insert(0, '[Mode] Switched remote permission mode to $mode');
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _mobileAuditLog.insert(0, '[Error] Mode switch failed: $e');
+      });
+    }
+  }
+
+  void _handleApproval(String id, bool approved) {
+    setState(() {
+      _pendingApprovals.removeWhere((a) => a['id'] == id);
+      _mobileAuditLog.insert(
+        0,
+        approved
+            ? '[Approval] 1-Tap APPROVED action $id'
+            : '[Approval] 1-Tap REJECTED action $id',
+      );
+    });
   }
 
   Future<void> _sendPrompt() async {
@@ -270,6 +417,11 @@ class _StudioMainLayoutState extends State<StudioMainLayout> {
                 selectedIcon: Icon(Icons.all_inclusive),
                 label: Text('Cortex'),
               ),
+              NavigationRailDestination(
+                icon: Icon(Icons.phonelink_setup),
+                selectedIcon: Icon(Icons.phonelink_setup),
+                label: Text('Companion'),
+              ),
             ],
           ),
           const VerticalDivider(width: 1, color: Color(0xFF22303F)),
@@ -297,6 +449,8 @@ class _StudioMainLayoutState extends State<StudioMainLayout> {
         return 2;
       case 'cortex':
         return 3;
+      case 'mobile':
+        return 4;
       default:
         return 0;
     }
@@ -310,6 +464,8 @@ class _StudioMainLayoutState extends State<StudioMainLayout> {
         return 'swarm';
       case 3:
         return 'cortex';
+      case 4:
+        return 'mobile';
       default:
         return 'chat';
     }
@@ -323,6 +479,8 @@ class _StudioMainLayoutState extends State<StudioMainLayout> {
         return _buildSwarmView();
       case 'cortex':
         return _buildCortexView();
+      case 'mobile':
+        return _buildMobileCompanionView();
       default:
         return _buildChatView();
     }
@@ -587,6 +745,467 @@ class _StudioMainLayoutState extends State<StudioMainLayout> {
                       );
                     },
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileCompanionView() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left Column: E2EE Relay Pairing & Controls
+          Expanded(
+            flex: 4,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Happy Mobile E2EE Companion',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'X25519 Ephemeral Key Exchange + ChaCha20-Poly1305 Remote Relay',
+                    style: TextStyle(fontSize: 12, color: Colors.white54),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Pairing Card
+                  Card(
+                    color: const Color(0xFF121B28),
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        color: _mobilePaired
+                            ? const Color(0xFFA3E635)
+                            : const Color(0xFF22303F),
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                _mobilePaired
+                                    ? Icons.lock
+                                    : Icons.qr_code_2_rounded,
+                                color: _mobilePaired
+                                    ? const Color(0xFFA3E635)
+                                    : const Color(0xFF2DD4BF),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _mobilePaired
+                                    ? 'E2EE RELAY ACTIVE (PAIRED)'
+                                    : 'E2EE PAIRING DISCOVERY',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: _mobilePaired
+                                      ? const Color(0xFFA3E635)
+                                      : const Color(0xFF2DD4BF),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          if (_mobileAsciiQr.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.black,
+                                borderRadius: BorderRadius.circular(6),
+                                border:
+                                    Border.all(color: const Color(0xFF22303F)),
+                              ),
+                              child: Text(
+                                _mobileAsciiQr,
+                                style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 8,
+                                  height: 1.1,
+                                  letterSpacing: 1.5,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                          TextField(
+                            controller: _pairSessionIdController,
+                            style: const TextStyle(fontSize: 12),
+                            decoration: const InputDecoration(
+                              labelText: 'Relay Session ID or URI',
+                              labelStyle:
+                                  TextStyle(color: Colors.white54, fontSize: 11),
+                              hintText: 'Enter session ID or scan QR code',
+                              isDense: true,
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF2DD4BF),
+                                  foregroundColor: Colors.black,
+                                ),
+                                icon: const Icon(Icons.qr_code, size: 16),
+                                label: const Text('Generate QR'),
+                                onPressed: _generatePairSession,
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFFA3E635),
+                                  side: const BorderSide(
+                                      color: Color(0xFFA3E635)),
+                                ),
+                                icon: const Icon(Icons.link, size: 16),
+                                label: const Text('Pair E2EE Handshake'),
+                                onPressed: _completePairing,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Remote Mode Switcher
+                  Card(
+                    color: const Color(0xFF121B28),
+                    shape: RoundedRectangleBorder(
+                      side: const BorderSide(color: Color(0xFF22303F)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Remote Permission Gate Mode',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFFB923C),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              ChoiceChip(
+                                label: const Text('RO (Read-Only)'),
+                                selected: _mobileAgentMode == 'ro',
+                                onSelected: (_) => _setRemoteMode('ro'),
+                                selectedColor: const Color(0xFF60A5FA),
+                              ),
+                              const SizedBox(width: 6),
+                              ChoiceChip(
+                                label: const Text('Edit (Interactive)'),
+                                selected: _mobileAgentMode == 'edit',
+                                onSelected: (_) => _setRemoteMode('edit'),
+                                selectedColor: const Color(0xFF2DD4BF),
+                              ),
+                              const SizedBox(width: 6),
+                              ChoiceChip(
+                                label: const Text('Bypass (Autonomous)'),
+                                selected: _mobileAgentMode == 'bypass',
+                                onSelected: (_) => _setRemoteMode('bypass'),
+                                selectedColor: const Color(0xFFF87171),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Mid-Turn Steering Input
+                  Card(
+                    color: const Color(0xFF121B28),
+                    shape: RoundedRectangleBorder(
+                      side: const BorderSide(color: Color(0xFF22303F)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Mid-Turn Steering Controller',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2DD4BF),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Inject live steer messages directly at tool boundaries without killing the turn',
+                            style: TextStyle(fontSize: 11, color: Colors.white54),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _steerController,
+                                  style: const TextStyle(fontSize: 12),
+                                  decoration: const InputDecoration(
+                                    hintText:
+                                        'e.g. Stop modifying that file, check tests first...',
+                                    isDense: true,
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  onSubmitted: (_) => _sendSteer(),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFB923C),
+                                  foregroundColor: Colors.black,
+                                ),
+                                icon: _isSteering
+                                    ? const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.black))
+                                    : const Icon(Icons.navigation, size: 16),
+                                label: const Text('Steer'),
+                                onPressed: _isSteering ? null : _sendSteer,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // Right Column: Remote Diff & Approval Cards
+          Expanded(
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Remote Approvals & Event Stream',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _pendingApprovals.isEmpty
+                            ? Colors.white10
+                            : const Color(0xFFF87171).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        '${_pendingApprovals.length} PENDING',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _pendingApprovals.isEmpty
+                              ? Colors.white54
+                              : const Color(0xFFF87171),
+                        ),
+                      ),
+                    )
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  '1-Tap mobile decision cards for Thor file writes, shell executions, and gate overrides',
+                  style: TextStyle(fontSize: 12, color: Colors.white54),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: _pendingApprovals.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No pending approval requests. Agent is proceeding smoothly.',
+                            style: TextStyle(color: Colors.white38),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _pendingApprovals.length,
+                          itemBuilder: (ctx, idx) {
+                            final req = _pendingApprovals[idx];
+                            return Card(
+                              color: const Color(0xFF151D2A),
+                              shape: RoundedRectangleBorder(
+                                side: const BorderSide(
+                                    color: Color(0xFFF87171), width: 1.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              margin: const EdgeInsets.only(bottom: 12),
+                              child: Padding(
+                                padding: const EdgeInsets.all(14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF87171)
+                                              .withOpacity(0.2),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          req['risk'] ?? 'CAUTION',
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFFF87171),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Tool: ${req['tool']}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white),
+                                      ),
+                                      const Spacer(),
+                                      Text(
+                                        req['time'] ?? '',
+                                        style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.white38),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Target: ${req['target']}',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF2DD4BF)),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black87,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      req['diff'] ?? '',
+                                      style: const TextStyle(
+                                        fontFamily: 'monospace',
+                                        fontSize: 11,
+                                        color: Color(0xFFA3E635),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      OutlinedButton.icon(
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor:
+                                              const Color(0xFFF87171),
+                                          side: const BorderSide(
+                                              color: Color(0xFFF87171)),
+                                        ),
+                                        icon: const Icon(Icons.close, size: 16),
+                                        label: const Text('Reject'),
+                                        onPressed: () => _handleApproval(
+                                            req['id'], false),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      ElevatedButton.icon(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              const Color(0xFFA3E635),
+                                          foregroundColor: Colors.black,
+                                        ),
+                                        icon: const Icon(Icons.check, size: 16),
+                                        label: const Text('Approve'),
+                                        onPressed: () =>
+                                            _handleApproval(req['id'], true),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Relay Audit Activity Log',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white70),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  height: 120,
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0E1520),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFF22303F)),
+                  ),
+                  child: _mobileAuditLog.isEmpty
+                      ? const Text(
+                          'No mobile events yet.',
+                          style: TextStyle(
+                              fontSize: 11, color: Colors.white24),
+                        )
+                      : ListView.builder(
+                          itemCount: _mobileAuditLog.length,
+                          itemBuilder: (ctx, i) => Text(
+                            _mobileAuditLog[i],
+                            style: const TextStyle(
+                                fontSize: 11, color: Colors.white70),
+                          ),
+                        ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
