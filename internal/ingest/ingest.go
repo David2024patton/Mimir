@@ -469,6 +469,14 @@ func repoNameFromURL(u string) string {
 }
 
 func shallowClone(ctx context.Context, url, branch string) (string, func(), error) {
+	// Sanitize url and branch to prevent git argument injection (F9)
+	if strings.HasPrefix(url, "-") {
+		return "", func() {}, fmt.Errorf("invalid repository url %q: cannot start with dash", url)
+	}
+	if strings.HasPrefix(branch, "-") {
+		return "", func() {}, fmt.Errorf("invalid branch %q: cannot start with dash", branch)
+	}
+
 	tmp, err := os.MkdirTemp("", "mimir-gitingest-*")
 	if err != nil {
 		return "", func() {}, err
@@ -479,7 +487,8 @@ func shallowClone(ctx context.Context, url, branch string) (string, func(), erro
 	if branch != "" {
 		args = append(args, "--branch", branch)
 	}
-	args = append(args, url, tmp)
+	// Use explicit "--" separator to prevent url from being parsed as options
+	args = append(args, "--", url, tmp)
 
 	cctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()

@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/smtp"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -38,14 +39,28 @@ type OTP struct {
 	Used      bool      `json:"used"`
 }
 
+type rateLimitEntry struct {
+	sendCount   int
+	lastSend    time.Time
+	verifyFails int
+	lockedUntil time.Time
+}
+
 type AuthStore struct {
-	cli *surrealClient
-	ns  string
-	db  string
+	cli        *surrealClient
+	ns         string
+	db         string
+	rateLimits map[string]*rateLimitEntry
+	mu         sync.Mutex
 }
 
 func NewAuthStore(cli *surrealClient) *AuthStore {
-	return &AuthStore{cli: cli, ns: "mimir", db: "mimir"}
+	return &AuthStore{
+		cli:        cli,
+		ns:         "mimir",
+		db:         "mimir",
+		rateLimits: make(map[string]*rateLimitEntry),
+	}
 }
 
 func (a *AuthStore) Exec(ctx context.Context, sql string) error {
@@ -112,6 +127,33 @@ func (a *AuthStore) EnsureAuthTables(ctx context.Context) error {
 
 // SendOTP generates a 6-digit code, stores it in SurrealDB, and emails it.
 func (a *AuthStore) SendOTP(ctx context.Context, email string) error {
+	now := time.Now().UTC()
+
+	// Rate limit check: maximum 3 requests within 2 minutes; lockout if triggered
+	a.mu.Lock()
+	entry, ok := a.rateLimits[email]
+	if !ok {
+		entry = &rateLimitEntry{}
+		a.rateLimits[email] = entry
+	}
+	if entry.lockedUntil.After(now) {
+		a.mu.Unlock()
+		return fmt.Errorf("too many attempts: account locked until %s", entry.lockedUntil.Format("15:04:05"))
+	}
+	if now.Sub(entry.lastSend) < 2*time.Minute {
+		if entry.sendCount >= 3 {
+			entry.lockedUntil = now.Add(15 * time.Minute)
+			a.mu.Unlock()
+			return fmt.Errorf("rate limit exceeded: too many login codes requested, please wait 15 minutes")
+		}
+		entry.sendCount++
+	} else {
+		entry.sendCount = 1
+		entry.verifyFails = 0
+	}
+	entry.lastSend = now
+	a.mu.Unlock()
+
 	// Invalidate any existing unused OTPs for this email
 	_ = a.Exec(ctx, fmt.Sprintf(
 		`UPDATE otp SET used = true WHERE email = %s AND used = false`,
@@ -119,7 +161,6 @@ func (a *AuthStore) SendOTP(ctx context.Context, email string) error {
 	))
 
 	code := generateOTPCode()
-	now := time.Now().UTC()
 	otpID := "o" + now.Format("20060102150405") + fmt.Sprintf("%09d", now.Nanosecond())
 	q := fmt.Sprintf(
 		`CREATE otp:%s SET email = %s, code = %s, created_at = time::now(), expires_at = time::now() + 5m, used = false`,
@@ -140,6 +181,20 @@ func (a *AuthStore) SendOTP(ctx context.Context, email string) error {
 
 // VerifyOTP validates a code and returns an auth token (creates user on first login).
 func (a *AuthStore) VerifyOTP(ctx context.Context, email, code string) (*User, *AuthToken, error) {
+	now := time.Now().UTC()
+
+	a.mu.Lock()
+	entry, ok := a.rateLimits[email]
+	if !ok {
+		entry = &rateLimitEntry{}
+		a.rateLimits[email] = entry
+	}
+	if entry.lockedUntil.After(now) {
+		a.mu.Unlock()
+		return nil, nil, fmt.Errorf("account temporarily locked due to too many failed attempts, please retry later")
+	}
+	a.mu.Unlock()
+
 	rows, err := a.Query(ctx, fmt.Sprintf(
 		`SELECT * FROM otp WHERE email = %s AND code = %s AND used = false AND expires_at > time::now() ORDER BY created_at DESC LIMIT 1`,
 		escapeStringForSurreal(email), escapeStringForSurreal(code),
@@ -148,6 +203,12 @@ func (a *AuthStore) VerifyOTP(ctx context.Context, email, code string) (*User, *
 		return nil, nil, fmt.Errorf("query otp: %w", err)
 	}
 	if len(rows) == 0 {
+		a.mu.Lock()
+		entry.verifyFails++
+		if entry.verifyFails >= 5 {
+			entry.lockedUntil = now.Add(15 * time.Minute)
+		}
+		a.mu.Unlock()
 		return nil, nil, fmt.Errorf("invalid or expired code")
 	}
 
@@ -159,7 +220,14 @@ func (a *AuthStore) VerifyOTP(ctx context.Context, email, code string) (*User, *
 	otpID := StripRecordID(raw.ID)
 
 	// Mark OTP as used
-	_ = a.Exec(ctx, fmt.Sprintf(`UPDATE otp:%s SET used = true`, otpID))
+	if err := a.Exec(ctx, fmt.Sprintf(`UPDATE otp:%s SET used = true`, otpID)); err != nil {
+		return nil, nil, fmt.Errorf("mark otp used: %w", err)
+	}
+
+	// Reset failure count on success
+	a.mu.Lock()
+	entry.verifyFails = 0
+	a.mu.Unlock()
 
 	// Find or create user
 	user, err := a.findOrCreateUser(ctx, email)
@@ -228,10 +296,17 @@ func (a *AuthStore) SeedAdmin(ctx context.Context, email string) error {
 	return a.Exec(ctx, q)
 }
 
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
+}
+
 func (a *AuthStore) ValidateToken(ctx context.Context, token string) (string, error) {
+	// Look up by token hash (F17: prevent plaintext bearer tokens at rest)
+	tokenHash := hashToken(token)
 	rows, err := a.Query(ctx, fmt.Sprintf(
-		`SELECT * FROM auth_token WHERE token = %s AND expires_at > time::now()`,
-		escapeStringForSurreal(token),
+		`SELECT * FROM auth_token WHERE (token = %s OR token = %s) AND expires_at > time::now()`,
+		escapeStringForSurreal(tokenHash), escapeStringForSurreal(token),
 	))
 	if err != nil {
 		return "", fmt.Errorf("query token: %w", err)
@@ -252,13 +327,15 @@ func (a *AuthStore) createToken(ctx context.Context, userID string) (*AuthToken,
 	now := time.Now().UTC()
 	tokID := "t" + now.Format("20060102150405") + fmt.Sprintf("%09d", now.Nanosecond())
 	token := generateToken()
+	tokenHash := hashToken(token)
 	q := fmt.Sprintf(
 		`CREATE auth_token:%s SET token = %s, user_id = user:%s, created_at = time::now(), expires_at = time::now() + 30d`,
-		tokID, escapeStringForSurreal(token), userID,
+		tokID, escapeStringForSurreal(tokenHash), userID,
 	)
 	if err := a.Exec(ctx, q); err != nil {
 		return nil, fmt.Errorf("create token: %w", err)
 	}
+	// Return the plaintext token to the user for HTTP Authorization Bearer headers
 	return &AuthToken{ID: tokID, UserID: userID, Token: token, CreatedAt: now, ExpiresAt: now.Add(30 * 24 * time.Hour)}, nil
 }
 
