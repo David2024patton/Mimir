@@ -53,3 +53,7 @@ surreal_data/
 
 # Mímir runtime memory (the file-backed Cortex; local data, regenerated)
 .mimir/
+
+# Local research / GitIngest dump folder (do not track in repo)
+/INGEST/
+
