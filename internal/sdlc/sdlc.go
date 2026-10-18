@@ -257,12 +257,14 @@ func (m *Manager) ResolvePhaseForTurn(input string) PhaseSpec {
 }
 
 // BuildPhasePrompt returns ONLY the compact micro-prompt for the active SDLC step
-// (plus the 1-line Web/SEO overlay ONLY if isWebTask is true and the phase has one).
+// (plus the 1-line Web/SEO overlay ONLY if isWebTask is true and the phase has one,
+// and compact PRODUCT.md / DESIGN.md context during Steps 3-5 when present).
 // This keeps total lifecycle prompt overhead under ~75 tokens instead of bloating the system prompt.
 func (m *Manager) BuildPhasePrompt(input string, isWebTask bool) string {
 	spec := m.ResolvePhaseForTurn(input)
 	m.mu.RLock()
 	method := m.method
+	workDir := m.workDir
 	m.mu.RUnlock()
 
 	var b strings.Builder
@@ -272,9 +274,38 @@ func (m *Manager) BuildPhasePrompt(input string, isWebTask bool) string {
 	if isWebTask && spec.WebOverlay != "" {
 		b.WriteString("\n")
 		b.WriteString(spec.WebOverlay)
+		if spec.Step >= 3 && spec.Step <= 5 {
+			if dc := loadCompactDesignDocs(workDir); dc != "" {
+				b.WriteString("\n")
+				b.WriteString(dc)
+			}
+		}
 	}
 	return b.String()
 }
+
+func loadCompactDesignDocs(workDir string) string {
+	if strings.TrimSpace(workDir) == "" {
+		workDir = "."
+	}
+	var parts []string
+	for _, name := range []string{"PRODUCT.md", "DESIGN.md"} {
+		raw, err := os.ReadFile(filepath.Join(workDir, name))
+		if err != nil {
+			continue
+		}
+		compact := strings.Join(strings.Fields(strings.TrimSpace(string(raw))), " ")
+		if compact == "" {
+			continue
+		}
+		if len(compact) > 220 {
+			compact = compact[:220] + "..."
+		}
+		parts = append(parts, fmt.Sprintf("[%s]: %s", name, compact))
+	}
+	return strings.Join(parts, " | ")
+}
+
 
 // AllowedToolSet returns a map of tool names permitted in the active phase.
 func (m *Manager) AllowedToolSet() map[string]bool {

@@ -17,6 +17,7 @@ import (
 	"github.com/David2024patton/Mimir/internal/decision"
 	"github.com/David2024patton/Mimir/internal/ingest"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/runengine"
 	"github.com/David2024patton/Mimir/internal/server"
 	"github.com/David2024patton/Mimir/internal/tools"
 	"github.com/David2024patton/Mimir/internal/tui"
@@ -31,7 +32,10 @@ Usage:
   mimir --web [--addr :8420]  launch interactive TUI + live Book-Spine Web UI simultaneously
   mimir ingest [path|git-url] GitIngest a repo/folder into digest.txt + Yggdrasil Mind Map in Cortex
   mimir sdlc [phase|method]   show or switch the 7-Phase SDLC board & methodology (agile/waterfall/devops)
+  mimir review [draft] [ctx]  run the Tier-2 Deterministic Review Gate (Checklist + SDLC + Full Suite + Critic)
+  mimir ship [draft] [ctx]    run the Tier-2 Production Ship Gate and advance SDLC to Deployment
   mimir audit <draft> [ctx]   run the Epistemic Critic & Verification Node against a draft report
+  mimir audit-web [dir]       run Impeccable anti-slop UI + 4-Layer SEO/GEO & Conversion detectors
   mimir providers             list built-in BYOK providers + Mímir Well Subscription tiers
   mimir setup                 bootstrap Liquid AI d1-omni-600M local System-One decision model
   mimir -p "your prompt"      headless single-shot prompt (for scripts & CI)
@@ -380,6 +384,65 @@ func main() {
 		rep := critic.AuditDeterministic(ctxBuilder.String(), string(draftBytes))
 		fmt.Println(rep.FormatMarkdown())
 		if !rep.PassAudit {
+			os.Exit(1)
+		}
+		return
+	}
+
+	if len(positional) > 0 && (positional[0] == "audit-web" || positional[0] == "web-audit") {
+		targetDir := cwd
+		if len(positional) > 1 {
+			targetDir = positional[1]
+		}
+		rep, err := tools.AuditWebDirectory(targetDir)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "audit-web error:", err)
+			os.Exit(1)
+		}
+		fmt.Println(rep.FormatMarkdown())
+		if !rep.PassAudit {
+			os.Exit(1)
+		}
+		return
+	}
+
+	if len(positional) > 0 && (positional[0] == "review" || positional[0] == "ship") {
+		eng, err := runengine.New(cwd, nil, runengine.DefaultLimits())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "runengine init:", err)
+			os.Exit(1)
+		}
+		eng.SDLC = a.SDLC()
+		if t, ok := toolReg.Get("todo"); ok {
+			if tt, ok := t.(*tools.TodoTool); ok && tt.Store != nil {
+				eng.Todos = tt.Store
+			}
+		}
+		var gateOpts runengine.GateOptions
+		if len(positional) > 1 {
+			if draftBytes, err := os.ReadFile(positional[1]); err == nil {
+				gateOpts.DraftReport = string(draftBytes)
+			}
+		}
+		if len(positional) > 2 {
+			if ctxBytes, err := os.ReadFile(positional[2]); err == nil {
+				gateOpts.RetrievedContext = string(ctxBytes)
+			}
+		} else if gateOpts.DraftReport != "" {
+			var cb strings.Builder
+			for _, n := range store.All() {
+				cb.WriteString(n.Title + "\n" + n.Content + "\n")
+			}
+			gateOpts.RetrievedContext = cb.String()
+		}
+		var rep runengine.GateReport
+		if positional[0] == "ship" {
+			rep = eng.ShipGate(context.Background(), gateOpts)
+		} else {
+			rep = eng.ReviewGate(context.Background(), gateOpts)
+		}
+		fmt.Println(rep.FormatMarkdown())
+		if !rep.Passed {
 			os.Exit(1)
 		}
 		return

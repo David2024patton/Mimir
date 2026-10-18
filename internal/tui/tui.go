@@ -15,6 +15,7 @@ import (
 	"github.com/David2024patton/Mimir/internal/cortex"
 	"github.com/David2024patton/Mimir/internal/ingest"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/runengine"
 	"github.com/David2024patton/Mimir/internal/tools"
 )
 
@@ -427,6 +428,40 @@ func handleSlashCommand(
 				ansiGreen, spec.Step, spec.Title, spec.Persona, spec.Deliverable, ansiReset)
 			return false, nil
 		}
+
+	case "/review", "/ship":
+		eng, err := runengine.New(".", nil, runengine.DefaultLimits())
+		if err != nil {
+			return false, err
+		}
+		eng.SDLC = opts.Agent.SDLC()
+		if opts.Tools != nil {
+			if t, ok := opts.Tools.Get("todo"); ok {
+				if tt, ok := t.(*tools.TodoTool); ok && tt.Store != nil {
+					eng.Todos = tt.Store
+				}
+			}
+		}
+		var rep runengine.GateReport
+		if cmd == "/ship" {
+			rep = eng.ShipGate(ctx, runengine.GateOptions{})
+		} else {
+			rep = eng.ReviewGate(ctx, runengine.GateOptions{})
+		}
+		fmt.Fprintln(out, "\n"+FormatMarkdown(rep.FormatMarkdown())+"\n")
+		return false, nil
+
+	case "/audit-web", "/webaudit":
+		target := arg
+		if target == "" {
+			target = "."
+		}
+		rep, err := tools.AuditWebDirectory(target)
+		if err != nil {
+			return false, err
+		}
+		fmt.Fprintln(out, "\n"+FormatMarkdown(rep.FormatMarkdown())+"\n")
+		return false, nil
 
 	case "/model", "/models":
 		discovered := config.DiscoverLocalModels(ctx, 500*time.Millisecond)

@@ -110,19 +110,25 @@ G:\Mimir\
     5. `## Exact Next Command to Run`
   - [ ] `2.2.c` Expose `/handoff` slash command in `internal/tui/tui.go` and `mimir handoff` CLI command in `cmd/mimir/main.go`.
   - [ ] `2.2.d` Auto-trigger `GenerateHandoffMarkdown` whenever token usage crosses 80% of the model's context window (`CompactionThreshold`).
-- [ ] **2.3 Build Built-In Web/SEO/GEO Auditor & Scaffolding Tool (`internal/tools/web_audit_tool.go`)**
-  - [ ] `2.3.a` Create `web_seo_audit` tool in `internal/tools/web_audit_tool.go` (registered in `internal/tools/default.go`) so Mímir can deterministically audit any local HTML/PHP/Next.js/Astro/Flutter-Web project or live URL.
-  - [ ] `2.3.b` Check and score the **4 Layers of Modern Search & Conversion**:
-    - Presence and validity of `<title>`, `<meta name="description">`, canonical link, OpenGraph tags, and semantic landmarks (`<main>`, `<header>`, `<nav>`, `<footer>`).
+- [x] **2.3 Build Built-In Web/SEO/GEO + Impeccable Anti-Slop Auditor (`internal/tools/web_audit_tool.go`)**
+  - [x] `2.3.a` Create `web_seo_audit` tool in `internal/tools/web_audit_tool.go` (registered in `internal/tools/default.go`) + durable `PRODUCT.md` / `DESIGN.md` context loader (`LoadDesignContext`).
+  - [x] `2.3.b` Check and score the **4 Layers of Modern Search & Conversion + Impeccable Anti-Slop UI Rules**:
+    - Presence and validity of `<title>`, `<meta name="description">`, single `<h1>` hierarchy, and semantic landmarks (`<main>`, `<header>`, `<nav>`, `<footer>`).
     - Presence and JSON validity of `<script type="application/ld+json">` (`LocalBusiness`, `SoftwareApplication`, `FAQPage`, `Product`).
-    - Presence of `/robots.txt`, `/sitemap.xml`, and `/llms.txt` (and auto-generate a compliant `/llms.txt` template if missing).
-    - Scan page copy for banned AI slop phrases ("in today's fast-paced world", "unleash the power", em dashes `—`, unlabelled statistical claims) and return exact line numbers to fix.
-  - [ ] `2.3.c` Add CLI command `mimir audit-web <dir|url>` and TUI command `/audit-web`.
-  - [ ] `2.3.d` Write unit tests in `internal/tools/web_audit_test.go`.
+    - Presence of `/robots.txt`, `/sitemap.xml`, and `/llms.txt`.
+    - Impeccable deterministic detectors for banned AI slop phrases ("in today's fast-paced world", "unleash the power"), em dashes (`\u2014`), default purple/indigo gradient clichés (`from-purple-`, `from-indigo-`), nested `.card` soup, and unlabeled statistical claims (`[vendor claim]`).
+  - [x] `2.3.c` Add CLI command `mimir audit-web [dir]` and TUI command `/audit-web`.
+  - [x] `2.3.d` Verify with unit tests in `internal/tools/web_audit_test.go`.
 - [ ] **2.4 Build Level 3 Multi-Agent Software Factory Queue (`internal/swarm/factory.go`)**
   - [ ] `2.4.a` Create `internal/swarm/factory.go` implementing a kanban state machine (`Backlog -> Spec -> Implementing -> Testing -> Security/SEO Audit -> Done`) stored in SQLite/Cortex.
   - [ ] `2.4.b` Allow `Odin` (Architect) to decompose a high-level software spec into independent sub-tasks, assign each sub-task to a parallel `Thor` worker running in its own isolated git worktree, and require `Loki` (Test Critic) + `Heimdall` (Security & SEO/GEO Gate) sign-off before merging.
   - [ ] `2.4.c` Stream real-time worker state events (`WorkerSpawned`, `WorktreeCreated`, `ToolRunning`, `TestsPassed`, `Merged`) over the Web/SSE daemon (`internal/web/server.go`) for the Web & Flutter UIs.
+- [x] **2.5 Build Unattended Run Engine & Two-Tier Testing Law (`internal/runengine/runengine.go`)**
+  - [x] `2.5.a` Implement shell-less workspace file `Jail` (`Resolve`, `CheckWrite`, `ReadFile`, `WriteFile`, `ListDir`) blocking `..` traversal, symlink escapes, and writes to `.git/` or `.mimir/run.lock`.
+  - [x] `2.5.b` Implement atomic single-run lockfile (`.mimir/run.lock` with PID, task, timestamp, and automatic stale lock recovery).
+  - [x] `2.5.c` Implement `Limits` config (`MaxSteps`, `MaxTokens`, `Timeout`) and `Executor` seam interface (`GoTestExecutor` using discrete argv without shell interpolation).
+  - [x] `2.5.d` Enforce the **Two-Tier Testing Law**: Tier-1 inner edit loops run fast affected tests via `Huginn-Decider` (`RunInnerLoopTests`), while Tier-2 outer gates (`ReviewGate` / `ShipGate` via `mimir review` and `mimir ship`) always run the full test suite (`go test ./...`) + Checklist Gate + SDLC Deliverable Gate + Epistemic Critic Gate.
+  - [x] `2.5.e` Verify with unit tests in `internal/runengine/runengine_test.go`.
 
 ---
 
