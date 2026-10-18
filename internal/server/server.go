@@ -88,6 +88,44 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		}
 		sess.StreamHandler()(w, r)
 	})
+	mux.HandleFunc("/api/mobile/steer", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST only", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			SessionID string `json:"session_id"`
+			Message   string `json:"message"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		ag.Steer(req.Message)
+		writeJSON(w, map[string]any{"status": "steered", "message": req.Message})
+	})
+	mux.HandleFunc("/api/mobile/mode", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST only", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			SessionID string `json:"session_id"`
+			Mode      string `json:"mode"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		mode := strings.ToLower(strings.TrimSpace(req.Mode))
+		switch mode {
+		case "ro", "edit", "bypass":
+			ag.SetMode(mode)
+			writeJSON(w, map[string]any{"status": "ok", "mode": mode})
+		default:
+			http.Error(w, "invalid mode: ro, edit, or bypass required", http.StatusBadRequest)
+		}
+	})
 	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
 		pid, model, local := ag.ModelInfo()
 		sdlcMgr := ag.SDLC()

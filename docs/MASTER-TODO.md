@@ -198,10 +198,10 @@ G:\Mimir\
     - Center Pane: **Live Agent Stream & Diff Editor** with clickable `[choice]` pills, `⚡SmolMode` badge, and inline `Huginn-Decider` routing telemetry (`Persona | Model | Latency`).
     - Right Pane: **Level 3 Software Factory Swarm Board** (`Odin`, `Thor`, `Loki`, `Heimdall` workers + live Todo checklist + `OnStop` verification gate status).
     - Bottom Drawer: **4-Layer Web/SEO/GEO & Provider Cost Dashboard** (live token spend, subscription tier status, and `web_seo_audit` scores).
-- [ ] **5.4 Build Mobile Companion Views (`ui/mimir_flutter/lib/screens/mobile/`)**
-  - [ ] `5.4.a` **QR Scanner Pairing Screen**: Scan `mimir pair` terminal QR code to establish E2EE session in `<2 seconds`.
-  - [ ] `5.4.b` **Remote Permission & Diff Approval Cards**: Push notifications + 1-tap `Approve` / `Reject` / `Switch Mode (RO / Edit / Bypass)` cards when `Thor` requests a file write or `CAUTION` shell command while you are away from your desk.
-  - [ ] `5.4.c` **Voice & Text Mid-Turn Steering Bar**: Send live `Steer(msg)` instructions from your phone directly into the running desktop agent loop (with optional `meta/muse-voice-transcribe` voice input).
+- [x] **5.4 Build Mobile Companion Views (`ui/mimir_flutter/lib/screens/mobile/`)**
+  - [x] `5.4.a` **QR Scanner Pairing Screen**: Scan `mimir pair` terminal QR code to establish E2EE session in `<2 seconds`.
+  - [x] `5.4.b` **Remote Permission & Diff Approval Cards**: Push notifications + 1-tap `Approve` / `Reject` / `Switch Mode (RO / Edit / Bypass)` cards when `Thor` requests a file write or `CAUTION` shell command while you are away from your desk.
+  - [x] `5.4.c` **Voice & Text Mid-Turn Steering Bar**: Send live `Steer(msg)` instructions from your phone directly into the running desktop agent loop (with optional `meta/muse-voice-transcribe` voice input).
 
 ---
 
