@@ -139,7 +139,7 @@ func (r *AuditReport) ApplyRoutingRule() {
 }
 
 var (
-	reNumbers = regexp.MustCompile(`(?i)(\$[0-9,.]+(?:/mo|/day|/yr)?|\b[0-9]+(?:\.[0-9]+)?%\b|<[0-9.]+m?s\b|\b[0-9]+(?:\.[0-9]+)?x\s+faster\b)`)
+	reNumbers = regexp.MustCompile(`(?i)(\$[0-9,.]+(?:/mo|/day|/yr)?|[0-9]+(?:\.[0-9]+)?%|<?[0-9]+(?:\.[0-9]+)?m?s\b|[0-9]+(?:\.[0-9]+)?x\s+faster)`)
 	hypeTerms = []struct {
 		phrase      string
 		issue       string
