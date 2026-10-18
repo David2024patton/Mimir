@@ -31,17 +31,41 @@ $binDir = Join-Path $root "engines\bin"
 New-Item -ItemType Directory -Force -Path $binDir | Out-Null
 $wtBase = Join-Path ([System.IO.Path]::GetTempPath()) "mimir-engine-build"
 
+$targets = @(
+    @{ OS = "windows"; Arch = "amd64"; Suffix = "_windows_amd64.exe" },
+    @{ OS = "linux";   Arch = "amd64"; Suffix = "_linux_amd64" },
+    @{ OS = "darwin";  Arch = "arm64"; Suffix = "_darwin_arm64" }
+)
+
 foreach ($e in $engines) {
     if ($Only -and $e.Key -ne $Only) { continue }
     $wt = Join-Path $wtBase $e.Key
     if (Test-Path $wt) { git worktree remove --force $wt | Out-Null }
-    Write-Host "building $($e.Out) from $($e.Branch)"
+    Write-Host "checking out $($e.Branch) into worktree"
     git worktree add --detach $wt $e.Branch | Out-Null
     try {
         Push-Location $wt
+        # 1. Compile host binary
+        Write-Host "  -> building host binary $($e.Out)"
         go build -trimpath -ldflags="-s -w" -o (Join-Path $binDir $e.Out) $e.Pkg
-        if ($LASTEXITCODE -ne 0) { throw "build failed for $($e.Branch)" }
+        if ($LASTEXITCODE -ne 0) { throw "host build failed for $($e.Branch)" }
+
+        # 2. Compile cross-platform matrix
+        $baseName = [System.IO.Path]::GetFileNameWithoutExtension($e.Out)
+        foreach ($t in $targets) {
+            $crossOut = "$baseName$($t.Suffix)"
+            Write-Host "  -> building cross-platform binary $crossOut ($($t.OS)/$($t.Arch))"
+            $env:GOOS = $t.OS
+            $env:GOARCH = $t.Arch
+            $env:CGO_ENABLED = "0"
+            go build -trimpath -ldflags="-s -w" -o (Join-Path $binDir $crossOut) $e.Pkg
+            if ($LASTEXITCODE -ne 0) { throw "cross-build failed for $($e.Branch) ($($t.OS)/$($t.Arch))" }
+        }
+        $env:GOOS = ""
+        $env:GOARCH = ""
     } finally {
+        $env:GOOS = ""
+        $env:GOARCH = ""
         Pop-Location
         git worktree remove --force $wt | Out-Null
     }

@@ -16,6 +16,7 @@ import (
 	"github.com/David2024patton/Mimir/internal/ingest"
 	"github.com/David2024patton/Mimir/internal/llm"
 	"github.com/David2024patton/Mimir/internal/runengine"
+	"github.com/David2024patton/Mimir/internal/swarm"
 	"github.com/David2024patton/Mimir/internal/tools"
 )
 
@@ -201,6 +202,7 @@ func handleSlashCommand(
     %s/smol [auto|on|off]%s        Toggle SmolMode optimizations for compact/local models
     %s/decide [prompt]%s           Run Liquid AI d1-omni-600M System-One decision check on a prompt
     %s/persona [name]%s            Switch Norse persona (odin, thor, loki, heimdall, bragi, huginn, muninn, forseti)
+    %s/swarm [add|list|run]%s      Manage Level 3 Multi-Agent Software Factory queue
     %s/todo%s                      Show the active harness-owned Todo checklist
     %s/handoff%s                   Generate .mimir/HANDOFF.md for session continuity
     %s/memory%s                    Show stored Cortex memories
@@ -214,7 +216,7 @@ func handleSlashCommand(
 			ansiCyan, ansiReset, ansiCyan, ansiReset, ansiCyan, ansiReset,
 			ansiCyan, ansiReset, ansiCyan, ansiReset, ansiCyan, ansiReset,
 			ansiCyan, ansiReset, ansiCyan, ansiReset, ansiCyan, ansiReset,
-			ansiCyan, ansiReset)
+			ansiCyan, ansiReset, ansiCyan, ansiReset)
 		return false, nil
 
 	case "/mode":
@@ -463,6 +465,47 @@ func handleSlashCommand(
 			return false, err
 		}
 		fmt.Fprintln(out, "\n"+FormatMarkdown(rep.FormatMarkdown())+"\n")
+		return false, nil
+
+	case "/swarm", "/factory":
+		f := swarm.NewFactory(swarm.FactoryConfig{
+			RootDir:      ".",
+			MaxWorkers:   4,
+			TargetBranch: "main",
+		})
+		parts := strings.Fields(arg)
+		sub := ""
+		if len(parts) > 0 {
+			sub = strings.ToLower(parts[0])
+		}
+		switch sub {
+		case "", "status", "list":
+			fmt.Fprintln(out, "\n"+f.FormatStatus()+"\n")
+		case "add", "submit":
+			title := strings.TrimSpace(strings.TrimPrefix(arg, sub))
+			if title == "" {
+				fmt.Fprintln(out, "  usage: /swarm add <title>")
+				return false, nil
+			}
+			t, err := f.Submit(title, "Queued from interactive TUI.")
+			if err != nil {
+				return false, err
+			}
+			fmt.Fprintf(out, "  %s✓ Submitted task %s (`%s`) -> branch: %s%s\n\n", ansiGreen, t.ID, t.Title, t.Branch, ansiReset)
+		case "run":
+			if len(parts) < 2 {
+				fmt.Fprintln(out, "  usage: /swarm run <task-id>")
+				return false, nil
+			}
+			taskID := parts[1]
+			fmt.Fprintf(out, "  %s▸ Starting autonomous pipeline for %s...%s\n", ansiCyan, taskID, ansiReset)
+			if err := f.ExecuteTask(ctx, taskID); err != nil {
+				return false, fmt.Errorf("swarm run: %w", err)
+			}
+			fmt.Fprintf(out, "  %s✓ Task %s completed successfully through Odin -> Thor -> Loki -> Heimdall pipeline!%s\n\n", ansiGreen, taskID, ansiReset)
+		default:
+			fmt.Fprintf(out, "  unknown swarm action %q (try: list, add, run)\n", sub)
+		}
 		return false, nil
 
 	case "/model", "/models":

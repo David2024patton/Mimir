@@ -76,16 +76,58 @@ func BuildManifest(ctx context.Context, rootDir string) (Manifest, error) {
 		Attribution:   AttributionNotice,
 		UpdatedAt:     time.Now().UTC().Format(time.RFC3339),
 	}
+
+	platforms := []struct {
+		Key string // e.g. "windows_amd64", "linux_amd64", "darwin_arm64"
+		Ext string // e.g. ".exe", "", ""
+	}{
+		{Key: "windows_amd64", Ext: ".exe"},
+		{Key: "linux_amd64", Ext: ""},
+		{Key: "darwin_arm64", Ext: ""},
+	}
+
 	for _, e := range KnownEngines {
+		// Initialize Platforms map
+		e.Platforms = make(map[string]PlatformBinary)
+
+		// 1. Check for platform-specific binaries: e.g. engines/bin/mimir_tyr_engine_linux_amd64
+		baseBinaryName := strings.TrimSuffix(filepath.Base(e.Binary), filepath.Ext(e.Binary))
+		for _, p := range platforms {
+			pBinRel := fmt.Sprintf("engines/bin/%s_%s%s", baseBinaryName, p.Key, p.Ext)
+			pBinPath := filepath.Join(rootDir, filepath.FromSlash(pBinRel))
+			if sum, size, err := FileSHA256(pBinPath); err == nil {
+				e.Platforms[p.Key] = PlatformBinary{
+					Binary:    pBinRel,
+					SHA256:    sum,
+					SizeBytes: size,
+				}
+			}
+		}
+
+		// 2. Check for default/legacy binary: e.g. engines/bin/mimir_tyr_engine.exe
 		binPath := filepath.Join(rootDir, filepath.FromSlash(e.Binary))
 		sum, size, err := FileSHA256(binPath)
-		if err != nil {
-			continue // engine not built for this release
+		if err == nil {
+			e.SHA256 = sum
+			e.SizeBytes = size
+			e.Version = probeVersion(ctx, binPath)
+			// Also register in Platforms map under host platform if not already set
+			hostKey := runtime.GOOS + "_" + runtime.GOARCH
+			if _, exists := e.Platforms[hostKey]; !exists {
+				e.Platforms[hostKey] = PlatformBinary{
+					Binary:    e.Binary,
+					SHA256:    sum,
+					SizeBytes: size,
+				}
+			}
 		}
-		e.SHA256 = sum
-		e.SizeBytes = size
-		e.Version = probeVersion(ctx, binPath)
-		m.Engines = append(m.Engines, e)
+
+		if len(e.Platforms) > 0 || err == nil {
+			if e.Version == "" {
+				e.Version = "0.2.0"
+			}
+			m.Engines = append(m.Engines, e)
+		}
 	}
 	if len(m.Engines) == 0 {
 		return m, errors.New("engines: no engine binaries found in engines/bin/")

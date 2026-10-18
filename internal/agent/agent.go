@@ -40,6 +40,7 @@ type Config struct {
 	SmolPolicy   string            // "auto" (default) | "on" | "off"
 	ApprovalFunc func(toolName, rawArgs string) bool
 	Hooks        *HookRunner       // Level 1 Lifecycle Hooks
+	ContextBudget int              // Max context token budget (defaults to 8192 in SmolMode, 32768 standard)
 }
 
 // Step records one tool execution in a turn (used by RunTrace / the trace CLI).
@@ -422,6 +423,7 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step
 		keepRecent = 2
 	}
 	for step := 0; step < maxToolSteps; step++ {
+		msgs = a.maybeCompactContext(msgs, smol)
 		pruned := PruneHistoryPlaceholders(msgs, keepRecent)
 		a.mu.RLock()
 		prov := a.cfg.Provider
@@ -535,6 +537,7 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 		keepRecent = 2
 	}
 	for step := 0; step < maxToolSteps; step++ {
+		msgs = a.maybeCompactContext(msgs, smol)
 		pruned := PruneHistoryPlaceholders(msgs, keepRecent)
 		a.mu.RLock()
 		prov := a.cfg.Provider
@@ -664,3 +667,39 @@ func systemPrompt(memories []cortex.Neuron, schemas []llm.ToolSchema) string {
 	p += "\n\nWhen presenting multiple-choice questions or options, use this exact format so the UI renders clickable buttons:\n[choice]\nA) option text\nB) option text\nC) option text\n[/choice]\nAlways use this format for multiple-choice answers - never just list them as plain text."
 	return p
 }
+
+// maybeCompactContext checks if estimated conversation token count exceeds 80%
+// of the context budget. When exceeded, it generates `.mimir/HANDOFF.md` to persist
+// continuity state before aggressively compacting history to prevent context overflow.
+func (a *Agent) maybeCompactContext(msgs []llm.Message, smol bool) []llm.Message {
+	budget := a.cfg.ContextBudget
+	if budget <= 0 {
+		if smol {
+			budget = 8192
+		} else {
+			budget = 32768
+		}
+	}
+	threshold := int(float64(budget) * 0.8)
+	current := EstimateTokens(msgs)
+	if current < threshold {
+		return msgs
+	}
+
+	// Generate continuity handoff document before aggressive trimming
+	handoffMD := GenerateHandoffMarkdown("session-auto-compaction", msgs, a.todoLines(), "")
+	_, _ = WriteHandoffFile(".", handoffMD)
+
+	// Keep system prompt (index 0) and the most recent 2 turns, replace middle with summary notice
+	if len(msgs) <= 3 {
+		return msgs
+	}
+	sysMsg := msgs[0]
+	recent := msgs[len(msgs)-2:]
+	compactedNotice := llm.Message{
+		Role: "user",
+		Content: fmt.Sprintf("[Context Compaction: Conversation exceeded 80%% context threshold (%d/%d tokens). Previous state persisted to .mimir/HANDOFF.md. Active todos and recent turns preserved.]", current, budget),
+	}
+	return append([]llm.Message{sysMsg, compactedNotice}, recent...)
+}
+

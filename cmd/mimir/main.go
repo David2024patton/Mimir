@@ -20,6 +20,7 @@ import (
 	"github.com/David2024patton/Mimir/internal/llm"
 	"github.com/David2024patton/Mimir/internal/runengine"
 	"github.com/David2024patton/Mimir/internal/server"
+	"github.com/David2024patton/Mimir/internal/swarm"
 	"github.com/David2024patton/Mimir/internal/tools"
 	"github.com/David2024patton/Mimir/internal/tui"
 )
@@ -37,6 +38,7 @@ Usage:
   mimir ship [draft] [ctx]    run the Tier-2 Production Ship Gate and advance SDLC to Deployment
   mimir audit <draft> [ctx]   run the Epistemic Critic & Verification Node against a draft report
   mimir audit-web [dir]       run Impeccable anti-slop UI + 4-Layer SEO/GEO & Conversion detectors
+  mimir swarm [list|add|run]  manage Level 3 Multi-Agent Software Factory queue in isolated worktrees
   mimir engines               show Alpha Flux LLC engine binaries, versions, and integrity
   mimir engines run <id> ...  run an engine binary (attribution handshake added automatically)
   mimir engines publish       (maintainers) rehash engines/bin/* and rewrite manifest.json
@@ -468,6 +470,54 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("engines updated:", strings.Join(updated, ", "))
+		return
+	}
+
+	if len(positional) > 0 && (positional[0] == "swarm" || positional[0] == "factory") {
+		f := swarm.NewFactory(swarm.FactoryConfig{
+			RootDir:      cwd,
+			MaxWorkers:   4,
+			TargetBranch: "main",
+		})
+		sub := ""
+		if len(positional) > 1 {
+			sub = strings.ToLower(positional[1])
+		}
+		switch sub {
+		case "", "status", "list":
+			fmt.Println(f.FormatStatus())
+		case "add", "submit":
+			if len(positional) < 3 {
+				fmt.Fprintln(os.Stderr, "usage: mimir swarm add <title> [description]")
+				os.Exit(2)
+			}
+			title := positional[2]
+			desc := "Submitted via CLI."
+			if len(positional) > 3 {
+				desc = strings.Join(positional[3:], " ")
+			}
+			t, err := f.Submit(title, desc)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "swarm submit error:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("✓ Submitted task %s (%q) -> branch: %s\n", t.ID, t.Title, t.Branch)
+		case "run":
+			if len(positional) < 3 {
+				fmt.Fprintln(os.Stderr, "usage: mimir swarm run <task-id>")
+				os.Exit(2)
+			}
+			taskID := positional[2]
+			fmt.Printf("▸ Running autonomous factory pipeline for %s...\n", taskID)
+			if err := f.ExecuteTask(context.Background(), taskID); err != nil {
+				fmt.Fprintf(os.Stderr, "swarm run failed: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("✓ Task %s passed Odin -> Thor -> Loki -> Heimdall pipeline and merged to main!\n", taskID)
+		default:
+			fmt.Fprintf(os.Stderr, "unknown swarm subcommand %q (list, add, run)\n", sub)
+			os.Exit(2)
+		}
 		return
 	}
 

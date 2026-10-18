@@ -39,6 +39,6 @@ Use `-Only tyr|mjolnir|alphaflux` to rebuild a single engine.
 
 ## Honest status
 
-- All three shipped engines are currently compiled from **Go**. The Rust (`crates/mimir-rs`) and Mojo (`mojo/mimir_mojo`) sources on the engine branches are ports in progress and are not what the binaries run yet.
-- Binaries are Windows x64 only for now. Linux and macOS builds need a cross-compile matrix in the publish script.
+- All three shipped engines are currently compiled from **Go** (`-ldflags="-s -w"`). The Rust (`crates/mimir-rs`) and Mojo (`mojo/mimir_mojo`) sources on the engine branches are ports in progress and are not what the binaries run yet.
+- Cross-platform pre-compiled binary matrix is live for `windows_amd64` (.exe), `linux_amd64`, and `darwin_arm64`, fully hashed and tracked in `manifest.json`.
 - The attribution handshake is a license notice enforced in code, not DRM. It makes the terms explicit and visible; it cannot stop a determined person from patching a binary.

@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -40,18 +41,43 @@ var (
 	ErrBinaryIntegrity = errors.New("engines: pre-compiled engine binary missing or SHA-256 mismatch")
 )
 
+// PlatformBinary records platform-specific binary path, SHA-256 digest, and byte size.
+type PlatformBinary struct {
+	Binary    string `json:"binary"`
+	SHA256    string `json:"sha256"`
+	SizeBytes int64  `json:"size_bytes"`
+}
+
 // EngineEntry describes one pre-compiled proprietary engine binary in `engines/bin/`.
 type EngineEntry struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	Branch      string `json:"source_branch"`
-	Binary      string `json:"binary"`
-	SHA256      string `json:"sha256"`
-	SizeBytes   int64  `json:"size_bytes"`
-	Stack       string `json:"stack"`
-	Description string `json:"description"`
+	ID          string                    `json:"id"`
+	Name        string                    `json:"name"`
+	Version     string                    `json:"version"`
+	Branch      string                    `json:"source_branch"`
+	Binary      string                    `json:"binary,omitempty"`
+	SHA256      string                    `json:"sha256,omitempty"`
+	SizeBytes   int64                     `json:"size_bytes,omitempty"`
+	Platforms   map[string]PlatformBinary `json:"platforms,omitempty"`
+	Stack       string                    `json:"stack"`
+	Description string                    `json:"description"`
 }
+
+// ResolveBinary returns the binary path, SHA-256, and size for the host platform
+// (formatted as GOOS_GOARCH, e.g. windows_amd64, linux_amd64, darwin_arm64),
+// falling back to the legacy top-level fields if platforms map is unset.
+func (e *EngineEntry) ResolveBinary() (binary string, sha string, size int64, found bool) {
+	key := runtime.GOOS + "_" + runtime.GOARCH
+	if e.Platforms != nil {
+		if pb, ok := e.Platforms[key]; ok && pb.Binary != "" {
+			return pb.Binary, pb.SHA256, pb.SizeBytes, true
+		}
+	}
+	if e.Binary != "" {
+		return e.Binary, e.SHA256, e.SizeBytes, true
+	}
+	return "", "", 0, false
+}
+
 
 // Manifest is serialized to `engines/bin/manifest.json` on the main branch.
 type Manifest struct {
@@ -120,19 +146,23 @@ func LoadManifest(rootDir string) (Manifest, error) {
 }
 
 // VerifyBinaries checks that every pre-compiled engine binary listed in the manifest
-// exists in `engines/bin/` and matches its recorded SHA-256 digest.
+// for the current host platform exists in `engines/bin/` and matches its recorded SHA-256 digest.
 func VerifyBinaries(rootDir string, m Manifest) error {
 	if err := VerifyAttribution(rootDir, m); err != nil {
 		return err
 	}
 	for _, e := range m.Engines {
-		binPath := filepath.Join(rootDir, filepath.FromSlash(e.Binary))
+		binRel, wantSHA, _, found := e.ResolveBinary()
+		if !found || binRel == "" {
+			continue // no binary declared for this platform
+		}
+		binPath := filepath.Join(rootDir, filepath.FromSlash(binRel))
 		sum, _, err := FileSHA256(binPath)
 		if err != nil {
-			return fmt.Errorf("%w: %s (%v)", ErrBinaryIntegrity, e.Binary, err)
+			return fmt.Errorf("%w: %s (%v)", ErrBinaryIntegrity, binRel, err)
 		}
-		if !strings.EqualFold(sum, e.SHA256) {
-			return fmt.Errorf("%w: %s sha256=%s want=%s", ErrBinaryIntegrity, e.Binary, sum, e.SHA256)
+		if !strings.EqualFold(sum, wantSHA) {
+			return fmt.Errorf("%w: %s sha256=%s want=%s", ErrBinaryIntegrity, binRel, sum, wantSHA)
 		}
 	}
 	return nil
@@ -158,7 +188,11 @@ func Invoke(ctx context.Context, rootDir, engineID string, args ...string) (stri
 	if target == nil {
 		return "", fmt.Errorf("engines: unknown engine %q", engineID)
 	}
-	binPath := filepath.Join(rootDir, filepath.FromSlash(target.Binary))
+	binRel, _, _, found := target.ResolveBinary()
+	if !found || binRel == "" {
+		return "", fmt.Errorf("engines: engine %q is not available for host platform %s_%s", engineID, runtime.GOOS, runtime.GOARCH)
+	}
+	binPath := filepath.Join(rootDir, filepath.FromSlash(binRel))
 	fullArgs := append([]string{"--attribution=" + AttributionHandshake}, args...)
 	cmd := exec.CommandContext(ctx, binPath, fullArgs...)
 	cmd.Dir = rootDir
@@ -176,19 +210,26 @@ func FormatStatus(rootDir string) string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("## %s\n", AttributionNotice))
 	b.WriteString(fmt.Sprintf("- **License Holder**: `%s` (`%s`)\n", m.Owner, m.Website))
-	b.WriteString(fmt.Sprintf("- **License File**: `%s`\n\n", m.License))
+	b.WriteString(fmt.Sprintf("- **License File**: `%s`\n", m.License))
+	b.WriteString(fmt.Sprintf("- **Host Platform**: `%s_%s`\n\n", runtime.GOOS, runtime.GOARCH))
 	for _, e := range m.Engines {
-		binPath := filepath.Join(rootDir, filepath.FromSlash(e.Binary))
+		binRel, wantSHA, _, found := e.ResolveBinary()
+		if !found || binRel == "" {
+			b.WriteString(fmt.Sprintf("* **%s (`%s`)** -- Stack: `%s` | Source Branch: `%s`\n", e.Name, e.ID, e.Stack, e.Branch))
+			b.WriteString(fmt.Sprintf("  - Status: **UNAVAILABLE FOR %s_%s**\n", runtime.GOOS, runtime.GOARCH))
+			continue
+		}
+		binPath := filepath.Join(rootDir, filepath.FromSlash(binRel))
 		sum, sz, fErr := FileSHA256(binPath)
 		status := "VERIFIED (pre-compiled binary ready)"
 		if fErr != nil {
 			status = "MISSING"
-		} else if !strings.EqualFold(sum, e.SHA256) {
+		} else if !strings.EqualFold(sum, wantSHA) {
 			status = "SHA256_MISMATCH"
 		}
 		b.WriteString(fmt.Sprintf("* **%s (`%s`)** -- Stack: `%s` | Source Branch: `%s`\n", e.Name, e.ID, e.Stack, e.Branch))
 		b.WriteString(fmt.Sprintf("  - Binary: `%s` (%d KB | sha256: `%s...`) -> **%s**\n",
-			e.Binary, sz/1024, truncateHex(e.SHA256, 12), status))
+			binRel, sz/1024, truncateHex(wantSHA, 12), status))
 		b.WriteString(fmt.Sprintf("  - Role: %s\n", e.Description))
 	}
 	return strings.TrimRight(b.String(), "\n")
