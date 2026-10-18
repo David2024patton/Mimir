@@ -264,16 +264,25 @@ func (a *Agent) drainSteer() []string {
 }
 
 // schemas converts the registered tools visible in the current mode into model-facing tool schemas.
+// When SDLC Waterfall methodology is active, it also enforces the active phase's AllowedToolSet.
 func (a *Agent) schemas() []llm.ToolSchema {
 	a.mu.RLock()
 	reg := a.cfg.Tools
 	mode := a.cfg.Mode
+	sdlcMgr := a.cfg.SDLC
 	a.mu.RUnlock()
 	if reg == nil {
 		return nil
 	}
+	var phaseFilter map[string]bool
+	if sdlcMgr != nil && sdlcMgr.Methodology() == sdlc.MethodWaterfall {
+		phaseFilter = sdlcMgr.AllowedToolSet()
+	}
 	var out []llm.ToolSchema
 	for _, t := range reg.ForMode(mode) {
+		if phaseFilter != nil && !phaseFilter[t.Name()] {
+			continue
+		}
 		out = append(out, llm.ToolSchema{
 			Name: t.Name(), Description: t.Description(), Parameters: t.Parameters(),
 		})

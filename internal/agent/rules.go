@@ -78,7 +78,7 @@ func EvaluateStopGate(trace []Step, todoLines []string) StopGateStatus {
 		if st.Name == "write_file" || st.Name == "edit_block" {
 			mutatedFiles = true
 		}
-		if st.Name == "run_shell" {
+		if st.Name == "bash" || st.Name == "run_shell" {
 			lowerArgs := strings.ToLower(st.Args)
 			if strings.Contains(lowerArgs, "test") || strings.Contains(lowerArgs, "vet") ||
 				strings.Contains(lowerArgs, "lint") || strings.Contains(lowerArgs, "build") ||
