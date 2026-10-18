@@ -56,7 +56,10 @@ func (r *Registry) Load(p Plugin) error {
 	return nil
 }
 
-func (r *Registry) RegisterProvider(d ProviderDef) error     { r.providers = append(r.providers, d); return nil }
+func (r *Registry) RegisterProvider(d ProviderDef) error {
+	r.providers = append(r.providers, d)
+	return nil
+}
 func (r *Registry) RegisterTool(d ToolDef) error             { r.tools = append(r.tools, d); return nil }
 func (r *Registry) RegisterHook(d HookDef) error             { r.hooks = append(r.hooks, d); return nil }
 func (r *Registry) RegisterChannel(d ChannelDef) error       { return nil }

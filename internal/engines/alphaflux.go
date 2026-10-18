@@ -78,7 +78,6 @@ func (e *EngineEntry) ResolveBinary() (binary string, sha string, size int64, fo
 	return "", "", 0, false
 }
 
-
 // Manifest is serialized to `engines/bin/manifest.json` on the main branch.
 type Manifest struct {
 	SchemaVersion string        `json:"schema_version"`

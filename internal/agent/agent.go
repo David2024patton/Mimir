@@ -10,6 +10,7 @@ import (
 	"github.com/David2024patton/Mimir/internal/cortex"
 	"github.com/David2024patton/Mimir/internal/decision"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/policy"
 	"github.com/David2024patton/Mimir/internal/sdlc"
 	"github.com/David2024patton/Mimir/internal/tools"
 )
@@ -27,20 +28,21 @@ const (
 
 // Config wires an agent's dependencies.
 type Config struct {
-	Provider     llm.Provider
-	Tools        *tools.Registry
-	Cortex       cortex.Store
-	Model        string
-	Usage        *llm.Tracker      // optional: records token usage for the dashboard (E69)
-	Decider      *decision.Decider // System-One Decision Engine (defaults to Liquid AI d1-omni-600M)
-	SDLC         *sdlc.Manager     // 7-Phase SDLC State Machine & Phase-Scoped Prompt Loader
-	Local        bool              // whether the provider is local (local tokens cost $0)
-	Mode         string            // "ro" | "edit" | "bypass" (default "edit")
-	Effort       string            // "" | "off" | "low" | "medium" | "high"
-	SmolPolicy   string            // "auto" (default) | "on" | "off"
-	ApprovalFunc func(toolName, rawArgs string) bool
-	Hooks        *HookRunner       // Level 1 Lifecycle Hooks
-	ContextBudget int              // Max context token budget (defaults to 8192 in SmolMode, 32768 standard)
+	Provider      llm.Provider
+	Tools         *tools.Registry
+	Cortex        cortex.Store
+	Model         string
+	Usage         *llm.Tracker      // optional: records token usage for the dashboard (E69)
+	Decider       *decision.Decider // System-One Decision Engine (defaults to Liquid AI d1-omni-600M)
+	SDLC          *sdlc.Manager     // 7-Phase SDLC State Machine & Phase-Scoped Prompt Loader
+	Local         bool              // whether the provider is local (local tokens cost $0)
+	Mode          string            // "ro" | "edit" | "bypass" (default "edit")
+	Effort        string            // "" | "off" | "low" | "medium" | "high"
+	SmolPolicy    string            // "auto" (default) | "on" | "off"
+	ApprovalFunc  func(toolName, rawArgs string) bool
+	Gate          *policy.Gate // Fail-closed execution policy gate (F2/ADR-009)
+	Hooks         *HookRunner  // Level 1 Lifecycle Hooks
+	ContextBudget int          // Max context token budget (defaults to 8192 in SmolMode, 32768 standard)
 }
 
 // Step records one tool execution in a turn (used by RunTrace / the trace CLI).
@@ -332,7 +334,32 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 	reg := a.cfg.Tools
 	mode := a.cfg.Mode
 	approve := a.cfg.ApprovalFunc
+	gate := a.cfg.Gate
 	a.mu.RUnlock()
+
+	var args map[string]any
+	if repairedArgs != "" {
+		_ = json.Unmarshal([]byte(repairedArgs), &args)
+	}
+
+	// 1. Fail-closed policy gate check (F2/F3/ADR-009)
+	if gate != nil {
+		dec := gate.Evaluate(policy.Request{Tool: tc.Name, Args: args})
+		switch dec {
+		case policy.Deny:
+			st.Err = fmt.Sprintf("execution of tool %q blocked by policy gate (deny)", tc.Name)
+			st.Result = st.Err
+			return st
+		case policy.RequireApproval:
+			if approve != nil && !approve(tc.Name, repairedArgs) {
+				st.Err = fmt.Sprintf("execution of tool %q rejected: user approval required by policy gate", tc.Name)
+				st.Result = st.Err
+				return st
+			}
+		case policy.Allow:
+			// Allowed to proceed
+		}
+	}
 
 	if mode == ModeReadOnly && tools.IsWriteTool(tc.Name) {
 		st.Err = "blocked in read-only (ro) mode: switch to edit or bypass mode (Shift+Tab) to allow mutations"
@@ -365,10 +392,6 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 		st.Err = "unknown tool: " + tc.Name
 		st.Result = st.Err
 		return st
-	}
-	var args map[string]any
-	if repairedArgs != "" {
-		_ = json.Unmarshal([]byte(repairedArgs), &args)
 	}
 	r, err := tool.Run(ctx, args)
 	st.Result = r
@@ -697,9 +720,8 @@ func (a *Agent) maybeCompactContext(msgs []llm.Message, smol bool) []llm.Message
 	sysMsg := msgs[0]
 	recent := msgs[len(msgs)-2:]
 	compactedNotice := llm.Message{
-		Role: "user",
+		Role:    "user",
 		Content: fmt.Sprintf("[Context Compaction: Conversation exceeded 80%% context threshold (%d/%d tokens). Previous state persisted to .mimir/HANDOFF.md. Active todos and recent turns preserved.]", current, budget),
 	}
 	return append([]llm.Message{sysMsg, compactedNotice}, recent...)
 }
-

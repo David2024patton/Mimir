@@ -12,7 +12,7 @@ func TestGenerateHandoffMarkdown(t *testing.T) {
 	history := []llm.Message{
 		{Role: "user", Content: "Build the Level 1 harness lifecycle hooks"},
 		{
-			Role: "assistant",
+			Role:    "assistant",
 			Content: "Editing hooks.go",
 			ToolCalls: []llm.ToolCall{
 				{

@@ -69,8 +69,10 @@ func (s *TodoStore) List() []*Todo {
 // TodoTool exposes the to-do store as an agent Tool.
 type TodoTool struct{ Store *TodoStore }
 
-func (t *TodoTool) Name() string        { return "todo" }
-func (t *TodoTool) Description() string { return "Manage the task to-do list (add, update status, list)." }
+func (t *TodoTool) Name() string { return "todo" }
+func (t *TodoTool) Description() string {
+	return "Manage the task to-do list (add, update status, list)."
+}
 func (t *TodoTool) Parameters() any {
 	return map[string]any{
 		"type": "object",

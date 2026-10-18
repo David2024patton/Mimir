@@ -71,4 +71,3 @@ func TestMaybeCompactContext(t *testing.T) {
 		t.Fatalf("expected %s to be created by auto-compaction", handoffPath)
 	}
 }
-

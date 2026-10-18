@@ -21,12 +21,12 @@ type PhaseRecord struct {
 // (Agile, Waterfall, DevOps), deliverable artifacts (.mimir/sdlc/), and
 // phase-scoped prompt/tool loading so the main prompt remains tiny.
 type Manager struct {
-	mu          sync.RWMutex
-	workDir     string
-	current     PhaseID
-	method      Methodology
-	autoDetect  bool
-	records     map[PhaseID]PhaseRecord
+	mu         sync.RWMutex
+	workDir    string
+	current    PhaseID
+	method     Methodology
+	autoDetect bool
+	records    map[PhaseID]PhaseRecord
 }
 
 // NewManager creates an SDLC Manager rooted at workDir.
@@ -305,7 +305,6 @@ func loadCompactDesignDocs(workDir string) string {
 	}
 	return strings.Join(parts, " | ")
 }
-
 
 // AllowedToolSet returns a map of tool names permitted in the active phase.
 func (m *Manager) AllowedToolSet() map[string]bool {

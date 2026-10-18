@@ -96,6 +96,14 @@ func AutoDiscoverProvider(ctx context.Context) (EnvProvider, bool) {
 			Model:   envOr("MIMIR_MODEL", "grok-4-fast"),
 		}, true
 	}
+	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+		return EnvProvider{
+			ID:      "anthropic",
+			BaseURL: envOr("ANTHROPIC_BASE_URL", "https://api.anthropic.com/v1"),
+			APIKey:  key,
+			Model:   envOr("MIMIR_MODEL", "claude-sonnet-4-6"),
+		}, true
+	}
 	if key := os.Getenv("GROQ_API_KEY"); key != "" {
 		return EnvProvider{
 			ID:      "groq",
@@ -321,4 +329,3 @@ func firstEnvDefault(def string, keys ...string) string {
 	}
 	return def
 }
-

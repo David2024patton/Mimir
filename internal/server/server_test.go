@@ -292,3 +292,40 @@ func TestServerApiStatusAndEngines(t *testing.T) {
 	}
 }
 
+func TestServerSessionIDORProtection(t *testing.T) {
+	store, _ := cortex.NewMemoryStoreAt(filepath.Join(t.TempDir(), "cortex.json"))
+	ag := agent.New(agent.Config{Provider: &fakeText{"ok"}, Tools: tools.NewRegistry(), Cortex: store, Model: "m"})
+
+	// Mock session store with user A
+	sessStore, err := cortex.NewFileSessionStore(t.TempDir())
+	if err != nil {
+		t.Fatalf("new file session store: %v", err)
+	}
+	sessA, err := sessStore.CreateSession(context.Background(), "Alice's Secret Chat", "user_alice")
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+
+	handler := Handler(ag, store, sessStore, nil, nil)
+
+	// User Bob attempts to access Alice's session -> must be rejected with 403 Forbidden
+	req := httptest.NewRequest(http.MethodGet, "/sessions/"+sessA.ID, nil)
+	// Inject user_bob into context
+	req = req.WithContext(context.WithValue(req.Context(), ctxUserID, "user_bob"))
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("IDOR vulnerability: got status %d, want 403 Forbidden", w.Code)
+	}
+
+	// User Alice accesses Alice's session -> must succeed 200 OK
+	reqAlice := httptest.NewRequest(http.MethodGet, "/sessions/"+sessA.ID, nil)
+	reqAlice = reqAlice.WithContext(context.WithValue(reqAlice.Context(), ctxUserID, "user_alice"))
+	wAlice := httptest.NewRecorder()
+	handler.ServeHTTP(wAlice, reqAlice)
+
+	if wAlice.Code != http.StatusOK {
+		t.Errorf("expected 200 OK for rightful session owner, got %d", wAlice.Code)
+	}
+}

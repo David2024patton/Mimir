@@ -22,46 +22,46 @@ import (
 type TaskState string
 
 const (
-	StateBacklog     TaskState = "backlog"     // Waiting for specification
-	StateSpec        TaskState = "spec"        // Odin (Orchestrator) writing requirements
-	StateImplement   TaskState = "implement"   // Thor (Builder) developing in worktree
-	StateTest        TaskState = "test"        // Loki (Tester/Debugger) validating and fixing
-	StateReview      TaskState = "review"      // Heimdall (Auditor) running SEO/GEO and web audit
-	StateMerged      TaskState = "merged"      // Merged back to target branch
-	StateFailed      TaskState = "failed"      // Halted due to unrecoverable test or review failure
+	StateBacklog   TaskState = "backlog"   // Waiting for specification
+	StateSpec      TaskState = "spec"      // Odin (Orchestrator) writing requirements
+	StateImplement TaskState = "implement" // Thor (Builder) developing in worktree
+	StateTest      TaskState = "test"      // Loki (Tester/Debugger) validating and fixing
+	StateReview    TaskState = "review"    // Heimdall (Auditor) running SEO/GEO and web audit
+	StateMerged    TaskState = "merged"    // Merged back to target branch
+	StateFailed    TaskState = "failed"    // Halted due to unrecoverable test or review failure
 )
 
 // Task represents a discrete unit of work assigned to the autonomous software factory.
 type Task struct {
-	ID           string            `json:"id"`
-	Title        string            `json:"title"`
-	Description  string            `json:"description"`
-	Branch       string            `json:"branch"`
-	WorktreeDir  string            `json:"worktree_dir,omitempty"`
-	State        TaskState         `json:"state"`
-	AssignedTo   string            `json:"assigned_to"` // "odin" | "thor" | "loki" | "heimdall"
-	Error        string            `json:"error,omitempty"`
-	Artifacts    []string          `json:"artifacts,omitempty"`
-	CreatedAt    time.Time         `json:"created_at"`
-	UpdatedAt    time.Time         `json:"updated_at"`
-	Metadata     map[string]string `json:"metadata,omitempty"`
+	ID          string            `json:"id"`
+	Title       string            `json:"title"`
+	Description string            `json:"description"`
+	Branch      string            `json:"branch"`
+	WorktreeDir string            `json:"worktree_dir,omitempty"`
+	State       TaskState         `json:"state"`
+	AssignedTo  string            `json:"assigned_to"` // "odin" | "thor" | "loki" | "heimdall"
+	Error       string            `json:"error,omitempty"`
+	Artifacts   []string          `json:"artifacts,omitempty"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
+	Metadata    map[string]string `json:"metadata,omitempty"`
 }
 
 // FactoryConfig configures the autonomous software factory queue.
 type FactoryConfig struct {
-	RootDir     string
-	MaxWorkers  int
-	AgentConfig agent.Config
-	RunLimits   runengine.Limits
+	RootDir      string
+	MaxWorkers   int
+	AgentConfig  agent.Config
+	RunLimits    runengine.Limits
 	TargetBranch string // default "main"
 }
 
 // Factory manages parallel multi-agent worker pipelines operating in isolated git worktrees.
 type Factory struct {
-	mu        sync.RWMutex
-	cfg       FactoryConfig
-	tasks     map[string]*Task
-	taskOrder []string
+	mu           sync.RWMutex
+	cfg          FactoryConfig
+	tasks        map[string]*Task
+	taskOrder    []string
 	worktreeRoot string
 }
 
@@ -97,7 +97,7 @@ func (f *Factory) loadFromDisk() {
 		return
 	}
 	var data struct {
-		Order []string          `json:"order"`
+		Order []string         `json:"order"`
 		Tasks map[string]*Task `json:"tasks"`
 	}
 	if err := json.Unmarshal(raw, &data); err != nil {
@@ -109,7 +109,7 @@ func (f *Factory) loadFromDisk() {
 
 func (f *Factory) saveToDisk() {
 	data := struct {
-		Order []string          `json:"order"`
+		Order []string         `json:"order"`
 		Tasks map[string]*Task `json:"tasks"`
 	}{
 		Order: f.taskOrder,

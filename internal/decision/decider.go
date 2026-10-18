@@ -19,10 +19,10 @@ const PrimaryDecisionModel = "liquid/d1-omni-600m"
 // DefaultLocalDecisionModels lists the recommended compact open-weight decision
 // and edge models (600M-3B) that Mímir can auto-download during install/setup.
 var DefaultLocalDecisionModels = []string{
-	PrimaryDecisionModel,  // Liquid AI 600M multimodal/audio-capable decision model (~400MB)
-	"liquid/d1-3b",        // Liquid AI 3B local System-One decision model (~1.8GB GGUF)
-	"muse-glimmer",        // Meta Apache-2.0 compact edge model for routing & speculative decoding
-	"qwen3:1.7b",          // Universal ultra-light local fallback in Ollama library
+	PrimaryDecisionModel, // Liquid AI 600M multimodal/audio-capable decision model (~400MB)
+	"liquid/d1-3b",       // Liquid AI 3B local System-One decision model (~1.8GB GGUF)
+	"muse-glimmer",       // Meta Apache-2.0 compact edge model for routing & speculative decoding
+	"qwen3:1.7b",         // Universal ultra-light local fallback in Ollama library
 }
 
 // ChoiceOption represents one candidate option with its calibrated probability.
@@ -41,7 +41,7 @@ type ChoiceResult struct {
 
 // ScoreResult is the output of the Score primitive (rate input on a 0.0-1.0 rubric).
 type ScoreResult struct {
-	Score     float64 `json:"score"` // 0.0 to 1.0
+	Score     float64 `json:"score"`  // 0.0 to 1.0
 	Bucket    string  `json:"bucket"` // "low", "medium", "high", "critical"
 	LatencyMs int64   `json:"latency_ms"`
 	Source    string  `json:"source"`
@@ -349,7 +349,6 @@ func (d *Decider) SelectAffectedTests(ctx context.Context, changedFiles, testFil
 	}
 	return out
 }
-
 
 // EnsureLocalDecisionModel checks whether Ollama has one of DefaultLocalDecisionModels
 // installed, and if pullIfMissing is true, triggers a non-streamed `/api/pull` for

@@ -4,8 +4,8 @@
 //   - Configurable execution limits (MaxSteps, MaxTokens, Timeout)
 //   - Executor seam interface for deterministic testing and shell-free argv execution
 //   - Explicit Two-Tier Testing Law:
-//     * Tier 1 (Inner Edit Loop, SDLC Steps 4-5): Huginn-Decider selects affected tests for fast feedback.
-//     * Tier 2 (Outer Ship Gate, mimir review / mimir ship): Always runs the full test suite + Checklist Gate + Epistemic Critic.
+//   - Tier 1 (Inner Edit Loop, SDLC Steps 4-5): Huginn-Decider selects affected tests for fast feedback.
+//   - Tier 2 (Outer Ship Gate, mimir review / mimir ship): Always runs the full test suite + Checklist Gate + Epistemic Critic.
 package runengine
 
 import (
@@ -402,17 +402,17 @@ func normalizeGoTargets(workDir string, targets []string) []string {
 // GateReport summarizes the deterministic Checklist Gate, Two-Tier Test Gate,
 // SDLC Deliverable Gate, and Epistemic Critic Gate for `mimir review` and `mimir ship`.
 type GateReport struct {
-	Mode              string               `json:"mode"` // "review" or "ship"
-	Passed            bool                 `json:"passed"`
-	ChecklistPassed   bool                 `json:"checklist_passed"`
-	PendingTodos      int                  `json:"pending_todos"`
-	SDLCPassed        bool                 `json:"sdlc_passed"`
-	SDLCPhase         string               `json:"sdlc_phase"`
-	MissingArtifacts  []string             `json:"missing_artifacts,omitempty"`
-	FullSuiteResult   TestRunResult        `json:"full_suite_result"`
-	EpistemicPassed   bool                 `json:"epistemic_passed"`
-	EpistemicReport   *critic.AuditReport  `json:"epistemic_report,omitempty"`
-	BlockingReasons   []string             `json:"blocking_reasons,omitempty"`
+	Mode             string              `json:"mode"` // "review" or "ship"
+	Passed           bool                `json:"passed"`
+	ChecklistPassed  bool                `json:"checklist_passed"`
+	PendingTodos     int                 `json:"pending_todos"`
+	SDLCPassed       bool                `json:"sdlc_passed"`
+	SDLCPhase        string              `json:"sdlc_phase"`
+	MissingArtifacts []string            `json:"missing_artifacts,omitempty"`
+	FullSuiteResult  TestRunResult       `json:"full_suite_result"`
+	EpistemicPassed  bool                `json:"epistemic_passed"`
+	EpistemicReport  *critic.AuditReport `json:"epistemic_report,omitempty"`
+	BlockingReasons  []string            `json:"blocking_reasons,omitempty"`
 }
 
 // FormatMarkdown renders a human- and CI-readable summary of the Review/Ship Gate.
@@ -597,12 +597,12 @@ func (e *Engine) evaluateGate(ctx context.Context, mode string, opts GateOptions
 
 // UnattendedRunSummary records the trace and gate verdict of an unattended run.
 type UnattendedRunSummary struct {
-	Task        string            `json:"task"`
-	Steps       int               `json:"steps"`
-	TokensUsed  int               `json:"tokens_used"`
-	InnerTests  []TestRunResult   `json:"inner_tests,omitempty"`
-	FinalReply  string            `json:"final_reply"`
-	Gate        GateReport        `json:"gate"`
+	Task       string          `json:"task"`
+	Steps      int             `json:"steps"`
+	TokensUsed int             `json:"tokens_used"`
+	InnerTests []TestRunResult `json:"inner_tests,omitempty"`
+	FinalReply string          `json:"final_reply"`
+	Gate       GateReport      `json:"gate"`
 }
 
 // RunUnattended executes an unattended task inside the single-run lockfile (.mimir/run.lock),

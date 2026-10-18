@@ -131,9 +131,9 @@ func (a *AuthStore) SendOTP(ctx context.Context, email string) error {
 
 	// Send email (best-effort, log failure)
 	if err := sendOTPEmail(email, code); err != nil {
-		fmt.Fprintf(os.Stderr, "auth: send OTP email to %s: %v (code=%s)\n", email, err, code)
+		fmt.Fprintf(os.Stderr, "auth: send OTP email to %s: %v\n", email, err)
 	} else {
-		fmt.Fprintf(os.Stderr, "auth: OTP sent to %s (code=%s)\n", email, code)
+		fmt.Fprintf(os.Stderr, "auth: OTP sent to %s\n", email)
 	}
 	return nil
 }
@@ -289,7 +289,7 @@ func sendOTPEmail(to, code string) error {
 	}
 	pass := os.Getenv("MIMIR_SMTP_PASS")
 	if pass == "" {
-		pass = "slick.132"
+		return fmt.Errorf("MIMIR_SMTP_PASS environment variable is unset: refusing to send OTP email without configured credentials")
 	}
 	fromName := os.Getenv("MIMIR_SMTP_FROM_NAME")
 	if fromName == "" {

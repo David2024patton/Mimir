@@ -47,4 +47,3 @@ func TestMetaModelAPIDiscovery(t *testing.T) {
 		t.Errorf("expected at least 7 Meta Muse models in catalog, got %d", len(cat))
 	}
 }
-

@@ -96,15 +96,15 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			currPhase = sdlcMgr.CurrentPhase().Title
 		}
 		writeJSON(w, map[string]any{
-			"status":       "ok",
-			"provider":     pid,
-			"model":        model,
-			"local":        local,
-			"mode":         ag.Mode(),
-			"effort":       ag.Effort(),
-			"smol":         ag.SmolMode(),
-			"sdlc_phase":   currPhase,
-			"attribution":  engines.AttributionNotice,
+			"status":      "ok",
+			"provider":    pid,
+			"model":       model,
+			"local":       local,
+			"mode":        ag.Mode(),
+			"effort":      ag.Effort(),
+			"smol":        ag.SmolMode(),
+			"sdlc_phase":  currPhase,
+			"attribution": engines.AttributionNotice,
 		})
 	})
 	mux.HandleFunc("/auth/send-code", sendCodeHandler(auth))
@@ -171,13 +171,20 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			http.Error(w, "session id required", http.StatusBadRequest)
 			return
 		}
+		callerID := userIDFromContext(r.Context())
+		sess, err := sessions.GetSession(r.Context(), id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		// IDOR ownership check (F12): user can only access their own sessions unless local mode
+		if callerID != "" && callerID != "local" && sess.UserID != "" && sess.UserID != callerID {
+			http.Error(w, "forbidden: session does not belong to you", http.StatusForbidden)
+			return
+		}
+
 		switch r.Method {
 		case http.MethodGet:
-			sess, err := sessions.GetSession(r.Context(), id)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusNotFound)
-				return
-			}
 			writeJSON(w, sess)
 		case http.MethodDelete:
 			if err := sessions.DeleteSession(r.Context(), id); err != nil {
@@ -234,8 +241,17 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		}
 		var history []llm.Message
 		if req.SessionID != "" {
+			callerID := userIDFromContext(r.Context())
 			sess, err := sessions.GetSession(r.Context(), req.SessionID)
-			if err == nil && len(sess.Messages) > 0 {
+			if err != nil {
+				http.Error(w, "session not found", http.StatusNotFound)
+				return
+			}
+			if callerID != "" && callerID != "local" && sess.UserID != "" && sess.UserID != callerID {
+				http.Error(w, "forbidden: session does not belong to you", http.StatusForbidden)
+				return
+			}
+			if len(sess.Messages) > 0 {
 				for _, m := range sess.Messages {
 					history = append(history, llm.Message{Role: m.Role, Content: m.Content})
 				}
@@ -245,6 +261,12 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			}); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
+			}
+		}
+		if req.Mode != "" {
+			switch strings.ToLower(req.Mode) {
+			case "ro", "edit", "bypass":
+				ag.SetMode(strings.ToLower(req.Mode))
 			}
 		}
 		res, err := ag.RunFull(r.Context(), strings.TrimSpace(req.Prompt), history)
@@ -290,8 +312,17 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		w.Header().Set("Connection", "keep-alive")
 		var history []llm.Message
 		if req.SessionID != "" {
+			callerID := userIDFromContext(r.Context())
 			sess, err := sessions.GetSession(r.Context(), req.SessionID)
-			if err == nil && len(sess.Messages) > 0 {
+			if err != nil {
+				http.Error(w, "session not found", http.StatusNotFound)
+				return
+			}
+			if callerID != "" && callerID != "local" && sess.UserID != "" && sess.UserID != callerID {
+				http.Error(w, "forbidden: session does not belong to you", http.StatusForbidden)
+				return
+			}
+			if len(sess.Messages) > 0 {
 				for _, m := range sess.Messages {
 					history = append(history, llm.Message{Role: m.Role, Content: m.Content})
 				}
@@ -300,6 +331,12 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 				Role:    "user",
 				Content: req.Prompt,
 			})
+		}
+		if req.Mode != "" {
+			switch strings.ToLower(req.Mode) {
+			case "ro", "edit", "bypass":
+				ag.SetMode(strings.ToLower(req.Mode))
+			}
 		}
 		var assistantReply string
 		err := ag.RunStream(r.Context(), strings.TrimSpace(req.Prompt), history, func(e agent.Event) {
@@ -333,15 +370,15 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			currPhase = sdlcMgr.CurrentPhase().Title
 		}
 		writeJSON(w, map[string]any{
-			"status":       "ok",
-			"provider":     pid,
-			"model":        model,
-			"local":        local,
-			"mode":         ag.Mode(),
-			"effort":       ag.Effort(),
-			"smol":         ag.SmolMode(),
-			"sdlc_phase":   currPhase,
-			"attribution":  engines.AttributionNotice,
+			"status":      "ok",
+			"provider":    pid,
+			"model":       model,
+			"local":       local,
+			"mode":        ag.Mode(),
+			"effort":      ag.Effort(),
+			"smol":        ag.SmolMode(),
+			"sdlc_phase":  currPhase,
+			"attribution": engines.AttributionNotice,
 		})
 	})
 	api.HandleFunc("/engines", func(w http.ResponseWriter, r *http.Request) {

@@ -23,16 +23,16 @@ type WebFinding struct {
 
 // WebAuditReport is the structured output of AuditWebDirectory.
 type WebAuditReport struct {
-	RootDir           string       `json:"root_dir"`
-	ScannedFiles      int          `json:"scanned_files"`
-	HasProductDoc     bool         `json:"has_product_md"`
-	HasDesignDoc      bool         `json:"has_design_md"`
-	HasRobotsTxt      bool         `json:"has_robots_txt"`
-	HasSitemapXML     bool         `json:"has_sitemap_xml"`
-	HasLLMsTxt        bool         `json:"has_llms_txt"`
-	ValidJSONLDCount  int          `json:"valid_jsonld_count"`
-	Findings          []WebFinding `json:"findings"`
-	PassAudit         bool         `json:"pass_audit"`
+	RootDir          string       `json:"root_dir"`
+	ScannedFiles     int          `json:"scanned_files"`
+	HasProductDoc    bool         `json:"has_product_md"`
+	HasDesignDoc     bool         `json:"has_design_md"`
+	HasRobotsTxt     bool         `json:"has_robots_txt"`
+	HasSitemapXML    bool         `json:"has_sitemap_xml"`
+	HasLLMsTxt       bool         `json:"has_llms_txt"`
+	ValidJSONLDCount int          `json:"valid_jsonld_count"`
+	Findings         []WebFinding `json:"findings"`
+	PassAudit        bool         `json:"pass_audit"`
 }
 
 // FormatMarkdown renders the deterministic Web/SEO/GEO + Impeccable Design audit report.

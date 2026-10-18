@@ -18,6 +18,7 @@ import (
 	"github.com/David2024patton/Mimir/internal/engines"
 	"github.com/David2024patton/Mimir/internal/ingest"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/policy"
 	"github.com/David2024patton/Mimir/internal/relay"
 	"github.com/David2024patton/Mimir/internal/runengine"
 	"github.com/David2024patton/Mimir/internal/server"
@@ -296,6 +297,7 @@ func main() {
 		Local:    local,
 		Mode:     permMode,
 		Effort:   effort,
+		Gate:     policy.DefaultDevGate(),
 	})
 
 	if len(positional) > 0 && (positional[0] == "setup" || positional[0] == "init") {

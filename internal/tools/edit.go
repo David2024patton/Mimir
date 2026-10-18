@@ -10,19 +10,21 @@ import (
 // EditBlockTool does a targeted search/replace in a file (F3.4). It tries an exact
 // match first, then a whitespace-normalized fallback. expected_replacements controls
 // how many occurrences to replace (default 1; 0 = all).
-type EditBlockTool struct{}
+type EditBlockTool struct {
+	WorkDir string
+}
 
 func (t *EditBlockTool) Name() string { return "edit_block" }
 func (t *EditBlockTool) Description() string {
-	return "Replace an exact block of text in a file. Use old_string/new_string; set expected_replacements to 0 to replace all occurrences."
+	return "Replace an exact block of text in a file within the workspace. Use old_string/new_string; set expected_replacements to 0 to replace all occurrences."
 }
 func (t *EditBlockTool) Parameters() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"path":                 map[string]any{"type": "string"},
-			"old_string":           map[string]any{"type": "string"},
-			"new_string":           map[string]any{"type": "string"},
+			"path":                  map[string]any{"type": "string"},
+			"old_string":            map[string]any{"type": "string"},
+			"new_string":            map[string]any{"type": "string"},
 			"expected_replacements": map[string]any{"type": "integer", "description": "0 = replace all; default 1"},
 		},
 		"required": []string{"path", "old_string", "new_string"},
@@ -36,7 +38,11 @@ func (t *EditBlockTool) Run(ctx context.Context, args map[string]any) (string, e
 	if oldStr == newStr {
 		return "", fmt.Errorf("old_string and new_string are identical")
 	}
-	data, err := os.ReadFile(path)
+	resolved, err := resolveWithinWorkDir(t.WorkDir, path)
+	if err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(resolved)
 	if err != nil {
 		return "", err
 	}
@@ -59,23 +65,13 @@ func (t *EditBlockTool) Run(ctx context.Context, args map[string]any) (string, e
 				} else {
 					content = replaceN(content, crlfOld, crlfNew, n)
 				}
-				if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+				if err := os.WriteFile(resolved, []byte(content), 0o644); err != nil {
 					return "", err
 				}
 				return fmt.Sprintf("edited %s (CRLF-normalized, %d replacement(s))", path, min(n, c)), nil
 			}
 		}
 
-		// 2. Whitespace-normalized fallback: collapse runs of spaces/tabs.
-		norm := func(s string) string { return strings.Join(strings.Fields(s), " ") }
-		nOld, nNew, nContent := norm(oldStr), norm(newStr), norm(content)
-		if c := strings.Count(nContent, nOld); c > 0 {
-			content = replaceN(nContent, nOld, nNew, n)
-			if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-				return "", err
-			}
-			return fmt.Sprintf("edited %s (normalized fallback, %d replacement(s))", path, min(n, c)), nil
-		}
 		return "", notFoundErr(path, content, oldStr)
 	}
 	if n == 0 {
@@ -86,7 +82,7 @@ func (t *EditBlockTool) Run(ctx context.Context, args map[string]any) (string, e
 		}
 		content = replaceN(content, oldStr, newStr, n)
 	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(resolved, []byte(content), 0o644); err != nil {
 		return "", err
 	}
 	replaced := n
