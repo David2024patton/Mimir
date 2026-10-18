@@ -15,10 +15,14 @@ import (
 	"github.com/David2024patton/Mimir/internal/cortex"
 	"github.com/David2024patton/Mimir/internal/critic"
 	"github.com/David2024patton/Mimir/internal/decision"
+	"github.com/David2024patton/Mimir/internal/engines"
 	"github.com/David2024patton/Mimir/internal/ingest"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/policy"
+	"github.com/David2024patton/Mimir/internal/relay"
 	"github.com/David2024patton/Mimir/internal/runengine"
 	"github.com/David2024patton/Mimir/internal/server"
+	"github.com/David2024patton/Mimir/internal/swarm"
 	"github.com/David2024patton/Mimir/internal/tools"
 	"github.com/David2024patton/Mimir/internal/tui"
 )
@@ -36,6 +40,13 @@ Usage:
   mimir ship [draft] [ctx]    run the Tier-2 Production Ship Gate and advance SDLC to Deployment
   mimir audit <draft> [ctx]   run the Epistemic Critic & Verification Node against a draft report
   mimir audit-web [dir]       run Impeccable anti-slop UI + 4-Layer SEO/GEO & Conversion detectors
+  mimir swarm [list|add|run]  manage Level 3 Multi-Agent Software Factory queue in isolated worktrees
+  mimir engines               show Alpha Flux LLC engine binaries, versions, and integrity
+  mimir engines run <id> ...  run an engine binary (attribution handshake added automatically)
+  mimir engines publish       (maintainers) rehash engines/bin/* and rewrite manifest.json
+  mimir update [--check]      update the harness (git fast-forward + rebuild) and any changed engines
+  mimir pair                  generate ASCII QR code to pair mobile companion via Happy E2EE
+  mimir handoff               generate .mimir/HANDOFF.md for session continuity
   mimir providers             list built-in BYOK providers + Mímir Well Subscription tiers
   mimir setup                 bootstrap Liquid AI d1-omni-600M local System-One decision model
   mimir -p "your prompt"      headless single-shot prompt (for scripts & CI)
@@ -286,6 +297,7 @@ func main() {
 		Local:    local,
 		Mode:     permMode,
 		Effort:   effort,
+		Gate:     policy.DefaultDevGate(),
 	})
 
 	if len(positional) > 0 && (positional[0] == "setup" || positional[0] == "init") {
@@ -389,6 +401,130 @@ func main() {
 		return
 	}
 
+	if len(positional) > 0 && positional[0] == "engines" {
+		sub := ""
+		if len(positional) > 1 {
+			sub = positional[1]
+		}
+		switch sub {
+		case "", "status", "list":
+			fmt.Println(engines.FormatStatus(cwd))
+		case "publish":
+			m, err := engines.BuildManifest(context.Background(), cwd)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "engines publish:", err)
+				os.Exit(1)
+			}
+			for _, e := range m.Engines {
+				fmt.Printf("  %-16s v%-8s sha256=%s...\n", e.ID, e.Version, e.SHA256[:12])
+			}
+			fmt.Println("wrote engines/bin/manifest.json; commit and push main to release.")
+		case "run":
+			if len(positional) < 3 {
+				fmt.Fprintln(os.Stderr, "usage: mimir engines run <engine-id> [args...]")
+				os.Exit(2)
+			}
+			out, err := engines.Invoke(context.Background(), cwd, positional[2], positional[3:]...)
+			fmt.Println(out)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "engines run:", err)
+				os.Exit(1)
+			}
+		default:
+			fmt.Fprintf(os.Stderr, "unknown engines subcommand %q (status, run, publish)\n", sub)
+			os.Exit(2)
+		}
+		return
+	}
+
+	if len(positional) > 0 && positional[0] == "update" {
+		checkOnly := len(positional) > 1 && (positional[1] == "--check" || positional[1] == "check")
+		ctx := context.Background()
+		base := engines.UpdateBase()
+		if !checkOnly {
+			hr, err := engines.UpdateHarness(ctx, cwd)
+			fmt.Printf("harness (%s): %s\n", hr.Mode, hr.Output)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "harness update:", err)
+				os.Exit(1)
+			}
+			if hr.Rebuilt {
+				fmt.Println("harness rebuilt: bin/mimir updated (restart to use it)")
+			}
+		}
+		plan, err := engines.CheckForUpdates(ctx, cwd, base)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "engine update check:", err)
+			os.Exit(1)
+		}
+		if len(plan.Changes) == 0 {
+			fmt.Println("engines: all up to date with", base)
+			return
+		}
+		for _, c := range plan.Changes {
+			fmt.Printf("  %-16s %s -> %s (%s)\n", c.ID, c.LocalVersion, c.RemoteVersion, c.Reason)
+		}
+		if checkOnly {
+			fmt.Println("run `mimir update` to install.")
+			return
+		}
+		updated, err := engines.ApplyUpdates(ctx, cwd, plan)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "engine update:", err)
+			os.Exit(1)
+		}
+		fmt.Println("engines updated:", strings.Join(updated, ", "))
+		return
+	}
+
+	if len(positional) > 0 && (positional[0] == "swarm" || positional[0] == "factory") {
+		f := swarm.NewFactory(swarm.FactoryConfig{
+			RootDir:      cwd,
+			MaxWorkers:   4,
+			TargetBranch: "main",
+		})
+		sub := ""
+		if len(positional) > 1 {
+			sub = strings.ToLower(positional[1])
+		}
+		switch sub {
+		case "", "status", "list":
+			fmt.Println(f.FormatStatus())
+		case "add", "submit":
+			if len(positional) < 3 {
+				fmt.Fprintln(os.Stderr, "usage: mimir swarm add <title> [description]")
+				os.Exit(2)
+			}
+			title := positional[2]
+			desc := "Submitted via CLI."
+			if len(positional) > 3 {
+				desc = strings.Join(positional[3:], " ")
+			}
+			t, err := f.Submit(title, desc)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "swarm submit error:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("✓ Submitted task %s (%q) -> branch: %s\n", t.ID, t.Title, t.Branch)
+		case "run":
+			if len(positional) < 3 {
+				fmt.Fprintln(os.Stderr, "usage: mimir swarm run <task-id>")
+				os.Exit(2)
+			}
+			taskID := positional[2]
+			fmt.Printf("▸ Running autonomous factory pipeline for %s...\n", taskID)
+			if err := f.ExecuteTask(context.Background(), taskID); err != nil {
+				fmt.Fprintf(os.Stderr, "swarm run failed: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("✓ Task %s passed Odin -> Thor -> Loki -> Heimdall pipeline and merged to main!\n", taskID)
+		default:
+			fmt.Fprintf(os.Stderr, "unknown swarm subcommand %q (list, add, run)\n", sub)
+			os.Exit(2)
+		}
+		return
+	}
+
 	if len(positional) > 0 && (positional[0] == "audit-web" || positional[0] == "web-audit") {
 		targetDir := cwd
 		if len(positional) > 1 {
@@ -445,6 +581,68 @@ func main() {
 		if !rep.Passed {
 			os.Exit(1)
 		}
+		return
+	}
+
+	if len(positional) > 0 && positional[0] == "handoff" {
+		var todos []string
+		if t, ok := toolReg.Get("todo"); ok {
+			if tt, ok := t.(*tools.TodoTool); ok && tt.Store != nil {
+				for _, item := range tt.Store.List() {
+					todos = append(todos, fmt.Sprintf("- #%d [%s] %s", item.ID, item.Status, item.Content))
+				}
+			}
+		}
+		var history []llm.Message
+		sid := "cli-session"
+		if sessStore != nil {
+			if list, err := sessStore.ListSessions(context.Background(), ""); err == nil && len(list) > 0 {
+				sid = list[len(list)-1].ID
+				if s, err := sessStore.GetSession(context.Background(), sid); err == nil && s != nil {
+					for _, m := range s.Messages {
+						history = append(history, llm.Message{Role: m.Role, Content: m.Content})
+					}
+				}
+			}
+		}
+		summary := ""
+		if mm, ok := ingest.LatestMindMap(store); ok {
+			summary = fmt.Sprintf("%s (%d files, ~%dk tokens)", mm.RepoName, mm.TotalFiles, mm.EstTokens/1000)
+		}
+		md := agent.GenerateHandoffMarkdown(sid, history, todos, summary)
+		outPath, err := agent.WriteHandoffFile(cwd, md)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "handoff error:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("✓ Handoff generated at: %s\n\n%s\n", outPath, md)
+		return
+	}
+
+	if len(positional) > 0 && positional[0] == "pair" {
+		mgr := relay.NewManager()
+		host := "127.0.0.1:8420"
+		if addr != "" {
+			host = strings.TrimPrefix(addr, ":")
+			if !strings.Contains(host, ":") {
+				host = "127.0.0.1" + addr
+			}
+		}
+		sess, err := mgr.CreateSession(host)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "pairing error:", err)
+			os.Exit(1)
+		}
+		asciiQR, err := sess.GenerateQRCodeASCII()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "qr generation error:", err)
+			os.Exit(1)
+		}
+		fmt.Println("=== Mímir Mobile Companion Pairing (Happy E2EE) ===")
+		fmt.Printf("Session ID: %s\n", sess.ID)
+		fmt.Printf("Pairing URI: %s\n\n", sess.PairURI())
+		fmt.Println(asciiQR)
+		fmt.Println("Scan this QR code with the Mímir Flutter Mobile App to pair.")
 		return
 	}
 

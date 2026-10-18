@@ -18,8 +18,12 @@ func authMiddleware(auth *cortex.AuthStore) func(http.Handler) http.Handler {
 		if auth == nil {
 			// Local self-hosted mode (file-backed Cortex): no auth wall required.
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				ctx := context.WithValue(r.Context(), ctxUserID, "local")
-				next.ServeHTTP(w, r.WithContext(ctx))
+				if r.Context().Value(ctxUserID) == nil {
+					ctx := context.WithValue(r.Context(), ctxUserID, "local")
+					next.ServeHTTP(w, r.WithContext(ctx))
+					return
+				}
+				next.ServeHTTP(w, r)
 			})
 		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

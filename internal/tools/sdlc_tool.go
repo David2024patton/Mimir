@@ -73,6 +73,9 @@ func (t *SDLCTool) Run(_ context.Context, args map[string]any) (string, error) {
 		return fmt.Sprintf("Advanced SDLC -> [%d/7] %s (Persona: %s | Deliverable: %s)",
 			spec.Step, spec.Title, spec.Persona, spec.Deliverable), nil
 	case "set_method", "method":
+		if t.Manager.Methodology() == sdlc.MethodWaterfall {
+			return "", fmt.Errorf("security policy: SDLC methodology cannot be changed by the model while in strict Waterfall mode (use the CLI or TUI)")
+		}
 		if err := t.Manager.SetMethodology(methodStr); err != nil {
 			return "", err
 		}
@@ -91,8 +94,11 @@ func (t *SDLCTool) Run(_ context.Context, args map[string]any) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("Saved SDLC deliverable to %s and marked phase signed off.", path), nil
+		return fmt.Sprintf("Saved SDLC deliverable to %s.", path), nil
 	case "sign_off", "signoff":
+		if t.Manager.Methodology() == sdlc.MethodWaterfall {
+			return "", fmt.Errorf("security policy: sign_off in strict Waterfall mode requires user approval via `mimir sdlc signoff` or TUI /sdlc signoff")
+		}
 		var pid sdlc.PhaseID
 		if phaseStr != "" {
 			if spec, ok := sdlc.LookupPhase(phaseStr); ok {

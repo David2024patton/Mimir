@@ -23,7 +23,7 @@ type Session struct {
 
 // Message is one turn in a conversation.
 type Message struct {
-	Role      string `json:"role"`      // "user" or "assistant"
+	Role      string `json:"role"` // "user" or "assistant"
 	Content   string `json:"content"`
 	Timestamp int64  `json:"timestamp"` // Unix nanos
 }
@@ -157,7 +157,9 @@ func (s *surrealSessionStore) CreateSession(ctx context.Context, title, userID s
 }
 
 func escapeStringForSurreal(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", "\\'") + "'"
+	escaped := strings.ReplaceAll(s, "\\", "\\\\")
+	escaped = strings.ReplaceAll(escaped, "'", "\\'")
+	return "'" + escaped + "'"
 }
 
 // ListSessions returns all sessions sorted by updated_at descending.
@@ -269,7 +271,7 @@ func (s *surrealSessionStore) DeleteSession(ctx context.Context, id string) erro
 
 // UpdateTitle updates a session's title.
 func (s *surrealSessionStore) UpdateTitle(ctx context.Context, id, title string) error {
-	query := fmt.Sprintf(`UPDATE session:%s SET title = '%s'`, id, title)
+	query := fmt.Sprintf(`UPDATE session:%s SET title = %s`, id, escapeStringForSurreal(title))
 	if err := s.Exec(ctx, query); err != nil {
 		return fmt.Errorf("update title: %w", err)
 	}

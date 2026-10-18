@@ -10,6 +10,7 @@ import (
 	"github.com/David2024patton/Mimir/internal/cortex"
 	"github.com/David2024patton/Mimir/internal/decision"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/policy"
 	"github.com/David2024patton/Mimir/internal/sdlc"
 	"github.com/David2024patton/Mimir/internal/tools"
 )
@@ -27,18 +28,21 @@ const (
 
 // Config wires an agent's dependencies.
 type Config struct {
-	Provider     llm.Provider
-	Tools        *tools.Registry
-	Cortex       cortex.Store
-	Model        string
-	Usage        *llm.Tracker      // optional: records token usage for the dashboard (E69)
-	Decider      *decision.Decider // System-One Decision Engine (defaults to Liquid AI d1-omni-600M)
-	SDLC         *sdlc.Manager     // 7-Phase SDLC State Machine & Phase-Scoped Prompt Loader
-	Local        bool              // whether the provider is local (local tokens cost $0)
-	Mode         string            // "ro" | "edit" | "bypass" (default "edit")
-	Effort       string            // "" | "off" | "low" | "medium" | "high"
-	SmolPolicy   string            // "auto" (default) | "on" | "off"
-	ApprovalFunc func(toolName, rawArgs string) bool
+	Provider      llm.Provider
+	Tools         *tools.Registry
+	Cortex        cortex.Store
+	Model         string
+	Usage         *llm.Tracker      // optional: records token usage for the dashboard (E69)
+	Decider       *decision.Decider // System-One Decision Engine (defaults to Liquid AI d1-omni-600M)
+	SDLC          *sdlc.Manager     // 7-Phase SDLC State Machine & Phase-Scoped Prompt Loader
+	Local         bool              // whether the provider is local (local tokens cost $0)
+	Mode          string            // "ro" | "edit" | "bypass" (default "edit")
+	Effort        string            // "" | "off" | "low" | "medium" | "high"
+	SmolPolicy    string            // "auto" (default) | "on" | "off"
+	ApprovalFunc  func(toolName, rawArgs string) bool
+	Gate          *policy.Gate // Fail-closed execution policy gate (F2/ADR-009)
+	Hooks         *HookRunner  // Level 1 Lifecycle Hooks
+	ContextBudget int          // Max context token budget (defaults to 8192 in SmolMode, 32768 standard)
 }
 
 // Step records one tool execution in a turn (used by RunTrace / the trace CLI).
@@ -106,10 +110,20 @@ func New(cfg Config) *Agent {
 			cfg.SDLC = sdlc.NewManager(".")
 		}
 	}
+	if cfg.Hooks == nil {
+		cfg.Hooks = NewHookRunner(".")
+	}
 	return &Agent{
 		cfg:     cfg,
 		steerCh: make(chan string, 16),
 	}
+}
+
+// Hooks returns Mímir's Level 1 lifecycle hook runner.
+func (a *Agent) Hooks() *HookRunner {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.Hooks
 }
 
 // Decider returns Mímir's built-in System-One Decision Engine (Liquid AI d1-omni-600M).
@@ -320,7 +334,32 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 	reg := a.cfg.Tools
 	mode := a.cfg.Mode
 	approve := a.cfg.ApprovalFunc
+	gate := a.cfg.Gate
 	a.mu.RUnlock()
+
+	var args map[string]any
+	if repairedArgs != "" {
+		_ = json.Unmarshal([]byte(repairedArgs), &args)
+	}
+
+	// 1. Fail-closed policy gate check (F2/F3/ADR-009)
+	if gate != nil {
+		dec := gate.Evaluate(policy.Request{Tool: tc.Name, Args: args})
+		switch dec {
+		case policy.Deny:
+			st.Err = fmt.Sprintf("execution of tool %q blocked by policy gate (deny)", tc.Name)
+			st.Result = st.Err
+			return st
+		case policy.RequireApproval:
+			if approve != nil && !approve(tc.Name, repairedArgs) {
+				st.Err = fmt.Sprintf("execution of tool %q rejected: user approval required by policy gate", tc.Name)
+				st.Result = st.Err
+				return st
+			}
+		case policy.Allow:
+			// Allowed to proceed
+		}
+	}
 
 	if mode == ModeReadOnly && tools.IsWriteTool(tc.Name) {
 		st.Err = "blocked in read-only (ro) mode: switch to edit or bypass mode (Shift+Tab) to allow mutations"
@@ -335,15 +374,24 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 		}
 	}
 
+	a.mu.RLock()
+	hooks := a.cfg.Hooks
+	a.mu.RUnlock()
+
+	if hooks != nil {
+		hCtx := &HookContext{
+			Type:     HookPreTool,
+			ToolName: tc.Name,
+			ToolArgs: repairedArgs,
+		}
+		_ = hooks.Execute(ctx, hCtx)
+	}
+
 	tool, ok := reg.Get(tc.Name)
 	if !ok {
 		st.Err = "unknown tool: " + tc.Name
 		st.Result = st.Err
 		return st
-	}
-	var args map[string]any
-	if repairedArgs != "" {
-		_ = json.Unmarshal([]byte(repairedArgs), &args)
 	}
 	r, err := tool.Run(ctx, args)
 	st.Result = r
@@ -351,6 +399,21 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 		st.Err = err.Error()
 		if st.Result == "" {
 			st.Result = st.Err
+		}
+	}
+
+	if hooks != nil {
+		hCtx := &HookContext{
+			Type:       HookPostTool,
+			ToolName:   tc.Name,
+			ToolArgs:   repairedArgs,
+			ToolResult: st.Result,
+			ToolErr:    st.Err,
+		}
+		_ = hooks.Execute(ctx, hCtx)
+		st.Result = hCtx.ToolResult
+		if hCtx.ToolErr != "" {
+			st.Err = hCtx.ToolErr
 		}
 	}
 	return st
@@ -383,6 +446,7 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step
 		keepRecent = 2
 	}
 	for step := 0; step < maxToolSteps; step++ {
+		msgs = a.maybeCompactContext(msgs, smol)
 		pruned := PruneHistoryPlaceholders(msgs, keepRecent)
 		a.mu.RLock()
 		prov := a.cfg.Provider
@@ -410,6 +474,20 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step
 		last = StripEmDashes(resp.Content)
 		msgs = append(msgs, llm.Message{Role: "assistant", Content: last, ToolCalls: resp.ToolCalls})
 		if len(resp.ToolCalls) == 0 {
+			a.mu.RLock()
+			hooks := a.cfg.Hooks
+			a.mu.RUnlock()
+			if hooks != nil {
+				hCtx := &HookContext{
+					Type:      HookOnStop,
+					Trace:     trace,
+					TodoLines: a.todoLines(),
+				}
+				_ = hooks.Execute(ctx, hCtx)
+				if hCtx.InjectedMsg != "" {
+					last += "\n\n[" + hCtx.InjectedMsg + "]"
+				}
+			}
 			return last, trace, nil
 		}
 		for _, tc := range resp.ToolCalls {
@@ -420,6 +498,20 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step
 		// Inject any mid-turn user steering messages queued during tool execution.
 		for _, sm := range a.drainSteer() {
 			msgs = append(msgs, llm.Message{Role: "user", Content: "[User steering instruction]: " + sm})
+		}
+	}
+	a.mu.RLock()
+	hooks := a.cfg.Hooks
+	a.mu.RUnlock()
+	if hooks != nil {
+		hCtx := &HookContext{
+			Type:      HookOnStop,
+			Trace:     trace,
+			TodoLines: a.todoLines(),
+		}
+		_ = hooks.Execute(ctx, hCtx)
+		if hCtx.InjectedMsg != "" {
+			last += "\n\n[" + hCtx.InjectedMsg + "]"
 		}
 	}
 	return last, trace, nil
@@ -468,6 +560,7 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 		keepRecent = 2
 	}
 	for step := 0; step < maxToolSteps; step++ {
+		msgs = a.maybeCompactContext(msgs, smol)
 		pruned := PruneHistoryPlaceholders(msgs, keepRecent)
 		a.mu.RLock()
 		prov := a.cfg.Provider
@@ -513,6 +606,19 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 		finalReply = text
 		msgs = append(msgs, llm.Message{Role: "assistant", Content: text, ToolCalls: toolCalls})
 		if len(toolCalls) == 0 {
+			a.mu.RLock()
+			hooks := a.cfg.Hooks
+			a.mu.RUnlock()
+			if hooks != nil {
+				hCtx := &HookContext{
+					Type:      HookOnStop,
+					TodoLines: a.todoLines(),
+				}
+				_ = hooks.Execute(ctx, hCtx)
+				if hCtx.InjectedMsg != "" {
+					finalReply += "\n\n[" + hCtx.InjectedMsg + "]"
+				}
+			}
 			emit(Event{Type: EventDone, Reply: finalReply})
 			return nil
 		}
@@ -524,6 +630,19 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 		for _, sm := range a.drainSteer() {
 			emit(Event{Type: EventSteer, Text: sm})
 			msgs = append(msgs, llm.Message{Role: "user", Content: "[User steering instruction]: " + sm})
+		}
+	}
+	a.mu.RLock()
+	hooks := a.cfg.Hooks
+	a.mu.RUnlock()
+	if hooks != nil {
+		hCtx := &HookContext{
+			Type:      HookOnStop,
+			TodoLines: a.todoLines(),
+		}
+		_ = hooks.Execute(ctx, hCtx)
+		if hCtx.InjectedMsg != "" {
+			finalReply += "\n\n[" + hCtx.InjectedMsg + "]"
 		}
 	}
 	emit(Event{Type: EventDone, Reply: finalReply})
@@ -570,4 +689,39 @@ func systemPrompt(memories []cortex.Neuron, schemas []llm.ToolSchema) string {
 	}
 	p += "\n\nWhen presenting multiple-choice questions or options, use this exact format so the UI renders clickable buttons:\n[choice]\nA) option text\nB) option text\nC) option text\n[/choice]\nAlways use this format for multiple-choice answers - never just list them as plain text."
 	return p
+}
+
+// maybeCompactContext checks if estimated conversation token count exceeds 80%
+// of the context budget. When exceeded, it generates `.mimir/HANDOFF.md` to persist
+// continuity state before aggressively compacting history to prevent context overflow.
+func (a *Agent) maybeCompactContext(msgs []llm.Message, smol bool) []llm.Message {
+	budget := a.cfg.ContextBudget
+	if budget <= 0 {
+		if smol {
+			budget = 8192
+		} else {
+			budget = 32768
+		}
+	}
+	threshold := int(float64(budget) * 0.8)
+	current := EstimateTokens(msgs)
+	if current < threshold {
+		return msgs
+	}
+
+	// Generate continuity handoff document before aggressive trimming
+	handoffMD := GenerateHandoffMarkdown("session-auto-compaction", msgs, a.todoLines(), "")
+	_, _ = WriteHandoffFile(".", handoffMD)
+
+	// Keep system prompt (index 0) and the most recent 2 turns, replace middle with summary notice
+	if len(msgs) <= 3 {
+		return msgs
+	}
+	sysMsg := msgs[0]
+	recent := msgs[len(msgs)-2:]
+	compactedNotice := llm.Message{
+		Role:    "user",
+		Content: fmt.Sprintf("[Context Compaction: Conversation exceeded 80%% context threshold (%d/%d tokens). Previous state persisted to .mimir/HANDOFF.md. Active todos and recent turns preserved.]", current, budget),
+	}
+	return append([]llm.Message{sysMsg, compactedNotice}, recent...)
 }

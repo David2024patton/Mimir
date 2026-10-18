@@ -9,11 +9,11 @@ import (
 
 // Config is the top-level mimir.json configuration.
 type Config struct {
-	Port      int                 `json:"port"`
-	LogLevel  string              `json:"log_level"`
-	Home      string              `json:"home"`
-	Telemetry bool                `json:"telemetry"`
-	Providers map[string]Provider `json:"providers"`
+	Port      int                  `json:"port"`
+	LogLevel  string               `json:"log_level"`
+	Home      string               `json:"home"`
+	Telemetry bool                 `json:"telemetry"`
+	Providers map[string]Provider  `json:"providers"`
 	MCP       map[string]MCPServer `json:"mcp"`
 }
 

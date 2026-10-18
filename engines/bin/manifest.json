@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0",
+  "owner": "Alpha Flux LLC",
+  "website": "https://alphaflux.net",
+  "license": "LICENSE-ENGINES.md",
+  "required_attribution": "Powered by Alpha Flux LLC Proprietary Engines (https://alphaflux.net)",
+  "updated_at": "2026-10-18T01:53:56Z",
+  "engines": [
+    {
+      "id": "tyr-core",
+      "name": "Tyr-Core Engine",
+      "version": "0.2.0",
+      "source_branch": "engine/tyr-rust",
+      "binary": "engines/bin/mimir_tyr_engine.exe",
+      "sha256": "ba924fc268be96961f03f4eeb5957b419968e8288f52fda14487423794f2faf5",
+      "size_bytes": 2444288,
+      "platforms": {
+        "darwin_arm64": {
+          "binary": "engines/bin/mimir_tyr_engine_darwin_arm64",
+          "sha256": "681be8cf78d36252344ff28c0f245ecc85467d48f6119ed0b082f4e7ca78bb85",
+          "size_bytes": 2264930
+        },
+        "linux_amd64": {
+          "binary": "engines/bin/mimir_tyr_engine_linux_amd64",
+          "sha256": "2e0863fbe79d6960c0b75e69cedd529b39442092df1efff659ed468448275106",
+          "size_bytes": 2310306
+        },
+        "windows_amd64": {
+          "binary": "engines/bin/mimir_tyr_engine_windows_amd64.exe",
+          "sha256": "ba924fc268be96961f03f4eeb5957b419968e8288f52fda14487423794f2faf5",
+          "size_bytes": 2444288
+        }
+      },
+      "stack": "go (rust port planned)",
+      "description": "Symbol outline and Okapi BM25 code search."
+    },
+    {
+      "id": "mjolnir-compute",
+      "name": "Mjolnir-Compute Engine",
+      "version": "0.2.0",
+      "source_branch": "engine/mjolnir-mojo",
+      "binary": "engines/bin/mimir_mjolnir_engine.exe",
+      "sha256": "6b2c6b93cebbc73f169c90653035bdacb77fc28c2e620c42232eec40c4d587cd",
+      "size_bytes": 2155008,
+      "platforms": {
+        "darwin_arm64": {
+          "binary": "engines/bin/mimir_mjolnir_engine_darwin_arm64",
+          "sha256": "be60614b8c35552b5ce67950dffe1b3733576e384d8f10aa47fac197c49c455a",
+          "size_bytes": 2077538
+        },
+        "linux_amd64": {
+          "binary": "engines/bin/mimir_mjolnir_engine_linux_amd64",
+          "sha256": "3680c43c1cf3708e88651877aeee987e5081a1d5251f7551023726cc53aa87bb",
+          "size_bytes": 2060450
+        },
+        "windows_amd64": {
+          "binary": "engines/bin/mimir_mjolnir_engine_windows_amd64.exe",
+          "sha256": "6b2c6b93cebbc73f169c90653035bdacb77fc28c2e620c42232eec40c4d587cd",
+          "size_bytes": 2155008
+        }
+      },
+      "stack": "go (mojo port planned)",
+      "description": ".itf header I/O, cosine similarity, 10,048-bit VSA bind/unbind."
+    },
+    {
+      "id": "alphaflux-core",
+      "name": "Alpha Flux Intelligence Engine",
+      "version": "0.2.0",
+      "source_branch": "engine/alphaflux-core",
+      "binary": "engines/bin/mimir_alphaflux_engine.exe",
+      "sha256": "a95eb6c442c5c03d10d9c20f0553b836f90a93f0515a5e941d3fbb843014ddf3",
+      "size_bytes": 4413440,
+      "platforms": {
+        "darwin_arm64": {
+          "binary": "engines/bin/mimir_alphaflux_engine_darwin_arm64",
+          "sha256": "f5fa78763b7e20a0f76c5c919376d8b77bc730865dc7de25176e64fee7e27202",
+          "size_bytes": 4072642
+        },
+        "linux_amd64": {
+          "binary": "engines/bin/mimir_alphaflux_engine_linux_amd64",
+          "sha256": "25466e86963e3eff5ae42e91460bd1b746b9adda8b57659219569a62a69bcf5d",
+          "size_bytes": 4247714
+        },
+        "windows_amd64": {
+          "binary": "engines/bin/mimir_alphaflux_engine_windows_amd64.exe",
+          "sha256": "a95eb6c442c5c03d10d9c20f0553b836f90a93f0515a5e941d3fbb843014ddf3",
+          "size_bytes": 4413440
+        }
+      },
+      "stack": "go",
+      "description": "Huginn-Decider routing, Epistemic Critic, Impeccable + SEO/GEO web audit."
+    }
+  ]
+}

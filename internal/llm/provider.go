@@ -6,7 +6,7 @@ import "context"
 
 // Message is one turn in a conversation.
 type Message struct {
-	Role       string     // system | user | assistant | tool
+	Role       string // system | user | assistant | tool
 	Content    string
 	ToolCalls  []ToolCall // assistant messages may carry tool calls
 	ToolCallID string     // tool-role messages reference the call id

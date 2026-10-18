@@ -23,8 +23,8 @@ type Neuron struct {
 	Layer       string     `json:"layer,omitempty"` // activity | context | experience | identity | preference
 	Title       string     `json:"title,omitempty"`
 	Content     string     `json:"content"`
-	Embedding   []float64  `json:"embedding,omitempty"` // vector for RAG
-	Decay       float64    `json:"decay"`               // forgetting-curve weight (F6)
+	Embedding   []float64  `json:"embedding,omitempty"`    // vector for RAG
+	Decay       float64    `json:"decay"`                  // forgetting-curve weight (F6)
 	AccessCount int        `json:"access_count,omitempty"` // reinforcement: times recalled (F6)
 }
 

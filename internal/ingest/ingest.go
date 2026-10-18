@@ -39,35 +39,35 @@ type Options struct {
 
 // MindNode represents one file or module inside the Yggdrasil Mind Map.
 type MindNode struct {
-	Path      string   `json:"path"`
-	Language  string   `json:"language"`
-	Bytes     int64    `json:"bytes"`
-	Symbols   []string `json:"symbols,omitempty"`   // top exported functions/types/classes
-	Imports   []string `json:"imports,omitempty"`   // imported packages/modules
-	IsTest    bool     `json:"is_test,omitempty"`   // true for *_test.go, *.spec.ts, test_*.py
-	Summary   string   `json:"summary,omitempty"`   // first doc comment or header line
+	Path     string   `json:"path"`
+	Language string   `json:"language"`
+	Bytes    int64    `json:"bytes"`
+	Symbols  []string `json:"symbols,omitempty"` // top exported functions/types/classes
+	Imports  []string `json:"imports,omitempty"` // imported packages/modules
+	IsTest   bool     `json:"is_test,omitempty"` // true for *_test.go, *.spec.ts, test_*.py
+	Summary  string   `json:"summary,omitempty"` // first doc comment or header line
 }
 
 // MindMap is Mímir's structured structural graph ("Yggdrasil Mind Map") of a repository.
 // It is stored in the Cortex and fed directly into the Liquid AI d1-omni-600M Decision Model.
 type MindMap struct {
-	RepoName    string     `json:"repo_name"`
-	Source      string     `json:"source"`
-	IngestedAt  string     `json:"ingested_at"`
-	TotalFiles  int        `json:"total_files"`
-	TotalBytes  int64      `json:"total_bytes"`
-	EstTokens   int        `json:"est_tokens"`
-	Tree        string     `json:"tree"`
-	Nodes       []MindNode `json:"nodes"`
+	RepoName   string     `json:"repo_name"`
+	Source     string     `json:"source"`
+	IngestedAt string     `json:"ingested_at"`
+	TotalFiles int        `json:"total_files"`
+	TotalBytes int64      `json:"total_bytes"`
+	EstTokens  int        `json:"est_tokens"`
+	Tree       string     `json:"tree"`
+	Nodes      []MindNode `json:"nodes"`
 }
 
 // Result contains the full GitIngest output and Yggdrasil Mind Map.
 type Result struct {
-	Summary     string  `json:"summary"`
-	Tree        string  `json:"tree"`
-	Digest      string  `json:"digest"`
-	MindMap     MindMap `json:"mind_map"`
-	NeuronsSaved int    `json:"neurons_saved"`
+	Summary      string  `json:"summary"`
+	Tree         string  `json:"tree"`
+	Digest       string  `json:"digest"`
+	MindMap      MindMap `json:"mind_map"`
+	NeuronsSaved int     `json:"neurons_saved"`
 }
 
 var defaultIgnoredDirs = map[string]bool{
@@ -469,6 +469,14 @@ func repoNameFromURL(u string) string {
 }
 
 func shallowClone(ctx context.Context, url, branch string) (string, func(), error) {
+	// Sanitize url and branch to prevent git argument injection (F9)
+	if strings.HasPrefix(url, "-") {
+		return "", func() {}, fmt.Errorf("invalid repository url %q: cannot start with dash", url)
+	}
+	if strings.HasPrefix(branch, "-") {
+		return "", func() {}, fmt.Errorf("invalid branch %q: cannot start with dash", branch)
+	}
+
 	tmp, err := os.MkdirTemp("", "mimir-gitingest-*")
 	if err != nil {
 		return "", func() {}, err
@@ -479,7 +487,8 @@ func shallowClone(ctx context.Context, url, branch string) (string, func(), erro
 	if branch != "" {
 		args = append(args, "--branch", branch)
 	}
-	args = append(args, url, tmp)
+	// Use explicit "--" separator to prevent url from being parsed as options
+	args = append(args, "--", url, tmp)
 
 	cctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()

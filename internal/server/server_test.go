@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -259,5 +260,72 @@ func TestServerUsage(t *testing.T) {
 	m := out.Models[0]
 	if m.Model != "qwen3:8b" || !m.Local || m.Requests != 2 || m.TotalTokens != 165 {
 		t.Errorf("model usage = %+v", m)
+	}
+}
+
+func TestServerApiStatusAndEngines(t *testing.T) {
+	store, err := cortex.NewMemoryStoreAt(filepath.Join(t.TempDir(), "cortex.json"))
+	if err != nil {
+		t.Fatalf("store: %v", err)
+	}
+	ag := agent.New(agent.Config{Provider: &fakeText{"x"}, Tools: tools.NewRegistry(), Cortex: store, Model: "test-model"})
+	srv := httptest.NewServer(Handler(ag, store, nil, nil, nil))
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/api/status")
+	if err != nil {
+		t.Fatalf("get /api/status: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+	var st map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&st); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if st["status"] != "ok" || st["model"] != "test-model" {
+		t.Errorf("unexpected status response: %+v", st)
+	}
+	if !strings.Contains(fmt.Sprint(st["attribution"]), "Alpha Flux LLC") {
+		t.Errorf("attribution missing Alpha Flux LLC: %+v", st)
+	}
+}
+
+func TestServerSessionIDORProtection(t *testing.T) {
+	store, _ := cortex.NewMemoryStoreAt(filepath.Join(t.TempDir(), "cortex.json"))
+	ag := agent.New(agent.Config{Provider: &fakeText{"ok"}, Tools: tools.NewRegistry(), Cortex: store, Model: "m"})
+
+	// Mock session store with user A
+	sessStore, err := cortex.NewFileSessionStore(t.TempDir())
+	if err != nil {
+		t.Fatalf("new file session store: %v", err)
+	}
+	sessA, err := sessStore.CreateSession(context.Background(), "Alice's Secret Chat", "user_alice")
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+
+	handler := Handler(ag, store, sessStore, nil, nil)
+
+	// User Bob attempts to access Alice's session -> must be rejected with 403 Forbidden
+	req := httptest.NewRequest(http.MethodGet, "/sessions/"+sessA.ID, nil)
+	// Inject user_bob into context
+	req = req.WithContext(context.WithValue(req.Context(), ctxUserID, "user_bob"))
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("IDOR vulnerability: got status %d, want 403 Forbidden", w.Code)
+	}
+
+	// User Alice accesses Alice's session -> must succeed 200 OK
+	reqAlice := httptest.NewRequest(http.MethodGet, "/sessions/"+sessA.ID, nil)
+	reqAlice = reqAlice.WithContext(context.WithValue(reqAlice.Context(), ctxUserID, "user_alice"))
+	wAlice := httptest.NewRecorder()
+	handler.ServeHTTP(wAlice, reqAlice)
+
+	if wAlice.Code != http.StatusOK {
+		t.Errorf("expected 200 OK for rightful session owner, got %d", wAlice.Code)
 	}
 }

@@ -15,7 +15,9 @@ import (
 	"github.com/David2024patton/Mimir/internal/cortex"
 	"github.com/David2024patton/Mimir/internal/ingest"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/relay"
 	"github.com/David2024patton/Mimir/internal/runengine"
+	"github.com/David2024patton/Mimir/internal/swarm"
 	"github.com/David2024patton/Mimir/internal/tools"
 )
 
@@ -201,7 +203,9 @@ func handleSlashCommand(
     %s/smol [auto|on|off]%s        Toggle SmolMode optimizations for compact/local models
     %s/decide [prompt]%s           Run Liquid AI d1-omni-600M System-One decision check on a prompt
     %s/persona [name]%s            Switch Norse persona (odin, thor, loki, heimdall, bragi, huginn, muninn, forseti)
+    %s/swarm [add|list|run]%s      Manage Level 3 Multi-Agent Software Factory queue
     %s/todo%s                      Show the active harness-owned Todo checklist
+    %s/handoff%s                   Generate .mimir/HANDOFF.md for session continuity
     %s/memory%s                    Show stored Cortex memories
     %s/compact%s                   Prune old file-write payloads from conversation history now
     %s/web%s                       Start or show the live Book-Spine Web UI URL
@@ -212,7 +216,8 @@ func handleSlashCommand(
 			ansiCyan, ansiReset, ansiCyan, ansiReset, ansiCyan, ansiReset,
 			ansiCyan, ansiReset, ansiCyan, ansiReset, ansiCyan, ansiReset,
 			ansiCyan, ansiReset, ansiCyan, ansiReset, ansiCyan, ansiReset,
-			ansiCyan, ansiReset, ansiCyan, ansiReset, ansiCyan, ansiReset)
+			ansiCyan, ansiReset, ansiCyan, ansiReset, ansiCyan, ansiReset,
+			ansiCyan, ansiReset, ansiCyan, ansiReset)
 		return false, nil
 
 	case "/mode":
@@ -463,6 +468,47 @@ func handleSlashCommand(
 		fmt.Fprintln(out, "\n"+FormatMarkdown(rep.FormatMarkdown())+"\n")
 		return false, nil
 
+	case "/swarm", "/factory":
+		f := swarm.NewFactory(swarm.FactoryConfig{
+			RootDir:      ".",
+			MaxWorkers:   4,
+			TargetBranch: "main",
+		})
+		parts := strings.Fields(arg)
+		sub := ""
+		if len(parts) > 0 {
+			sub = strings.ToLower(parts[0])
+		}
+		switch sub {
+		case "", "status", "list":
+			fmt.Fprintln(out, "\n"+f.FormatStatus()+"\n")
+		case "add", "submit":
+			title := strings.TrimSpace(strings.TrimPrefix(arg, sub))
+			if title == "" {
+				fmt.Fprintln(out, "  usage: /swarm add <title>")
+				return false, nil
+			}
+			t, err := f.Submit(title, "Queued from interactive TUI.")
+			if err != nil {
+				return false, err
+			}
+			fmt.Fprintf(out, "  %s✓ Submitted task %s (`%s`) -> branch: %s%s\n\n", ansiGreen, t.ID, t.Title, t.Branch, ansiReset)
+		case "run":
+			if len(parts) < 2 {
+				fmt.Fprintln(out, "  usage: /swarm run <task-id>")
+				return false, nil
+			}
+			taskID := parts[1]
+			fmt.Fprintf(out, "  %s▸ Starting autonomous pipeline for %s...%s\n", ansiCyan, taskID, ansiReset)
+			if err := f.ExecuteTask(ctx, taskID); err != nil {
+				return false, fmt.Errorf("swarm run: %w", err)
+			}
+			fmt.Fprintf(out, "  %s✓ Task %s completed successfully through Odin -> Thor -> Loki -> Heimdall pipeline!%s\n\n", ansiGreen, taskID, ansiReset)
+		default:
+			fmt.Fprintf(out, "  unknown swarm action %q (try: list, add, run)\n", sub)
+		}
+		return false, nil
+
 	case "/model", "/models":
 		discovered := config.DiscoverLocalModels(ctx, 500*time.Millisecond)
 		if arg != "" {
@@ -549,6 +595,53 @@ func handleSlashCommand(
 			fmt.Fprintf(out, "  %s│%s %s%s #%d %s%s\n", ansiGold, ansiReset, col, badge, item.ID, item.Content, ansiReset)
 		}
 		fmt.Fprintf(out, "%s  ╰────────────────────────────────────────────────────╯%s\n\n", ansiGold, ansiReset)
+		return false, nil
+
+	case "/handoff":
+		var todos []string
+		if opts.Tools != nil {
+			if t, ok := opts.Tools.Get("todo"); ok {
+				if tt, ok := t.(*tools.TodoTool); ok && tt.Store != nil {
+					for _, item := range tt.Store.List() {
+						todos = append(todos, fmt.Sprintf("- #%d [%s] %s", item.ID, item.Status, item.Content))
+					}
+				}
+			}
+		}
+		summary := ""
+		if mm, ok := ingest.LatestMindMap(opts.Cortex); ok {
+			summary = fmt.Sprintf("%s (%d files, ~%dk tokens)", mm.RepoName, mm.TotalFiles, mm.EstTokens/1000)
+		}
+		sid := "tui-session"
+		md := agent.GenerateHandoffMarkdown(sid, *history, todos, summary)
+		outPath, err := agent.WriteHandoffFile(".", md)
+		if err != nil {
+			return false, err
+		}
+		fmt.Fprintf(out, "  %s✓ Handoff generated at: %s%s\n\n", ansiGreen, outPath, ansiReset)
+		return false, nil
+
+	case "/pair":
+		mgr := relay.NewManager()
+		host := "127.0.0.1:8420"
+		if opts.WebURL != "" {
+			host = strings.TrimPrefix(opts.WebURL, "http://")
+			host = strings.TrimPrefix(host, "https://")
+			host = strings.TrimRight(host, "/")
+		}
+		sess, err := mgr.CreateSession(host)
+		if err != nil {
+			return false, err
+		}
+		asciiQR, err := sess.GenerateQRCodeASCII()
+		if err != nil {
+			return false, err
+		}
+		fmt.Fprintf(out, "\n%s  === Mímir Mobile Companion Pairing (Happy E2EE) ===%s\n", ansiGold+ansiBold, ansiReset)
+		fmt.Fprintf(out, "  %sSession ID:%s %s\n", ansiCyan, ansiReset, sess.ID)
+		fmt.Fprintf(out, "  %sPairing URI:%s %s\n\n", ansiCyan, ansiReset, sess.PairURI())
+		fmt.Fprintln(out, asciiQR)
+		fmt.Fprintf(out, "  %sScan this QR code with the Mímir Flutter Mobile App to pair.%s\n\n", ansiDim, ansiReset)
 		return false, nil
 
 	case "/memory", "/cortex":

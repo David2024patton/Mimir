@@ -61,6 +61,7 @@ func capShellOutput(s string) string {
 	spillFile, err := os.CreateTemp("", "mimir-bash-*.log")
 	spillNote := ""
 	if err == nil {
+		_ = os.Chmod(spillFile.Name(), 0o600)
 		_, _ = spillFile.WriteString(s)
 		_ = spillFile.Close()
 		spillNote = fmt.Sprintf(" Full output (%d bytes) saved to %s.", len(s), filepath.Clean(spillFile.Name()))

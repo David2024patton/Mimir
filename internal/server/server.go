@@ -9,7 +9,10 @@ import (
 
 	"github.com/David2024patton/Mimir/internal/agent"
 	"github.com/David2024patton/Mimir/internal/cortex"
+	"github.com/David2024patton/Mimir/internal/engines"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/relay"
+	"github.com/David2024patton/Mimir/internal/swarm"
 )
 
 type Deps struct {
@@ -31,10 +34,78 @@ func Serve(d Deps) error {
 
 func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, auth *cortex.AuthStore, usage *llm.Tracker) http.Handler {
 	mux := http.NewServeMux()
+	relayMgr := relay.NewManager()
 
 	// Public
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"status": "ok"})
+	})
+
+	// Public E2EE Pair & Mobile endpoints
+	mux.HandleFunc("/api/pair", func(w http.ResponseWriter, r *http.Request) {
+		sess, err := relayMgr.CreateSession(r.Host)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		asciiQR, _ := sess.GenerateQRCodeASCII()
+		writeJSON(w, map[string]any{
+			"session":  sess,
+			"pair_uri": sess.PairURI(),
+			"ascii_qr": asciiQR,
+		})
+	})
+	mux.HandleFunc("/api/pair/complete", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST only", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			SessionID string `json:"session_id"`
+			ClientPub string `json:"client_pubkey"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		sess, ok := relayMgr.GetSession(req.SessionID)
+		if !ok {
+			http.Error(w, "session not found", http.StatusNotFound)
+			return
+		}
+		if err := sess.CompletePairing(req.ClientPub); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, map[string]any{"status": "paired", "session_id": sess.ID})
+	})
+	mux.HandleFunc("/api/mobile/stream", func(w http.ResponseWriter, r *http.Request) {
+		sessID := r.URL.Query().Get("id")
+		sess, ok := relayMgr.GetSession(sessID)
+		if !ok {
+			http.Error(w, "session not found", http.StatusNotFound)
+			return
+		}
+		sess.StreamHandler()(w, r)
+	})
+	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
+		pid, model, local := ag.ModelInfo()
+		sdlcMgr := ag.SDLC()
+		currPhase := ""
+		if sdlcMgr != nil {
+			currPhase = sdlcMgr.CurrentPhase().Title
+		}
+		writeJSON(w, map[string]any{
+			"status":      "ok",
+			"provider":    pid,
+			"model":       model,
+			"local":       local,
+			"mode":        ag.Mode(),
+			"effort":      ag.Effort(),
+			"smol":        ag.SmolMode(),
+			"sdlc_phase":  currPhase,
+			"attribution": engines.AttributionNotice,
+		})
 	})
 	mux.HandleFunc("/auth/send-code", sendCodeHandler(auth))
 	mux.HandleFunc("/auth/verify-code", verifyCodeHandler(auth))
@@ -100,13 +171,20 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			http.Error(w, "session id required", http.StatusBadRequest)
 			return
 		}
+		callerID := userIDFromContext(r.Context())
+		sess, err := sessions.GetSession(r.Context(), id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		// IDOR ownership check (F12): user can only access their own sessions unless local mode
+		if callerID != "" && callerID != "local" && sess.UserID != "" && sess.UserID != callerID {
+			http.Error(w, "forbidden: session does not belong to you", http.StatusForbidden)
+			return
+		}
+
 		switch r.Method {
 		case http.MethodGet:
-			sess, err := sessions.GetSession(r.Context(), id)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusNotFound)
-				return
-			}
 			writeJSON(w, sess)
 		case http.MethodDelete:
 			if err := sessions.DeleteSession(r.Context(), id); err != nil {
@@ -163,8 +241,17 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		}
 		var history []llm.Message
 		if req.SessionID != "" {
+			callerID := userIDFromContext(r.Context())
 			sess, err := sessions.GetSession(r.Context(), req.SessionID)
-			if err == nil && len(sess.Messages) > 0 {
+			if err != nil {
+				http.Error(w, "session not found", http.StatusNotFound)
+				return
+			}
+			if callerID != "" && callerID != "local" && sess.UserID != "" && sess.UserID != callerID {
+				http.Error(w, "forbidden: session does not belong to you", http.StatusForbidden)
+				return
+			}
+			if len(sess.Messages) > 0 {
 				for _, m := range sess.Messages {
 					history = append(history, llm.Message{Role: m.Role, Content: m.Content})
 				}
@@ -174,6 +261,12 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			}); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
+			}
+		}
+		if req.Mode != "" {
+			switch strings.ToLower(req.Mode) {
+			case "ro", "edit", "bypass":
+				ag.SetMode(strings.ToLower(req.Mode))
 			}
 		}
 		res, err := ag.RunFull(r.Context(), strings.TrimSpace(req.Prompt), history)
@@ -219,8 +312,17 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		w.Header().Set("Connection", "keep-alive")
 		var history []llm.Message
 		if req.SessionID != "" {
+			callerID := userIDFromContext(r.Context())
 			sess, err := sessions.GetSession(r.Context(), req.SessionID)
-			if err == nil && len(sess.Messages) > 0 {
+			if err != nil {
+				http.Error(w, "session not found", http.StatusNotFound)
+				return
+			}
+			if callerID != "" && callerID != "local" && sess.UserID != "" && sess.UserID != callerID {
+				http.Error(w, "forbidden: session does not belong to you", http.StatusForbidden)
+				return
+			}
+			if len(sess.Messages) > 0 {
 				for _, m := range sess.Messages {
 					history = append(history, llm.Message{Role: m.Role, Content: m.Content})
 				}
@@ -229,6 +331,12 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 				Role:    "user",
 				Content: req.Prompt,
 			})
+		}
+		if req.Mode != "" {
+			switch strings.ToLower(req.Mode) {
+			case "ro", "edit", "bypass":
+				ag.SetMode(strings.ToLower(req.Mode))
+			}
 		}
 		var assistantReply string
 		err := ag.RunStream(r.Context(), strings.TrimSpace(req.Prompt), history, func(e agent.Event) {
@@ -254,6 +362,64 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		}
 	})
 
+	api.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+		pid, model, local := ag.ModelInfo()
+		sdlcMgr := ag.SDLC()
+		currPhase := ""
+		if sdlcMgr != nil {
+			currPhase = sdlcMgr.CurrentPhase().Title
+		}
+		writeJSON(w, map[string]any{
+			"status":      "ok",
+			"provider":    pid,
+			"model":       model,
+			"local":       local,
+			"mode":        ag.Mode(),
+			"effort":      ag.Effort(),
+			"smol":        ag.SmolMode(),
+			"sdlc_phase":  currPhase,
+			"attribution": engines.AttributionNotice,
+		})
+	})
+	api.HandleFunc("/engines", func(w http.ResponseWriter, r *http.Request) {
+		m, err := engines.LoadManifest(".")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, m)
+	})
+	api.HandleFunc("/swarm", func(w http.ResponseWriter, r *http.Request) {
+		f := swarm.NewFactory(swarm.FactoryConfig{
+			RootDir:      ".",
+			MaxWorkers:   4,
+			TargetBranch: "main",
+		})
+		switch r.Method {
+		case http.MethodGet:
+			writeJSON(w, map[string]any{
+				"tasks": f.ListTasks(),
+			})
+		case http.MethodPost:
+			var req struct {
+				Title       string `json:"title"`
+				Description string `json:"description"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			t, err := f.Submit(req.Title, req.Description)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			writeJSON(w, t)
+		default:
+			http.Error(w, "GET or POST only", http.StatusMethodNotAllowed)
+		}
+	})
+
 	// Wrap the api mux with auth middleware and register on main mux
 	mux.Handle("/sessions", authMiddleware(auth)(api))
 	mux.Handle("/sessions/", authMiddleware(auth)(api))
@@ -262,6 +428,10 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 	mux.Handle("/usage", authMiddleware(auth)(api))
 	mux.Handle("/chat", authMiddleware(auth)(api))
 	mux.Handle("/chat/stream", authMiddleware(auth)(api))
+	mux.Handle("/engines", authMiddleware(auth)(api))
+	mux.Handle("/swarm", authMiddleware(auth)(api))
+	mux.Handle("/api/engines", authMiddleware(auth)(api))
+	mux.Handle("/api/swarm", authMiddleware(auth)(api))
 
 	return mux
 }

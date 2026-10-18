@@ -7,10 +7,10 @@ import "github.com/David2024patton/Mimir/internal/sdlc"
 func Default(workDir string) *Registry {
 	r := NewRegistry()
 	r.Register(&ShellTool{WorkDir: workDir})
-	r.Register(&ReadFileTool{})
-	r.Register(&WriteFileTool{})
-	r.Register(&EditBlockTool{})
-	r.Register(&ListDirectoryTool{})
+	r.Register(&ReadFileTool{WorkDir: workDir})
+	r.Register(&WriteFileTool{WorkDir: workDir})
+	r.Register(&EditBlockTool{WorkDir: workDir})
+	r.Register(&ListDirectoryTool{WorkDir: workDir})
 	r.Register(&TodoTool{Store: NewTodoStore()})
 	r.Register(&QuestionTool{})
 	r.Register(&SkillTool{})
@@ -20,5 +20,3 @@ func Default(workDir string) *Registry {
 	r.Register(&WebAuditTool{WorkDir: workDir})
 	return r
 }
-
-
