@@ -94,22 +94,22 @@ G:\Mimir\
 ### Phase 2: Level 1-3 Harness Engineering & Autonomous Software Factory Upgrades (`Bifrost-Core`)
 > *Inspired by Leon van Zyl's 3 Levels of Harness Engineering (`YouTube_Video__z1EaBe9oIME_.txt`), `AutoForge`, and `Superlinear`.*
 
-- [ ] **2.1 Implement Level 1 Harness Lifecycle Hooks (`internal/agent/hooks.go`)**
-  - [ ] `2.1.a` Define `HookType` constants: `HookPrePrompt`, `HookPreTool`, `HookPostTool`, and `HookOnStop`.
-  - [ ] `2.1.b` Create `HookRunner` struct in `internal/agent/hooks.go` that reads optional `.mimir/hooks.json` shell or internal rules and runs them deterministically at each lifecycle boundary.
-  - [ ] `2.1.c` Wire `HookPostTool` after `write_file` / `edit_block` to automatically trigger fast syntax/linter checks (`gofmt`, `cargo check`, `tsc --noEmit`) and append any compiler errors directly to the tool output.
-  - [ ] `2.1.d` Wire `HookOnStop` in `runLoop` and `RunStream` (`internal/agent/agent.go`): if `EvaluateStopGate` detects unverified file mutations or incomplete `[pending]` Todo items when `AutoVerify` is enabled, inject a system reminder forcing the agent to run verification tests before emitting `EventDone`.
-  - [ ] `2.1.e` Write unit tests in `internal/agent/hooks_test.go` verifying that `HookPostTool` catches syntax errors and `HookOnStop` blocks premature completion.
-- [ ] **2.2 Implement Session Handoff & Context Continuity (`HANDOFF.md` Generator)**
-  - [ ] `2.2.a` Create `internal/agent/handoff.go` with `GenerateHandoffMarkdown(sessionID, history, todoLines, mindMapSummary)`.
-  - [ ] `2.2.b` Structured sections required in `.mimir/HANDOFF.md`:
+- [x] **2.1 Implement Level 1 Harness Lifecycle Hooks (`internal/agent/hooks.go`)**
+  - [x] `2.1.a` Define `HookType` constants: `HookPrePrompt`, `HookPreTool`, `HookPostTool`, and `HookOnStop`.
+  - [x] `2.1.b` Create `HookRunner` struct in `internal/agent/hooks.go` that reads optional `.mimir/hooks.json` shell or internal rules and runs them deterministically at each lifecycle boundary.
+  - [x] `2.1.c` Wire `HookPostTool` after `write_file` / `edit_block` to automatically trigger fast syntax/linter checks (`gofmt`, `cargo check`, `tsc --noEmit`) and append any compiler errors directly to the tool output.
+  - [x] `2.1.d` Wire `HookOnStop` in `runLoop` and `RunStream` (`internal/agent/agent.go`): if `EvaluateStopGate` detects unverified file mutations or incomplete `[pending]` Todo items when `AutoVerify` is enabled, inject a system reminder forcing the agent to run verification tests before emitting `EventDone`.
+  - [x] `2.1.e` Write unit tests in `internal/agent/hooks_test.go` verifying that `HookPostTool` catches syntax errors and `HookOnStop` blocks premature completion.
+- [x] **2.2 Implement Session Handoff & Context Continuity (`HANDOFF.md` Generator)**
+  - [x] `2.2.a` Create `internal/agent/handoff.go` with `GenerateHandoffMarkdown(sessionID, history, todoLines, mindMapSummary)`.
+  - [x] `2.2.b` Structured sections required in `.mimir/HANDOFF.md`:
     1. `## Current Objective & Architectural State`
     2. `## Completed Tasks & Verified Files`
     3. `## Remaining Todo Checklist (In-Progress & Pending)`
     4. `## Failed Approaches & Guardrails (Do Not Repeat)`
     5. `## Exact Next Command to Run`
-  - [ ] `2.2.c` Expose `/handoff` slash command in `internal/tui/tui.go` and `mimir handoff` CLI command in `cmd/mimir/main.go`.
-  - [ ] `2.2.d` Auto-trigger `GenerateHandoffMarkdown` whenever token usage crosses 80% of the model's context window (`CompactionThreshold`).
+  - [x] `2.2.c` Expose `/handoff` slash command in `internal/tui/tui.go` and `mimir handoff` CLI command in `cmd/mimir/main.go`.
+  - [x] `2.2.d` Auto-trigger `GenerateHandoffMarkdown` whenever token usage crosses 80% of the model's context window (`CompactionThreshold`).
 - [x] **2.3 Build Built-In Web/SEO/GEO + Impeccable Anti-Slop Auditor (`internal/tools/web_audit_tool.go`)**
   - [x] `2.3.a` Create `web_seo_audit` tool in `internal/tools/web_audit_tool.go` (registered in `internal/tools/default.go`) + durable `PRODUCT.md` / `DESIGN.md` context loader (`LoadDesignContext`).
   - [x] `2.3.b` Check and score the **4 Layers of Modern Search & Conversion + Impeccable Anti-Slop UI Rules**:

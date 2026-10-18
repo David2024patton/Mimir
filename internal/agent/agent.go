@@ -39,6 +39,7 @@ type Config struct {
 	Effort       string            // "" | "off" | "low" | "medium" | "high"
 	SmolPolicy   string            // "auto" (default) | "on" | "off"
 	ApprovalFunc func(toolName, rawArgs string) bool
+	Hooks        *HookRunner       // Level 1 Lifecycle Hooks
 }
 
 // Step records one tool execution in a turn (used by RunTrace / the trace CLI).
@@ -106,10 +107,20 @@ func New(cfg Config) *Agent {
 			cfg.SDLC = sdlc.NewManager(".")
 		}
 	}
+	if cfg.Hooks == nil {
+		cfg.Hooks = NewHookRunner(".")
+	}
 	return &Agent{
 		cfg:     cfg,
 		steerCh: make(chan string, 16),
 	}
+}
+
+// Hooks returns Mímir's Level 1 lifecycle hook runner.
+func (a *Agent) Hooks() *HookRunner {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg.Hooks
 }
 
 // Decider returns Mímir's built-in System-One Decision Engine (Liquid AI d1-omni-600M).
@@ -335,6 +346,19 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 		}
 	}
 
+	a.mu.RLock()
+	hooks := a.cfg.Hooks
+	a.mu.RUnlock()
+
+	if hooks != nil {
+		hCtx := &HookContext{
+			Type:     HookPreTool,
+			ToolName: tc.Name,
+			ToolArgs: repairedArgs,
+		}
+		_ = hooks.Execute(ctx, hCtx)
+	}
+
 	tool, ok := reg.Get(tc.Name)
 	if !ok {
 		st.Err = "unknown tool: " + tc.Name
@@ -351,6 +375,21 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 		st.Err = err.Error()
 		if st.Result == "" {
 			st.Result = st.Err
+		}
+	}
+
+	if hooks != nil {
+		hCtx := &HookContext{
+			Type:       HookPostTool,
+			ToolName:   tc.Name,
+			ToolArgs:   repairedArgs,
+			ToolResult: st.Result,
+			ToolErr:    st.Err,
+		}
+		_ = hooks.Execute(ctx, hCtx)
+		st.Result = hCtx.ToolResult
+		if hCtx.ToolErr != "" {
+			st.Err = hCtx.ToolErr
 		}
 	}
 	return st
@@ -410,6 +449,20 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step
 		last = StripEmDashes(resp.Content)
 		msgs = append(msgs, llm.Message{Role: "assistant", Content: last, ToolCalls: resp.ToolCalls})
 		if len(resp.ToolCalls) == 0 {
+			a.mu.RLock()
+			hooks := a.cfg.Hooks
+			a.mu.RUnlock()
+			if hooks != nil {
+				hCtx := &HookContext{
+					Type:      HookOnStop,
+					Trace:     trace,
+					TodoLines: a.todoLines(),
+				}
+				_ = hooks.Execute(ctx, hCtx)
+				if hCtx.InjectedMsg != "" {
+					last += "\n\n[" + hCtx.InjectedMsg + "]"
+				}
+			}
 			return last, trace, nil
 		}
 		for _, tc := range resp.ToolCalls {
@@ -420,6 +473,20 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step
 		// Inject any mid-turn user steering messages queued during tool execution.
 		for _, sm := range a.drainSteer() {
 			msgs = append(msgs, llm.Message{Role: "user", Content: "[User steering instruction]: " + sm})
+		}
+	}
+	a.mu.RLock()
+	hooks := a.cfg.Hooks
+	a.mu.RUnlock()
+	if hooks != nil {
+		hCtx := &HookContext{
+			Type:      HookOnStop,
+			Trace:     trace,
+			TodoLines: a.todoLines(),
+		}
+		_ = hooks.Execute(ctx, hCtx)
+		if hCtx.InjectedMsg != "" {
+			last += "\n\n[" + hCtx.InjectedMsg + "]"
 		}
 	}
 	return last, trace, nil
@@ -513,6 +580,19 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 		finalReply = text
 		msgs = append(msgs, llm.Message{Role: "assistant", Content: text, ToolCalls: toolCalls})
 		if len(toolCalls) == 0 {
+			a.mu.RLock()
+			hooks := a.cfg.Hooks
+			a.mu.RUnlock()
+			if hooks != nil {
+				hCtx := &HookContext{
+					Type:      HookOnStop,
+					TodoLines: a.todoLines(),
+				}
+				_ = hooks.Execute(ctx, hCtx)
+				if hCtx.InjectedMsg != "" {
+					finalReply += "\n\n[" + hCtx.InjectedMsg + "]"
+				}
+			}
 			emit(Event{Type: EventDone, Reply: finalReply})
 			return nil
 		}
@@ -524,6 +604,19 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 		for _, sm := range a.drainSteer() {
 			emit(Event{Type: EventSteer, Text: sm})
 			msgs = append(msgs, llm.Message{Role: "user", Content: "[User steering instruction]: " + sm})
+		}
+	}
+	a.mu.RLock()
+	hooks := a.cfg.Hooks
+	a.mu.RUnlock()
+	if hooks != nil {
+		hCtx := &HookContext{
+			Type:      HookOnStop,
+			TodoLines: a.todoLines(),
+		}
+		_ = hooks.Execute(ctx, hCtx)
+		if hCtx.InjectedMsg != "" {
+			finalReply += "\n\n[" + hCtx.InjectedMsg + "]"
 		}
 	}
 	emit(Event{Type: EventDone, Reply: finalReply})

@@ -202,6 +202,7 @@ func handleSlashCommand(
     %s/decide [prompt]%s           Run Liquid AI d1-omni-600M System-One decision check on a prompt
     %s/persona [name]%s            Switch Norse persona (odin, thor, loki, heimdall, bragi, huginn, muninn, forseti)
     %s/todo%s                      Show the active harness-owned Todo checklist
+    %s/handoff%s                   Generate .mimir/HANDOFF.md for session continuity
     %s/memory%s                    Show stored Cortex memories
     %s/compact%s                   Prune old file-write payloads from conversation history now
     %s/web%s                       Start or show the live Book-Spine Web UI URL
@@ -212,7 +213,8 @@ func handleSlashCommand(
 			ansiCyan, ansiReset, ansiCyan, ansiReset, ansiCyan, ansiReset,
 			ansiCyan, ansiReset, ansiCyan, ansiReset, ansiCyan, ansiReset,
 			ansiCyan, ansiReset, ansiCyan, ansiReset, ansiCyan, ansiReset,
-			ansiCyan, ansiReset, ansiCyan, ansiReset, ansiCyan, ansiReset)
+			ansiCyan, ansiReset, ansiCyan, ansiReset, ansiCyan, ansiReset,
+			ansiCyan, ansiReset)
 		return false, nil
 
 	case "/mode":
@@ -549,6 +551,30 @@ func handleSlashCommand(
 			fmt.Fprintf(out, "  %s│%s %s%s #%d %s%s\n", ansiGold, ansiReset, col, badge, item.ID, item.Content, ansiReset)
 		}
 		fmt.Fprintf(out, "%s  ╰────────────────────────────────────────────────────╯%s\n\n", ansiGold, ansiReset)
+		return false, nil
+
+	case "/handoff":
+		var todos []string
+		if opts.Tools != nil {
+			if t, ok := opts.Tools.Get("todo"); ok {
+				if tt, ok := t.(*tools.TodoTool); ok && tt.Store != nil {
+					for _, item := range tt.Store.List() {
+						todos = append(todos, fmt.Sprintf("- #%d [%s] %s", item.ID, item.Status, item.Content))
+					}
+				}
+			}
+		}
+		summary := ""
+		if mm, ok := ingest.LatestMindMap(opts.Cortex); ok {
+			summary = fmt.Sprintf("%s (%d files, ~%dk tokens)", mm.RepoName, mm.TotalFiles, mm.EstTokens/1000)
+		}
+		sid := "tui-session"
+		md := agent.GenerateHandoffMarkdown(sid, *history, todos, summary)
+		outPath, err := agent.WriteHandoffFile(".", md)
+		if err != nil {
+			return false, err
+		}
+		fmt.Fprintf(out, "  %s✓ Handoff generated at: %s%s\n\n", ansiGreen, outPath, ansiReset)
 		return false, nil
 
 	case "/memory", "/cortex":

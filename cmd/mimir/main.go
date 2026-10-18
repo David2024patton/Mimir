@@ -41,6 +41,7 @@ Usage:
   mimir engines run <id> ...  run an engine binary (attribution handshake added automatically)
   mimir engines publish       (maintainers) rehash engines/bin/* and rewrite manifest.json
   mimir update [--check]      update the harness (git fast-forward + rebuild) and any changed engines
+  mimir handoff               generate .mimir/HANDOFF.md for session continuity
   mimir providers             list built-in BYOK providers + Mímir Well Subscription tiers
   mimir setup                 bootstrap Liquid AI d1-omni-600M local System-One decision model
   mimir -p "your prompt"      headless single-shot prompt (for scripts & CI)
@@ -526,6 +527,41 @@ func main() {
 		if !rep.Passed {
 			os.Exit(1)
 		}
+		return
+	}
+
+	if len(positional) > 0 && positional[0] == "handoff" {
+		var todos []string
+		if t, ok := toolReg.Get("todo"); ok {
+			if tt, ok := t.(*tools.TodoTool); ok && tt.Store != nil {
+				for _, item := range tt.Store.List() {
+					todos = append(todos, fmt.Sprintf("- #%d [%s] %s", item.ID, item.Status, item.Content))
+				}
+			}
+		}
+		var history []llm.Message
+		sid := "cli-session"
+		if sessStore != nil {
+			if list, err := sessStore.ListSessions(context.Background(), ""); err == nil && len(list) > 0 {
+				sid = list[len(list)-1].ID
+				if s, err := sessStore.GetSession(context.Background(), sid); err == nil && s != nil {
+					for _, m := range s.Messages {
+						history = append(history, llm.Message{Role: m.Role, Content: m.Content})
+					}
+				}
+			}
+		}
+		summary := ""
+		if mm, ok := ingest.LatestMindMap(store); ok {
+			summary = fmt.Sprintf("%s (%d files, ~%dk tokens)", mm.RepoName, mm.TotalFiles, mm.EstTokens/1000)
+		}
+		md := agent.GenerateHandoffMarkdown(sid, history, todos, summary)
+		outPath, err := agent.WriteHandoffFile(cwd, md)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "handoff error:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("✓ Handoff generated at: %s\n\n%s\n", outPath, md)
 		return
 	}
 
