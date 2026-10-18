@@ -519,6 +519,8 @@ function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return 
 /* ===== live state ===== */
 var memCache = [];
 var usageCache = {total_tokens:0, models:[]};
+var enginesCache = {engines:[]};
+var swarmCache = {tasks:[]};
 var healthOK = false;
 var sending = false;
 var showTrace = true;
@@ -543,6 +545,21 @@ function cycleGlow(){ glowIdx=(glowIdx+1)%glowStyles.length; localStorage.setIte
 /* ===== SESSION STATE (F2.2) ===== */
 var currentSessionId = null;
 var sessions = [];
+
+/* ===== refresh engines and swarm ===== */
+function refreshEngines(){
+  return authFetch('/api/engines').then(function(r){return r.json()}).then(function(d){
+    enginesCache = d||{engines:[]};
+    if(openPanels.indexOf('engines')>=0) renderPanels();
+  }).catch(function(){});
+}
+
+function refreshSwarm(){
+  return authFetch('/api/swarm').then(function(r){return r.json()}).then(function(d){
+    swarmCache = d||{tasks:[]};
+    if(openPanels.indexOf('swarm')>=0) renderPanels();
+  }).catch(function(){});
+}
 
 /* ===== accent ===== */
 function setAccent(e,c,cd){ document.querySelectorAll('.swatch').forEach(function(s){s.classList.remove('active')}); e.classList.add('active');
@@ -766,6 +783,8 @@ function pinSession(id, title){
 var spineDefs=[
   {id:'cortex',label:'CORTEX',live:true},
   {id:'dashboard',label:'DASHBOARD',live:true},
+  {id:'engines',label:'ENGINES',live:true},
+  {id:'swarm',label:'SWARM',live:true},
   {id:'tasks',label:'TASKS'},
   {id:'code',label:'CODE'},
   {id:'preview',label:'PREVIEW'},
@@ -776,6 +795,55 @@ var spineDefs=[
 var openPanels=['cortex','dashboard'];
 
 var panelContent={
+  engines:function(){
+    var list = enginesCache.engines||[];
+    var rows = list.map(function(e){
+      var hostBin = e.binary || 'unknown';
+      var szKB = Math.round((e.size_bytes||0)/1024);
+      var sha = (e.sha256||'').substring(0, 12);
+      return '<div class="taskrow" style="flex-direction:column;align-items:flex-start;gap:4px;padding:11px">'+
+        '<div style="display:flex;width:100%;align-items:center;justify-content:space-between">'+
+          '<b style="font-family:var(--disp);color:var(--teal)">'+esc(e.name)+' ('+esc(e.id)+')</b>'+
+          '<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--lime) 20%, transparent);color:var(--lime);font-weight:700">VERIFIED</span>'+
+        '</div>'+
+        '<div style="font-size:11.5px;color:var(--muted)">'+esc(e.description)+'</div>'+
+        '<div style="font-size:11px;font-family:var(--mono);color:var(--dim);margin-top:2px">'+
+          'Stack: '+esc(e.stack)+' · Branch: '+esc(e.source_branch)+' · Size: '+szKB+' KB · sha256: '+sha+'...'+
+        '</div>'+
+      '</div>';
+    }).join('');
+    if(!rows) rows = '<div class="empty">Loading proprietary engines manifest...</div>';
+    return '<div class="disp" style="font-size:16px;font-weight:600;margin-bottom:2px">Proprietary Engines</div>'+
+      '<div style="color:var(--muted);font-size:12px;margin-bottom:12px">'+(enginesCache.required_attribution||'Powered by Alpha Flux LLC Proprietary Engines (https://alphaflux.net)')+'</div>'+
+      rows+
+      '<div class="pnote">Pre-compiled native binaries on main verified cryptographically by SHA-256 against manifest.json. Source code lives on dedicated engine branches.</div>';
+  },
+  swarm:function(){
+    var tasks = swarmCache.tasks||[];
+    var rows = tasks.map(function(t){
+      var st = t.state||'backlog';
+      var badgeCol = 'var(--dim)';
+      if(st==='merged') badgeCol = 'var(--lime)';
+      else if(st==='failed') badgeCol = 'var(--red)';
+      else if(st==='implement') badgeCol = 'var(--teal)';
+      else if(st==='test'||st==='review') badgeCol = 'var(--ember)';
+      return '<div class="taskrow" style="flex-direction:column;align-items:flex-start;gap:4px;padding:11px">'+
+        '<div style="display:flex;width:100%;align-items:center;justify-content:space-between">'+
+          '<b style="font-family:var(--disp)">'+esc(t.title)+' <span style="font-size:11px;color:var(--dim)">('+esc(t.id)+')</span></b>'+
+          '<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,'+badgeCol+' 20%, transparent);color:'+badgeCol+';font-weight:700;text-transform:uppercase">'+esc(st)+'</span>'+
+        '</div>'+
+        '<div style="font-size:11.5px;color:var(--muted)">'+esc(t.description)+'</div>'+
+        '<div style="font-size:11px;font-family:var(--mono);color:var(--dim);margin-top:2px">'+
+          'Assigned: '+esc(t.assigned_to)+' · Branch: '+esc(t.branch)+
+        '</div>'+
+      '</div>';
+    }).join('');
+    if(!rows) rows = '<div class="empty">No tasks in the Multi-Agent Software Factory queue.<br>Submit with <code>mimir swarm add "Title" "Description"</code> or in the chat!</div>';
+    return '<div class="disp" style="font-size:16px;font-weight:600;margin-bottom:2px">Level 3 Autonomous Software Factory</div>'+
+      '<div style="color:var(--muted);font-size:12px;margin-bottom:12px">Parallel agent pipelines (Odin -> Thor -> Loki -> Heimdall) in isolated Git worktrees.</div>'+
+      rows+
+      '<div class="pnote">Tasks are processed across isolated git worktrees, tested with full suites, audited with Impeccable + Epistemic gates, and auto-merged.</div>';
+  },
   cortex:function(){
     if(!memCache.length) return '<div class="empty">The Cortex is empty. Memories are facts and knowledge Mímir stores for recall across sessions. Unlike chat history (stored in sessions), memories are searchable knowledge that gets recalled when relevant.</div>';
     return memCache.slice().reverse().map(function(n){
@@ -1006,7 +1074,7 @@ function doSend(p){
 if(!authCheck()) throw 'redirect to /auth';
 var email = localStorage.getItem('mimir-email');
 if(email) authSetUser(email);
-renderSpines(); renderPanels(); refreshMemory(); refreshUsage(); checkHealth(false); applyGlow();
+renderSpines(); renderPanels(); refreshMemory(); refreshUsage(); refreshEngines(); refreshSwarm(); checkHealth(false); applyGlow();
 var savedSession = localStorage.getItem('mimir-session');
 if(savedSession){
   loadSession(savedSession);
@@ -1014,7 +1082,7 @@ if(savedSession){
   welcome();
   refreshSessions();
 }
-setInterval(function(){checkHealth(false); refreshUsage();},15000);
+setInterval(function(){checkHealth(false); refreshUsage(); refreshEngines(); refreshSwarm();},15000);
 </script>
 </body>
 </html>

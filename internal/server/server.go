@@ -9,7 +9,9 @@ import (
 
 	"github.com/David2024patton/Mimir/internal/agent"
 	"github.com/David2024patton/Mimir/internal/cortex"
+	"github.com/David2024patton/Mimir/internal/engines"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/swarm"
 )
 
 type Deps struct {
@@ -35,6 +37,25 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 	// Public
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"status": "ok"})
+	})
+	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
+		pid, model, local := ag.ModelInfo()
+		sdlcMgr := ag.SDLC()
+		currPhase := ""
+		if sdlcMgr != nil {
+			currPhase = sdlcMgr.CurrentPhase().Title
+		}
+		writeJSON(w, map[string]any{
+			"status":       "ok",
+			"provider":     pid,
+			"model":        model,
+			"local":        local,
+			"mode":         ag.Mode(),
+			"effort":       ag.Effort(),
+			"smol":         ag.SmolMode(),
+			"sdlc_phase":   currPhase,
+			"attribution":  engines.AttributionNotice,
+		})
 	})
 	mux.HandleFunc("/auth/send-code", sendCodeHandler(auth))
 	mux.HandleFunc("/auth/verify-code", verifyCodeHandler(auth))
@@ -254,6 +275,64 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		}
 	})
 
+	api.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+		pid, model, local := ag.ModelInfo()
+		sdlcMgr := ag.SDLC()
+		currPhase := ""
+		if sdlcMgr != nil {
+			currPhase = sdlcMgr.CurrentPhase().Title
+		}
+		writeJSON(w, map[string]any{
+			"status":       "ok",
+			"provider":     pid,
+			"model":        model,
+			"local":        local,
+			"mode":         ag.Mode(),
+			"effort":       ag.Effort(),
+			"smol":         ag.SmolMode(),
+			"sdlc_phase":   currPhase,
+			"attribution":  engines.AttributionNotice,
+		})
+	})
+	api.HandleFunc("/engines", func(w http.ResponseWriter, r *http.Request) {
+		m, err := engines.LoadManifest(".")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, m)
+	})
+	api.HandleFunc("/swarm", func(w http.ResponseWriter, r *http.Request) {
+		f := swarm.NewFactory(swarm.FactoryConfig{
+			RootDir:      ".",
+			MaxWorkers:   4,
+			TargetBranch: "main",
+		})
+		switch r.Method {
+		case http.MethodGet:
+			writeJSON(w, map[string]any{
+				"tasks": f.ListTasks(),
+			})
+		case http.MethodPost:
+			var req struct {
+				Title       string `json:"title"`
+				Description string `json:"description"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			t, err := f.Submit(req.Title, req.Description)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			writeJSON(w, t)
+		default:
+			http.Error(w, "GET or POST only", http.StatusMethodNotAllowed)
+		}
+	})
+
 	// Wrap the api mux with auth middleware and register on main mux
 	mux.Handle("/sessions", authMiddleware(auth)(api))
 	mux.Handle("/sessions/", authMiddleware(auth)(api))
@@ -262,6 +341,10 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 	mux.Handle("/usage", authMiddleware(auth)(api))
 	mux.Handle("/chat", authMiddleware(auth)(api))
 	mux.Handle("/chat/stream", authMiddleware(auth)(api))
+	mux.Handle("/engines", authMiddleware(auth)(api))
+	mux.Handle("/swarm", authMiddleware(auth)(api))
+	mux.Handle("/api/engines", authMiddleware(auth)(api))
+	mux.Handle("/api/swarm", authMiddleware(auth)(api))
 
 	return mux
 }

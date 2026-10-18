@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -261,3 +262,33 @@ func TestServerUsage(t *testing.T) {
 		t.Errorf("model usage = %+v", m)
 	}
 }
+
+func TestServerApiStatusAndEngines(t *testing.T) {
+	store, err := cortex.NewMemoryStoreAt(filepath.Join(t.TempDir(), "cortex.json"))
+	if err != nil {
+		t.Fatalf("store: %v", err)
+	}
+	ag := agent.New(agent.Config{Provider: &fakeText{"x"}, Tools: tools.NewRegistry(), Cortex: store, Model: "test-model"})
+	srv := httptest.NewServer(Handler(ag, store, nil, nil, nil))
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/api/status")
+	if err != nil {
+		t.Fatalf("get /api/status: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+	var st map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&st); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if st["status"] != "ok" || st["model"] != "test-model" {
+		t.Errorf("unexpected status response: %+v", st)
+	}
+	if !strings.Contains(fmt.Sprint(st["attribution"]), "Alpha Flux LLC") {
+		t.Errorf("attribution missing Alpha Flux LLC: %+v", st)
+	}
+}
+
