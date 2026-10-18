@@ -15,6 +15,7 @@ import (
 	"github.com/David2024patton/Mimir/internal/cortex"
 	"github.com/David2024patton/Mimir/internal/critic"
 	"github.com/David2024patton/Mimir/internal/decision"
+	"github.com/David2024patton/Mimir/internal/engines"
 	"github.com/David2024patton/Mimir/internal/ingest"
 	"github.com/David2024patton/Mimir/internal/llm"
 	"github.com/David2024patton/Mimir/internal/runengine"
@@ -36,6 +37,10 @@ Usage:
   mimir ship [draft] [ctx]    run the Tier-2 Production Ship Gate and advance SDLC to Deployment
   mimir audit <draft> [ctx]   run the Epistemic Critic & Verification Node against a draft report
   mimir audit-web [dir]       run Impeccable anti-slop UI + 4-Layer SEO/GEO & Conversion detectors
+  mimir engines               show Alpha Flux LLC engine binaries, versions, and integrity
+  mimir engines run <id> ...  run an engine binary (attribution handshake added automatically)
+  mimir engines publish       (maintainers) rehash engines/bin/* and rewrite manifest.json
+  mimir update [--check]      update the harness (git fast-forward + rebuild) and any changed engines
   mimir providers             list built-in BYOK providers + Mímir Well Subscription tiers
   mimir setup                 bootstrap Liquid AI d1-omni-600M local System-One decision model
   mimir -p "your prompt"      headless single-shot prompt (for scripts & CI)
@@ -386,6 +391,82 @@ func main() {
 		if !rep.PassAudit {
 			os.Exit(1)
 		}
+		return
+	}
+
+	if len(positional) > 0 && positional[0] == "engines" {
+		sub := ""
+		if len(positional) > 1 {
+			sub = positional[1]
+		}
+		switch sub {
+		case "", "status", "list":
+			fmt.Println(engines.FormatStatus(cwd))
+		case "publish":
+			m, err := engines.BuildManifest(context.Background(), cwd)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "engines publish:", err)
+				os.Exit(1)
+			}
+			for _, e := range m.Engines {
+				fmt.Printf("  %-16s v%-8s sha256=%s...\n", e.ID, e.Version, e.SHA256[:12])
+			}
+			fmt.Println("wrote engines/bin/manifest.json; commit and push main to release.")
+		case "run":
+			if len(positional) < 3 {
+				fmt.Fprintln(os.Stderr, "usage: mimir engines run <engine-id> [args...]")
+				os.Exit(2)
+			}
+			out, err := engines.Invoke(context.Background(), cwd, positional[2], positional[3:]...)
+			fmt.Println(out)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "engines run:", err)
+				os.Exit(1)
+			}
+		default:
+			fmt.Fprintf(os.Stderr, "unknown engines subcommand %q (status, run, publish)\n", sub)
+			os.Exit(2)
+		}
+		return
+	}
+
+	if len(positional) > 0 && positional[0] == "update" {
+		checkOnly := len(positional) > 1 && (positional[1] == "--check" || positional[1] == "check")
+		ctx := context.Background()
+		base := engines.UpdateBase()
+		if !checkOnly {
+			hr, err := engines.UpdateHarness(ctx, cwd)
+			fmt.Printf("harness (%s): %s\n", hr.Mode, hr.Output)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "harness update:", err)
+				os.Exit(1)
+			}
+			if hr.Rebuilt {
+				fmt.Println("harness rebuilt: bin/mimir updated (restart to use it)")
+			}
+		}
+		plan, err := engines.CheckForUpdates(ctx, cwd, base)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "engine update check:", err)
+			os.Exit(1)
+		}
+		if len(plan.Changes) == 0 {
+			fmt.Println("engines: all up to date with", base)
+			return
+		}
+		for _, c := range plan.Changes {
+			fmt.Printf("  %-16s %s -> %s (%s)\n", c.ID, c.LocalVersion, c.RemoteVersion, c.Reason)
+		}
+		if checkOnly {
+			fmt.Println("run `mimir update` to install.")
+			return
+		}
+		updated, err := engines.ApplyUpdates(ctx, cwd, plan)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "engine update:", err)
+			os.Exit(1)
+		}
+		fmt.Println("engines updated:", strings.Join(updated, ", "))
 		return
 	}
 

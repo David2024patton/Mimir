@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "owner": "Alpha Flux LLC",
+  "website": "https://alphaflux.net",
+  "license": "LICENSE-ENGINES.md",
+  "required_attribution": "Powered by Alpha Flux LLC Proprietary Engines (https://alphaflux.net)",
+  "updated_at": "2026-10-18T01:34:30Z",
+  "engines": [
+    {
+      "id": "tyr-core",
+      "name": "Tyr-Core Engine",
+      "version": "0.2.0",
+      "source_branch": "engine/tyr-rust",
+      "binary": "engines/bin/mimir_tyr_engine.exe",
+      "sha256": "ba924fc268be96961f03f4eeb5957b419968e8288f52fda14487423794f2faf5",
+      "size_bytes": 2444288,
+      "stack": "go (rust port planned)",
+      "description": "Symbol outline and Okapi BM25 code search."
+    },
+    {
+      "id": "mjolnir-compute",
+      "name": "Mjolnir-Compute Engine",
+      "version": "0.2.0",
+      "source_branch": "engine/mjolnir-mojo",
+      "binary": "engines/bin/mimir_mjolnir_engine.exe",
+      "sha256": "6b2c6b93cebbc73f169c90653035bdacb77fc28c2e620c42232eec40c4d587cd",
+      "size_bytes": 2155008,
+      "stack": "go (mojo port planned)",
+      "description": ".itf header I/O, cosine similarity, 10,048-bit VSA bind/unbind."
+    },
+    {
+      "id": "alphaflux-core",
+      "name": "Alpha Flux Intelligence Engine",
+      "version": "0.2.0",
+      "source_branch": "engine/alphaflux-core",
+      "binary": "engines/bin/mimir_alphaflux_engine.exe",
+      "sha256": "a95eb6c442c5c03d10d9c20f0553b836f90a93f0515a5e941d3fbb843014ddf3",
+      "size_bytes": 4413440,
+      "stack": "go",
+      "description": "Huginn-Decider routing, Epistemic Critic, Impeccable + SEO/GEO web audit."
+    }
+  ]
+}

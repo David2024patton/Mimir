@@ -44,6 +44,7 @@ var (
 type EngineEntry struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
+	Version     string `json:"version"`
 	Branch      string `json:"source_branch"`
 	Binary      string `json:"binary"`
 	SHA256      string `json:"sha256"`
@@ -59,6 +60,7 @@ type Manifest struct {
 	Website       string        `json:"website"`
 	License       string        `json:"license"`
 	Attribution   string        `json:"required_attribution"`
+	UpdatedAt     string        `json:"updated_at"`
 	Engines       []EngineEntry `json:"engines"`
 }
 
