@@ -18,6 +18,7 @@ import (
 	"github.com/David2024patton/Mimir/internal/engines"
 	"github.com/David2024patton/Mimir/internal/ingest"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/relay"
 	"github.com/David2024patton/Mimir/internal/runengine"
 	"github.com/David2024patton/Mimir/internal/server"
 	"github.com/David2024patton/Mimir/internal/swarm"
@@ -43,6 +44,7 @@ Usage:
   mimir engines run <id> ...  run an engine binary (attribution handshake added automatically)
   mimir engines publish       (maintainers) rehash engines/bin/* and rewrite manifest.json
   mimir update [--check]      update the harness (git fast-forward + rebuild) and any changed engines
+  mimir pair                  generate ASCII QR code to pair mobile companion via Happy E2EE
   mimir handoff               generate .mimir/HANDOFF.md for session continuity
   mimir providers             list built-in BYOK providers + Mímir Well Subscription tiers
   mimir setup                 bootstrap Liquid AI d1-omni-600M local System-One decision model
@@ -612,6 +614,33 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Printf("✓ Handoff generated at: %s\n\n%s\n", outPath, md)
+		return
+	}
+
+	if len(positional) > 0 && positional[0] == "pair" {
+		mgr := relay.NewManager()
+		host := "127.0.0.1:8420"
+		if addr != "" {
+			host = strings.TrimPrefix(addr, ":")
+			if !strings.Contains(host, ":") {
+				host = "127.0.0.1" + addr
+			}
+		}
+		sess, err := mgr.CreateSession(host)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "pairing error:", err)
+			os.Exit(1)
+		}
+		asciiQR, err := sess.GenerateQRCodeASCII()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "qr generation error:", err)
+			os.Exit(1)
+		}
+		fmt.Println("=== Mímir Mobile Companion Pairing (Happy E2EE) ===")
+		fmt.Printf("Session ID: %s\n", sess.ID)
+		fmt.Printf("Pairing URI: %s\n\n", sess.PairURI())
+		fmt.Println(asciiQR)
+		fmt.Println("Scan this QR code with the Mímir Flutter Mobile App to pair.")
 		return
 	}
 

@@ -15,6 +15,7 @@ import (
 	"github.com/David2024patton/Mimir/internal/cortex"
 	"github.com/David2024patton/Mimir/internal/ingest"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/relay"
 	"github.com/David2024patton/Mimir/internal/runengine"
 	"github.com/David2024patton/Mimir/internal/swarm"
 	"github.com/David2024patton/Mimir/internal/tools"
@@ -618,6 +619,29 @@ func handleSlashCommand(
 			return false, err
 		}
 		fmt.Fprintf(out, "  %s✓ Handoff generated at: %s%s\n\n", ansiGreen, outPath, ansiReset)
+		return false, nil
+
+	case "/pair":
+		mgr := relay.NewManager()
+		host := "127.0.0.1:8420"
+		if opts.WebURL != "" {
+			host = strings.TrimPrefix(opts.WebURL, "http://")
+			host = strings.TrimPrefix(host, "https://")
+			host = strings.TrimRight(host, "/")
+		}
+		sess, err := mgr.CreateSession(host)
+		if err != nil {
+			return false, err
+		}
+		asciiQR, err := sess.GenerateQRCodeASCII()
+		if err != nil {
+			return false, err
+		}
+		fmt.Fprintf(out, "\n%s  === Mímir Mobile Companion Pairing (Happy E2EE) ===%s\n", ansiGold+ansiBold, ansiReset)
+		fmt.Fprintf(out, "  %sSession ID:%s %s\n", ansiCyan, ansiReset, sess.ID)
+		fmt.Fprintf(out, "  %sPairing URI:%s %s\n\n", ansiCyan, ansiReset, sess.PairURI())
+		fmt.Fprintln(out, asciiQR)
+		fmt.Fprintf(out, "  %sScan this QR code with the Mímir Flutter Mobile App to pair.%s\n\n", ansiDim, ansiReset)
 		return false, nil
 
 	case "/memory", "/cortex":

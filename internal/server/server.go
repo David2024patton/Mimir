@@ -11,6 +11,7 @@ import (
 	"github.com/David2024patton/Mimir/internal/cortex"
 	"github.com/David2024patton/Mimir/internal/engines"
 	"github.com/David2024patton/Mimir/internal/llm"
+	"github.com/David2024patton/Mimir/internal/relay"
 	"github.com/David2024patton/Mimir/internal/swarm"
 )
 
@@ -33,10 +34,59 @@ func Serve(d Deps) error {
 
 func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, auth *cortex.AuthStore, usage *llm.Tracker) http.Handler {
 	mux := http.NewServeMux()
+	relayMgr := relay.NewManager()
 
 	// Public
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"status": "ok"})
+	})
+
+	// Public E2EE Pair & Mobile endpoints
+	mux.HandleFunc("/api/pair", func(w http.ResponseWriter, r *http.Request) {
+		sess, err := relayMgr.CreateSession(r.Host)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		asciiQR, _ := sess.GenerateQRCodeASCII()
+		writeJSON(w, map[string]any{
+			"session":  sess,
+			"pair_uri": sess.PairURI(),
+			"ascii_qr": asciiQR,
+		})
+	})
+	mux.HandleFunc("/api/pair/complete", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST only", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			SessionID string `json:"session_id"`
+			ClientPub string `json:"client_pubkey"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		sess, ok := relayMgr.GetSession(req.SessionID)
+		if !ok {
+			http.Error(w, "session not found", http.StatusNotFound)
+			return
+		}
+		if err := sess.CompletePairing(req.ClientPub); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		writeJSON(w, map[string]any{"status": "paired", "session_id": sess.ID})
+	})
+	mux.HandleFunc("/api/mobile/stream", func(w http.ResponseWriter, r *http.Request) {
+		sessID := r.URL.Query().Get("id")
+		sess, ok := relayMgr.GetSession(sessID)
+		if !ok {
+			http.Error(w, "session not found", http.StatusNotFound)
+			return
+		}
+		sess.StreamHandler()(w, r)
 	})
 	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
 		pid, model, local := ag.ModelInfo()

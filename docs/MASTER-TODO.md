@@ -119,10 +119,10 @@ G:\Mimir\
     - Impeccable deterministic detectors for banned AI slop phrases ("in today's fast-paced world", "unleash the power"), em dashes (`\u2014`), default purple/indigo gradient clichés (`from-purple-`, `from-indigo-`), nested `.card` soup, and unlabeled statistical claims (`[vendor claim]`).
   - [x] `2.3.c` Add CLI command `mimir audit-web [dir]` and TUI command `/audit-web`.
   - [x] `2.3.d` Verify with unit tests in `internal/tools/web_audit_test.go`.
-- [ ] **2.4 Build Level 3 Multi-Agent Software Factory Queue (`internal/swarm/factory.go`)**
-  - [ ] `2.4.a` Create `internal/swarm/factory.go` implementing a kanban state machine (`Backlog -> Spec -> Implementing -> Testing -> Security/SEO Audit -> Done`) stored in SQLite/Cortex.
-  - [ ] `2.4.b` Allow `Odin` (Architect) to decompose a high-level software spec into independent sub-tasks, assign each sub-task to a parallel `Thor` worker running in its own isolated git worktree, and require `Loki` (Test Critic) + `Heimdall` (Security & SEO/GEO Gate) sign-off before merging.
-  - [ ] `2.4.c` Stream real-time worker state events (`WorkerSpawned`, `WorktreeCreated`, `ToolRunning`, `TestsPassed`, `Merged`) over the Web/SSE daemon (`internal/web/server.go`) for the Web & Flutter UIs.
+- [x] **2.4 Build Level 3 Multi-Agent Software Factory Queue (`internal/swarm/factory.go`)**
+  - [x] `2.4.a` Create `internal/swarm/factory.go` implementing a kanban state machine (`Backlog -> Spec -> Implementing -> Testing -> Security/SEO Audit -> Done`) stored in SQLite/Cortex.
+  - [x] `2.4.b` Allow `Odin` (Architect) to decompose a high-level software spec into independent sub-tasks, assign each sub-task to a parallel `Thor` worker running in its own isolated git worktree, and require `Loki` (Test Critic) + `Heimdall` (Security & SEO/GEO Gate) sign-off before merging.
+  - [x] `2.4.c` Stream real-time worker state events (`WorkerSpawned`, `WorktreeCreated`, `ToolRunning`, `TestsPassed`, `Merged`) over the Web/SSE daemon (`internal/web/server.go`) for the Web & Flutter UIs.
 - [x] **2.5 Build Unattended Run Engine & Two-Tier Testing Law (`internal/runengine/runengine.go`)**
   - [x] `2.5.a` Implement shell-less workspace file `Jail` (`Resolve`, `CheckWrite`, `ReadFile`, `WriteFile`, `ListDir`) blocking `..` traversal, symlink escapes, and writes to `.git/` or `.mimir/run.lock`.
   - [x] `2.5.b` Implement atomic single-run lockfile (`.mimir/run.lock` with PID, task, timestamp, and automatic stale lock recovery).
@@ -185,15 +185,15 @@ G:\Mimir\
 ### Phase 5: Flutter Desktop Studio & Happy Mobile E2EE Companion (`Gjallarhorn-UI` -- Stack 4)
 > *Located in `G:\Mimir\ui\mimir_flutter\`, targeting Windows, macOS, Linux, iOS, and Android from a single 60fps Impeller codebase.*
 
-- [ ] **5.1 Build E2EE Happy Relay & QR Pairing in Go Daemon (`internal/relay/happy_e2ee.go`)**
-  - [ ] `5.1.a` Implement X25519 ephemeral key exchange + ChaCha20-Poly1305 / AES-256-GCM payload encryption in `internal/relay/happy_e2ee.go`.
-  - [ ] `5.1.b` Add CLI command `mimir pair` and TUI command `/pair` that renders an ASCII QR code in the terminal containing `mimir://pair?host=<ip:port>&pubkey=<base64>&token=<nonce>`.
-  - [ ] `5.1.c` Stream encrypted `EventToken`, `EventTool`, `EventSteer`, `StopGateStatus`, and `ApprovalRequest` frames over WebSocket/SSE (`/api/v1/mobile/stream`).
-- [ ] **5.2 Scaffold Flutter Multi-Platform Project (`ui/mimir_flutter/`)**
-  - [ ] `5.2.a` Initialize `ui/mimir_flutter/pubspec.yaml` with `flutter_riverpod`, `go_router`, `cryptography` (X25519 + AES-GCM), `mobile_scanner` (QR pairing), and `flutter_highlight`.
-  - [ ] `5.2.b` Configure Nordic Glassmorphism dark theme (obsidian `#0B0F17`, Bifrost cyan `#00F0FF`, Odin gold `#F59E0B`, Thor emerald `#10B981`, Loki crimson `#EF4444` -- zero generic AI slop).
-- [ ] **5.3 Build Desktop Studio Views (`ui/mimir_flutter/lib/screens/desktop/`)**
-  - [ ] `5.3.a` **4-Pane Engineering Workbench**:
+- [x] **5.1 Build E2EE Happy Relay & QR Pairing in Go Daemon (`internal/relay/happy_e2ee.go`)**
+  - [x] `5.1.a` Implement X25519 ephemeral key exchange + ChaCha20-Poly1305 / AES-256-GCM payload encryption in `internal/relay/happy_e2ee.go`.
+  - [x] `5.1.b` Add CLI command `mimir pair` and TUI command `/pair` that renders an ASCII QR code in the terminal containing `mimir://pair?host=<ip:port>&pubkey=<base64>&token=<nonce>`.
+  - [x] `5.1.c` Stream encrypted `EventToken`, `EventTool`, `EventSteer`, `StopGateStatus`, and `ApprovalRequest` frames over WebSocket/SSE (`/api/v1/mobile/stream`).
+- [x] **5.2 Scaffold Flutter Multi-Platform Project (`ui/mimir_flutter/`)**
+  - [x] `5.2.a` Initialize `ui/mimir_flutter/pubspec.yaml` with `flutter_riverpod`, `go_router`, `cryptography` (X25519 + AES-GCM), `mobile_scanner` (QR pairing), and `flutter_highlight`.
+  - [x] `5.2.b` Configure Nordic Glassmorphism dark theme (obsidian `#0B0F17`, Bifrost cyan `#00F0FF`, Odin gold `#F59E0B`, Thor emerald `#10B981`, Loki crimson `#EF4444` -- zero generic AI slop).
+- [x] **5.3 Build Desktop Studio Views (`ui/mimir_flutter/lib/screens/desktop/`)**
+  - [x] `5.3.a` **4-Pane Engineering Workbench**:
     - Left Pane: Interactive **Yggdrasil Mind Map Explorer** (visualizing `MindMap` nodes, imports, and affected tests from `internal/ingest`).
     - Center Pane: **Live Agent Stream & Diff Editor** with clickable `[choice]` pills, `⚡SmolMode` badge, and inline `Huginn-Decider` routing telemetry (`Persona | Model | Latency`).
     - Right Pane: **Level 3 Software Factory Swarm Board** (`Odin`, `Thor`, `Loki`, `Heimdall` workers + live Todo checklist + `OnStop` verification gate status).
