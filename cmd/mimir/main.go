@@ -13,6 +13,7 @@ import (
 	"github.com/David2024patton/Mimir/internal/agent"
 	"github.com/David2024patton/Mimir/internal/config"
 	"github.com/David2024patton/Mimir/internal/cortex"
+	"github.com/David2024patton/Mimir/internal/critic"
 	"github.com/David2024patton/Mimir/internal/decision"
 	"github.com/David2024patton/Mimir/internal/ingest"
 	"github.com/David2024patton/Mimir/internal/llm"
@@ -30,6 +31,7 @@ Usage:
   mimir --web [--addr :8420]  launch interactive TUI + live Book-Spine Web UI simultaneously
   mimir ingest [path|git-url] GitIngest a repo/folder into digest.txt + Yggdrasil Mind Map in Cortex
   mimir sdlc [phase|method]   show or switch the 7-Phase SDLC board & methodology (agile/waterfall/devops)
+  mimir audit <draft> [ctx]   run the Epistemic Critic & Verification Node against a draft report
   mimir providers             list built-in BYOK providers + Mímir Well Subscription tiers
   mimir setup                 bootstrap Liquid AI d1-omni-600M local System-One decision model
   mimir -p "your prompt"      headless single-shot prompt (for scripts & CI)
@@ -352,6 +354,34 @@ func main() {
 			}
 		}
 		fmt.Println(mgr.FormatBoard())
+		return
+	}
+
+	if len(positional) > 0 && (positional[0] == "audit" || positional[0] == "critic") {
+		if len(positional) < 2 {
+			fmt.Fprintln(os.Stderr, "usage: mimir audit <draft-file> [retrieved-context-file]")
+			os.Exit(2)
+		}
+		draftBytes, err := os.ReadFile(positional[1])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "audit read draft:", err)
+			os.Exit(1)
+		}
+		var ctxBuilder strings.Builder
+		if len(positional) > 2 {
+			if ctxBytes, err := os.ReadFile(positional[2]); err == nil {
+				ctxBuilder.Write(ctxBytes)
+			}
+		} else {
+			for _, n := range store.All() {
+				ctxBuilder.WriteString(n.Title + "\n" + n.Content + "\n")
+			}
+		}
+		rep := critic.AuditDeterministic(ctxBuilder.String(), string(draftBytes))
+		fmt.Println(rep.FormatMarkdown())
+		if !rep.PassAudit {
+			os.Exit(1)
+		}
 		return
 	}
 

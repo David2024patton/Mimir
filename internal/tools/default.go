@@ -16,6 +16,7 @@ func Default(workDir string) *Registry {
 	r.Register(&SkillTool{})
 	r.Register(&IngestRepoTool{WorkDir: workDir})
 	r.Register(&SDLCTool{Manager: sdlc.NewManager(workDir)})
+	r.Register(&EpistemicAuditTool{})
 	return r
 }
 
