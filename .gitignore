@@ -18,6 +18,13 @@ auth.json
 vendor/
 bin/
 dist/
+!/engines/
+!/engines/bin/
+!/engines/bin/*.exe
+!/engines/bin/*.dll
+!/engines/bin/*.so
+!/engines/bin/*.dylib
+!/engines/bin/manifest.json
 
 # Node / frontend (future)
 node_modules/

@@ -1,0 +1,24 @@
+Mímir Software Engineering & Creation Harness
+Copyright (c) 2026 Alpha Flux LLC (https://alphaflux.net)
+
+This product includes pre-compiled proprietary engines developed and owned by
+Alpha Flux LLC (https://alphaflux.net | info@alphaflux.net):
+
+  1. Tyr-Core Engine (engines/bin/mimir_tyr_engine.exe)
+     Branch: engine/tyr-rust
+     Copyright (c) 2026 Alpha Flux LLC. Attribution Required.
+
+  2. Mjolnir-Compute Engine (engines/bin/mimir_mjolnir_engine.exe)
+     Branch: engine/mjolnir-mojo
+     Copyright (c) 2026 Alpha Flux LLC. Attribution Required.
+
+  3. Alpha Flux Intelligence Engine (engines/bin/mimir_alphaflux_engine.exe)
+     Branch: engine/alphaflux-core
+     Copyright (c) 2026 Alpha Flux LLC. Attribution Required.
+
+  4. Gjallarhorn Studio & Mobile E2EE Companion
+     Branch: engine/gjallarhorn-ui
+     Copyright (c) 2026 Alpha Flux LLC. Attribution Required.
+
+To use these engines in any deployment or integration, you MUST retain a visible
+reference to Alpha Flux LLC (https://alphaflux.net) in accordance with LICENSE-ENGINES.md.
