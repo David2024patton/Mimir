@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -101,7 +102,7 @@ func New(cfg Config) *Agent {
 		cfg.SmolPolicy = SmolAuto
 	}
 	if cfg.Decider == nil {
-		cfg.Decider = decision.New("", "", decision.PrimaryDecisionModel)
+		cfg.Decider = defaultDecider(cfg.Provider)
 	}
 	if cfg.SDLC == nil {
 		if cfg.Tools != nil {
@@ -122,6 +123,25 @@ func New(cfg Config) *Agent {
 		cfg:     cfg,
 		steerCh: make(chan string, 16),
 	}
+}
+
+// defaultDecider builds the System-One decider with a real endpoint when one
+// is configured (F26b): MIMIR_DECISION_BASE_URL wins, then the main provider's
+// base URL. With neither, the base URL stays empty and the decider falls back
+// to its deterministic heuristics, as before. The model name comes from
+// MIMIR_DECISION_MODEL, else the primary decision model.
+func defaultDecider(provider llm.Provider) *decision.Decider {
+	baseURL := os.Getenv("MIMIR_DECISION_BASE_URL")
+	if baseURL == "" {
+		if p, ok := provider.(*llm.OpenAIProvider); ok {
+			baseURL = p.BaseURL
+		}
+	}
+	model := os.Getenv("MIMIR_DECISION_MODEL")
+	if model == "" {
+		model = decision.PrimaryDecisionModel
+	}
+	return decision.New(baseURL, "", model)
 }
 
 // Hooks returns Mímir's Level 1 lifecycle hook runner.
