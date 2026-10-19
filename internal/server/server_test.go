@@ -329,3 +329,98 @@ func TestServerSessionIDORProtection(t *testing.T) {
 		t.Errorf("expected 200 OK for rightful session owner, got %d", wAlice.Code)
 	}
 }
+
+// TestServerModeIsPerRequest proves the N2 fix: a /chat request carrying
+// mode=bypass, and a /api/mobile/mode call, must not flip the shared agent's
+// stored mode for every other user.
+func TestServerModeIsPerRequest(t *testing.T) {
+	store, _ := cortex.NewMemoryStoreAt(filepath.Join(t.TempDir(), "cortex.json"))
+	ag := agent.New(agent.Config{Provider: &fakeText{"ok"}, Tools: tools.NewRegistry(), Cortex: store, Model: "m"})
+	srv := httptest.NewServer(Handler(ag, store, nil, nil, nil))
+	defer srv.Close()
+
+	if got := ag.Mode(); got != agent.ModeEdit {
+		t.Fatalf("precondition: agent mode = %q, want edit", got)
+	}
+
+	resp, err := http.Post(srv.URL+"/chat", "application/json", strings.NewReader(`{"prompt":"hi","mode":"bypass"}`))
+	if err != nil {
+		t.Fatalf("chat post: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("chat status = %d", resp.StatusCode)
+	}
+	if got := ag.Mode(); got != agent.ModeEdit {
+		t.Errorf("after bypass /chat request: agent mode = %q, want edit (no global flip)", got)
+	}
+
+	resp, err = http.Post(srv.URL+"/api/mobile/mode", "application/json", strings.NewReader(`{"session_id":"s1","mode":"bypass"}`))
+	if err != nil {
+		t.Fatalf("mobile mode post: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("mobile mode status = %d", resp.StatusCode)
+	}
+	if got := ag.Mode(); got != agent.ModeEdit {
+		t.Errorf("after /api/mobile/mode: agent mode = %q, want edit (mode must be per-session)", got)
+	}
+
+	resp, err = http.Post(srv.URL+"/api/mobile/mode", "application/json", strings.NewReader(`{"mode":"bypass"}`))
+	if err != nil {
+		t.Fatalf("mobile mode post: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("mobile mode without session_id: status = %d, want 400", resp.StatusCode)
+	}
+}
+
+// TestIsLoopbackAddr covers the F16 remainder guard's address classification:
+// only loopback binds may serve without an auth store.
+func TestIsLoopbackAddr(t *testing.T) {
+	cases := map[string]bool{
+		"127.0.0.1:8420": true,
+		"localhost:8420": true,
+		"[::1]:8420":     true,
+		":8420":          false,
+		"0.0.0.0:8420":   false,
+		"192.168.1.5:80": false,
+		"not-an-addr":    false,
+	}
+	for addr, want := range cases {
+		if got := isLoopbackAddr(addr); got != want {
+			t.Errorf("isLoopbackAddr(%q) = %v, want %v", addr, got, want)
+		}
+	}
+}
+
+// TestServeRefusesUnauthenticatedNonLoopback proves Serve fails fast instead
+// of exposing an unauthenticated server on a network interface.
+func TestServeRefusesUnauthenticatedNonLoopback(t *testing.T) {
+	err := Serve(Deps{Addr: "0.0.0.0:0"})
+	if err == nil {
+		t.Fatal("Serve on 0.0.0.0 with no auth store: expected a refusal error")
+	}
+	if !strings.Contains(err.Error(), "MIMIR_ALLOW_UNAUTHENTICATED") {
+		t.Errorf("refusal error should name the opt-in env var, got: %v", err)
+	}
+}
+
+// TestWriteErrorJSONEscapes proves the F20 fix: an error message containing
+// quotes still produces one valid JSON document with the exact message.
+func TestWriteErrorJSONEscapes(t *testing.T) {
+	w := httptest.NewRecorder()
+	writeErrorJSON(w, http.StatusInternalServerError, `smtp "quoted" failure`)
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want 500", w.Code)
+	}
+	var out map[string]string
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+		t.Fatalf("error body is not valid JSON: %v (%s)", err, w.Body.String())
+	}
+	if out["error"] != `smtp "quoted" failure` {
+		t.Errorf("error field = %q, want the exact message", out["error"])
+	}
+}
