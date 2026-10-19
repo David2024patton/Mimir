@@ -49,6 +49,16 @@ func userIDFromContext(ctx context.Context) string {
 	return uid
 }
 
+// writeErrorJSON writes an error response whose body is built by marshaling
+// (F20): dynamic error text is JSON-escaped, never concatenated into a JSON
+// literal where quotes in the message could break or inject the document.
+func writeErrorJSON(w http.ResponseWriter, status int, msg string) {
+	body, _ := json.Marshal(map[string]string{"error": msg})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_, _ = w.Write(body)
+}
+
 func sendCodeHandler(auth *cortex.AuthStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if auth == nil {
@@ -67,7 +77,7 @@ func sendCodeHandler(auth *cortex.AuthStore) http.HandlerFunc {
 			return
 		}
 		if err := auth.SendOTP(r.Context(), req.Email); err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+			writeErrorJSON(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		writeJSON(w, map[string]string{"status": "sent"})
@@ -97,7 +107,7 @@ func verifyCodeHandler(auth *cortex.AuthStore) http.HandlerFunc {
 		}
 		user, tok, err := auth.VerifyOTP(r.Context(), req.Email, req.Code)
 		if err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusUnauthorized)
+			writeErrorJSON(w, http.StatusUnauthorized, err.Error())
 			return
 		}
 		writeJSON(w, map[string]any{

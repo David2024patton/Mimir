@@ -4,7 +4,9 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
@@ -30,7 +32,28 @@ func Serve(d Deps) error {
 	if addr == "" {
 		addr = "127.0.0.1:8420"
 	}
+	// F16 remainder: the default bind is loopback, but an explicitly configured
+	// non-loopback address with no auth store (file backend) would expose an
+	// unauthenticated server to the network. Refuse to start unless the
+	// operator explicitly accepts that with MIMIR_ALLOW_UNAUTHENTICATED=1.
+	if d.Auth == nil && os.Getenv("MIMIR_ALLOW_UNAUTHENTICATED") != "1" && !isLoopbackAddr(addr) {
+		return fmt.Errorf("refusing to serve on non-loopback address %s without authentication: use the surreal backend for auth, or set MIMIR_ALLOW_UNAUTHENTICATED=1 to accept the risk", addr)
+	}
 	return http.ListenAndServe(addr, Handler(d.Agent, d.Store, d.Sessions, d.Auth, d.Usage))
+}
+
+// isLoopbackAddr reports whether a listen address binds only the loopback
+// interface. An empty host binds all interfaces and is not loopback.
+func isLoopbackAddr(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return false
+	}
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, auth *cortex.AuthStore, usage *llm.Tracker) http.Handler {
@@ -158,7 +181,11 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		setSessionMode(req.SessionID, mode)
 		writeJSON(w, map[string]any{"status": "ok", "mode": mode, "session_id": req.SessionID})
 	})
-	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
+	// /api/status discloses provider, model, mode, and SDLC phase (N10): when
+	// an auth store is configured it requires authentication like every other
+	// API route; in local mode the middleware passes through (loopback-only
+	// bind per the F16 fix), so local behavior is unchanged.
+	mux.Handle("/api/status", authMiddleware(auth)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		pid, model, local := ag.ModelInfo()
 		sdlcMgr := ag.SDLC()
 		currPhase := ""
@@ -176,7 +203,7 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			"sdlc_phase":  currPhase,
 			"attribution": engines.AttributionNotice,
 		})
-	})
+	})))
 	mux.HandleFunc("/auth/send-code", sendCodeHandler(auth))
 	mux.HandleFunc("/auth/verify-code", verifyCodeHandler(auth))
 
@@ -420,25 +447,6 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		}
 	})
 
-	api.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		pid, model, local := ag.ModelInfo()
-		sdlcMgr := ag.SDLC()
-		currPhase := ""
-		if sdlcMgr != nil {
-			currPhase = sdlcMgr.CurrentPhase().Title
-		}
-		writeJSON(w, map[string]any{
-			"status":      "ok",
-			"provider":    pid,
-			"model":       model,
-			"local":       local,
-			"mode":        ag.Mode(),
-			"effort":      ag.Effort(),
-			"smol":        ag.SmolMode(),
-			"sdlc_phase":  currPhase,
-			"attribution": engines.AttributionNotice,
-		})
-	})
 	api.HandleFunc("/engines", func(w http.ResponseWriter, r *http.Request) {
 		m, err := engines.LoadManifest(".")
 		if err != nil {
