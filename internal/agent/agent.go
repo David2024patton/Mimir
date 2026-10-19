@@ -19,6 +19,10 @@ import (
 // (doom-loop protection, F4.3).
 const maxToolSteps = 20
 
+// maxStopGateContinuations caps how many times a failing OnStop gate can force
+// the loop to continue for a verification pass in a single run (F25).
+const maxStopGateContinuations = 2
+
 // Permission modes (inspired by smolcoder ro / edit / bypass).
 const (
 	ModeReadOnly = "ro"
@@ -42,6 +46,7 @@ type Config struct {
 	ApprovalFunc  func(toolName, rawArgs string) bool
 	Gate          *policy.Gate // Fail-closed execution policy gate (F2/ADR-009)
 	Hooks         *HookRunner  // Level 1 Lifecycle Hooks
+	AutoVerify    bool         // When true, a failing OnStop gate forces a verification pass instead of only annotating the reply (F25)
 	ContextBudget int          // Max context token budget (defaults to 8192 in SmolMode, 32768 standard)
 }
 
@@ -323,6 +328,30 @@ func (a *Agent) schemasForMode(modeOverride string) []llm.ToolSchema {
 	return out
 }
 
+// runStopGate executes the OnStop lifecycle hooks for a finished turn and
+// returns the evaluated stop gate status plus any advisory the hooks injected.
+func (a *Agent) runStopGate(ctx context.Context, trace []Step) (StopGateStatus, string) {
+	a.mu.RLock()
+	hooks := a.cfg.Hooks
+	a.mu.RUnlock()
+	if hooks == nil {
+		return StopGateStatus{}, ""
+	}
+	hCtx := &HookContext{
+		Type:      HookOnStop,
+		Trace:     trace,
+		TodoLines: a.todoLines(),
+	}
+	_ = hooks.Execute(ctx, hCtx)
+	return hCtx.StopStatus, hCtx.InjectedMsg
+}
+
+// stopGateReminder builds the system feedback injected into the conversation
+// when AutoVerify forces another pass after a failing stop gate (F25).
+func stopGateReminder(advisory string) string {
+	return "[Harness OnStop Gate]: " + advisory + ". Before finishing, run the appropriate verification (build, tests, lint, or an audit tool) and complete or update the pending todos, then give your final summary."
+}
+
 func (a *Agent) todoLines() []string {
 	a.mu.RLock()
 	reg := a.cfg.Tools
@@ -504,6 +533,10 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message, modeOverride st
 	var trace []Step
 	var last string
 	smol := a.SmolMode()
+	a.mu.RLock()
+	autoVerify := a.cfg.AutoVerify
+	a.mu.RUnlock()
+	stopContinuations := 0
 	keepRecent := 4
 	if smol {
 		keepRecent = 2
@@ -537,19 +570,17 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message, modeOverride st
 		last = StripEmDashes(resp.Content)
 		msgs = append(msgs, llm.Message{Role: "assistant", Content: last, ToolCalls: resp.ToolCalls})
 		if len(resp.ToolCalls) == 0 {
-			a.mu.RLock()
-			hooks := a.cfg.Hooks
-			a.mu.RUnlock()
-			if hooks != nil {
-				hCtx := &HookContext{
-					Type:      HookOnStop,
-					Trace:     trace,
-					TodoLines: a.todoLines(),
-				}
-				_ = hooks.Execute(ctx, hCtx)
-				if hCtx.InjectedMsg != "" {
-					last += "\n\n[" + hCtx.InjectedMsg + "]"
-				}
+			_, advisory := a.runStopGate(ctx, trace)
+			// F25: with AutoVerify on, a failing stop gate enforces instead of
+			// only annotating: feed the gate's reminder back and continue the
+			// loop for a verification pass, capped per run.
+			if autoVerify && advisory != "" && stopContinuations < maxStopGateContinuations {
+				stopContinuations++
+				msgs = append(msgs, llm.Message{Role: "user", Content: stopGateReminder(advisory)})
+				continue
+			}
+			if advisory != "" {
+				last += "\n\n[" + advisory + "]"
 			}
 			return last, trace, nil
 		}
@@ -563,19 +594,8 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message, modeOverride st
 			msgs = append(msgs, llm.Message{Role: "user", Content: "[User steering instruction]: " + sm})
 		}
 	}
-	a.mu.RLock()
-	hooks := a.cfg.Hooks
-	a.mu.RUnlock()
-	if hooks != nil {
-		hCtx := &HookContext{
-			Type:      HookOnStop,
-			Trace:     trace,
-			TodoLines: a.todoLines(),
-		}
-		_ = hooks.Execute(ctx, hCtx)
-		if hCtx.InjectedMsg != "" {
-			last += "\n\n[" + hCtx.InjectedMsg + "]"
-		}
+	if _, advisory := a.runStopGate(ctx, trace); advisory != "" {
+		last += "\n\n[" + advisory + "]"
 	}
 	return last, trace, nil
 }
@@ -641,6 +661,11 @@ func (a *Agent) runStreamMode(ctx context.Context, modeOverride, input string, h
 	msgs = append(msgs, history...)
 	msgs = append(msgs, llm.Message{Role: "user", Content: input})
 	var finalReply string
+	var trace []Step
+	a.mu.RLock()
+	autoVerify := a.cfg.AutoVerify
+	a.mu.RUnlock()
+	stopContinuations := 0
 	smol := a.SmolMode()
 	keepRecent := 4
 	if smol {
@@ -693,24 +718,23 @@ func (a *Agent) runStreamMode(ctx context.Context, modeOverride, input string, h
 		finalReply = text
 		msgs = append(msgs, llm.Message{Role: "assistant", Content: text, ToolCalls: toolCalls})
 		if len(toolCalls) == 0 {
-			a.mu.RLock()
-			hooks := a.cfg.Hooks
-			a.mu.RUnlock()
-			if hooks != nil {
-				hCtx := &HookContext{
-					Type:      HookOnStop,
-					TodoLines: a.todoLines(),
-				}
-				_ = hooks.Execute(ctx, hCtx)
-				if hCtx.InjectedMsg != "" {
-					finalReply += "\n\n[" + hCtx.InjectedMsg + "]"
-				}
+			_, advisory := a.runStopGate(ctx, trace)
+			// F25: same enforcement as runLoop; a failing gate under AutoVerify
+			// continues the stream for a verification pass, capped per run.
+			if autoVerify && advisory != "" && stopContinuations < maxStopGateContinuations {
+				stopContinuations++
+				msgs = append(msgs, llm.Message{Role: "user", Content: stopGateReminder(advisory)})
+				continue
+			}
+			if advisory != "" {
+				finalReply += "\n\n[" + advisory + "]"
 			}
 			emit(Event{Type: EventDone, Reply: finalReply})
 			return nil
 		}
 		for _, tc := range toolCalls {
 			st := a.executeToolCallMode(ctx, tc, modeOverride)
+			trace = append(trace, st)
 			emit(Event{Type: EventTool, Step: &st})
 			msgs = append(msgs, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: st.Result})
 		}
@@ -719,18 +743,8 @@ func (a *Agent) runStreamMode(ctx context.Context, modeOverride, input string, h
 			msgs = append(msgs, llm.Message{Role: "user", Content: "[User steering instruction]: " + sm})
 		}
 	}
-	a.mu.RLock()
-	hooks := a.cfg.Hooks
-	a.mu.RUnlock()
-	if hooks != nil {
-		hCtx := &HookContext{
-			Type:      HookOnStop,
-			TodoLines: a.todoLines(),
-		}
-		_ = hooks.Execute(ctx, hCtx)
-		if hCtx.InjectedMsg != "" {
-			finalReply += "\n\n[" + hCtx.InjectedMsg + "]"
-		}
+	if _, advisory := a.runStopGate(ctx, trace); advisory != "" {
+		finalReply += "\n\n[" + advisory + "]"
 	}
 	emit(Event{Type: EventDone, Reply: finalReply})
 	return nil
