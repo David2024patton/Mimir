@@ -1,3 +1,15 @@
+// Package relay implements the encrypted mobile companion relay.
+//
+// Direction convention for frame nonces: the desktop host and the phone
+// share ONE AEAD key, so the 8-byte counter field inside each frame nonce
+// is partitioned by direction. Frames encrypted by the host (this
+// package) always carry the TOP BIT of the counter set; frames sent by
+// the phone client must carry it clear. Each side tracks replay only in
+// the partition it receives. Without this partition, host frame 1 and
+// phone frame 1 would reuse the identical (key, nonce) pair and break
+// ChaCha20-Poly1305 confidentiality. This package is the host side: it
+// sets the bit when encrypting and requires it clear when decrypting.
+// Phone clients must do the mirror image.
 package relay
 
 import (
@@ -29,6 +41,11 @@ const (
 	// once, so the unauthenticated session-creation endpoint cannot be used
 	// to grow memory without bound.
 	MaxLiveSessions = 64
+	// nonceDirectionBit partitions the frame counter field of the AEAD
+	// nonce by direction: the host (this package) sets it on frames it
+	// encrypts, the phone clears it on frames it sends. See the package
+	// documentation.
+	nonceDirectionBit = uint64(1) << 63
 )
 
 // Session represents an end-to-end encrypted mobile companion pairing session.
@@ -45,8 +62,8 @@ type Session struct {
 	sharedKey  [32]byte
 	paired     bool
 	aead       cipher.AEAD
-	sendSeq    uint64 // last counter used by EncryptFrame (N5 replay protection)
-	recvSeq    uint64 // highest counter accepted by DecryptFrame (N5 replay protection)
+	sendSeq    uint64 // last counter used by EncryptFrame, before the direction bit is applied
+	recvSeq    uint64 // highest counter accepted by DecryptFrame, in the phone (bit-clear) partition
 	mu         sync.RWMutex
 	listeners  map[chan []byte]struct{}
 }
@@ -226,7 +243,9 @@ func (s *Session) IsPaired() bool {
 // EncryptFrame seals arbitrary data using ChaCha20-Poly1305 AEAD. The AEAD
 // nonce is derived from a per-session monotonic counter (stored in the last
 // 8 bytes of the nonce, big endian), never random, so a nonce can never
-// repeat under the session key. The wire format stays nonce || ciphertext.
+// repeat under the session key. Host frames carry the counter's top bit set
+// (the host direction partition), so they can never collide with a phone
+// frame at the same counter value. The wire format stays nonce || ciphertext.
 func (s *Session) EncryptFrame(plaintext []byte) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -241,15 +260,18 @@ func (s *Session) encryptFrameLocked(plaintext []byte) ([]byte, error) {
 
 	s.sendSeq++
 	nonce := make([]byte, s.aead.NonceSize())
-	binary.BigEndian.PutUint64(nonce[len(nonce)-8:], s.sendSeq)
+	binary.BigEndian.PutUint64(nonce[len(nonce)-8:], s.sendSeq|nonceDirectionBit)
 
 	ciphertext := s.aead.Seal(nonce, nonce, plaintext, nil)
 	return ciphertext, nil
 }
 
-// DecryptFrame decrypts and verifies a sealed ciphertext frame. Frames
-// whose counter is at or below the highest counter already accepted are
-// rejected, so a captured frame cannot be replayed.
+// DecryptFrame decrypts and verifies a sealed ciphertext frame sent by
+// the phone. Frames whose counter is at or below the highest counter
+// already accepted are rejected, so a captured frame cannot be replayed.
+// Frames carrying the host direction bit are also rejected: they belong
+// to the partition this side encrypts into, so one arriving here is a
+// reflection, not a phone frame.
 func (s *Session) DecryptFrame(ciphertext []byte) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -266,6 +288,9 @@ func (s *Session) DecryptFrame(ciphertext []byte) ([]byte, error) {
 	sealed := ciphertext[nonceSize:]
 
 	counter := binary.BigEndian.Uint64(nonce[len(nonce)-8:])
+	if counter&nonceDirectionBit != 0 {
+		return nil, errors.New("frame carries the host direction bit; reflected frames are rejected")
+	}
 	if counter <= s.recvSeq {
 		return nil, errors.New("replayed or out-of-order frame rejected")
 	}
