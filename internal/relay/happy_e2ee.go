@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -161,6 +162,7 @@ func (m *Manager) CreateSession(host string) (*Session, error) {
 		return nil, fmt.Errorf("relay: too many live pairing sessions (max %d), try again later", MaxLiveSessions)
 	}
 	m.sessions[sessID] = sess
+	slog.Info("relay session created", "session_id", sessID, "host", host)
 
 	return sess, nil
 }
@@ -171,9 +173,16 @@ func (m *Manager) CreateSession(host string) (*Session, error) {
 func (m *Manager) purgeExpiredLocked(now time.Time) {
 	for id, s := range m.sessions {
 		if m.expiredLocked(s, now) {
-			delete(m.sessions, id)
+			m.expireLocked(id, s)
 		}
 	}
+}
+
+// expireLocked deletes an expired session and records the expiry.
+// Callers must hold m.mu.
+func (m *Manager) expireLocked(id string, s *Session) {
+	delete(m.sessions, id)
+	slog.Info("relay session expired", "session_id", id, "paired", s.IsPaired())
 }
 
 // expiredLocked reports whether s has outlived its TTL at now. Callers
@@ -203,7 +212,7 @@ func (m *Manager) GetSession(id string) (*Session, bool) {
 		return nil, false
 	}
 	if m.expiredLocked(s, time.Now()) {
-		delete(m.sessions, id)
+		m.expireLocked(id, s)
 		return nil, false
 	}
 	return s, true
@@ -224,6 +233,7 @@ func (m *Manager) RemoveSession(id string) bool {
 		return false
 	}
 	s.teardown()
+	slog.Info("relay session removed", "session_id", id)
 	return true
 }
 
@@ -251,28 +261,36 @@ func (s *Session) CompletePairing(pairingToken, clientPubKeyB64 string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Pairing is a trust boundary: failures are logged with a static
+	// reason only. The token, the keys, and the shared secret are never
+	// logged.
+	fail := func(reason string, err error) error {
+		slog.Warn("relay pairing failed", "session_id", s.ID, "reason", reason)
+		return err
+	}
+
 	if s.paired {
-		return errors.New("session is already paired")
+		return fail("already paired", errors.New("session is already paired"))
 	}
 	if time.Since(s.CreatedAt) > UnpairedSessionTTL {
-		return errors.New("pairing session has expired")
+		return fail("session expired", errors.New("pairing session has expired"))
 	}
 
 	presented, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(pairingToken))
 	if err != nil {
-		return errors.New("invalid pairing token")
+		return fail("invalid pairing token", errors.New("invalid pairing token"))
 	}
 	expected, err := base64.RawURLEncoding.DecodeString(s.Nonce)
 	if err != nil {
-		return errors.New("invalid pairing token")
+		return fail("invalid pairing token", errors.New("invalid pairing token"))
 	}
 	if subtle.ConstantTimeCompare(presented, expected) != 1 {
-		return errors.New("invalid pairing token")
+		return fail("invalid pairing token", errors.New("invalid pairing token"))
 	}
 
 	clientPubBytes, err := base64.StdEncoding.DecodeString(clientPubKeyB64)
 	if err != nil || len(clientPubBytes) != 32 {
-		return errors.New("invalid client public key: must be 32 bytes base64")
+		return fail("invalid client public key", errors.New("invalid client public key: must be 32 bytes base64"))
 	}
 
 	// X25519 (unlike ScalarMult) rejects low-order client public keys: it
@@ -281,20 +299,21 @@ func (s *Session) CompletePairing(pairingToken, clientPubKeyB64 string) error {
 	// a known, all-zero session key.
 	shared, err := curve25519.X25519(s.privateKey[:], clientPubBytes)
 	if err != nil {
-		return errors.New("invalid client public key: key agreement failed")
+		return fail("key agreement failed", errors.New("invalid client public key: key agreement failed"))
 	}
 	var sharedKey [32]byte
 	copy(sharedKey[:], shared)
 
 	aead, err := chacha20poly1305.New(sharedKey[:])
 	if err != nil {
-		return fmt.Errorf("failed to initialize chacha20poly1305 aead: %w", err)
+		return fail("aead init failed", fmt.Errorf("failed to initialize chacha20poly1305 aead: %w", err))
 	}
 
 	s.sharedKey = sharedKey
 	s.aead = aead
 	s.paired = true
 	s.pairedAt = time.Now()
+	slog.Info("relay session paired", "session_id", s.ID)
 	return nil
 }
 

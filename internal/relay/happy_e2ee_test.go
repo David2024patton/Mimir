@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
+	"log/slog"
 	"io"
 	"strings"
 	"testing"
@@ -431,5 +432,56 @@ func TestRemoveSession(t *testing.T) {
 	}
 	if mgr.RemoveSession("pair_no-such-session") {
 		t.Fatal("RemoveSession of an unknown ID must report false")
+	}
+}
+
+// FIX 5: trust-boundary events are logged via slog: session creation,
+// pairing success, pairing failure (reason only), expiry, and removal.
+// The pairing token must never appear in the log output.
+func TestRelayLifecycleLogging(t *testing.T) {
+	var buf bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(old)
+
+	mgr := NewManager()
+	sess, err := mgr.CreateSession("127.0.0.1:8420")
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	if err := sess.CompletePairing("AAAAAAAAAAAAAAAAAAAAAA", clientKeyB64(t)); err == nil {
+		t.Fatal("expected wrong-token pairing to fail")
+	}
+	if err := sess.CompletePairing(sess.Nonce, clientKeyB64(t)); err != nil {
+		t.Fatalf("CompletePairing: %v", err)
+	}
+	if !mgr.RemoveSession(sess.ID) {
+		t.Fatal("RemoveSession must succeed")
+	}
+
+	// An expired session purged during a later CreateSession is logged too.
+	stale, err := mgr.CreateSession("127.0.0.1:8420")
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	stale.CreatedAt = stale.CreatedAt.Add(-UnpairedSessionTTL - time.Minute)
+	if _, err := mgr.CreateSession("127.0.0.1:8420"); err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	out := buf.String()
+	for _, want := range []string{
+		"relay session created",
+		"relay pairing failed",
+		"relay session paired",
+		"relay session removed",
+		"relay session expired",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("log output missing %q; got:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, sess.Nonce) {
+		t.Error("log output must never contain the pairing token")
 	}
 }
