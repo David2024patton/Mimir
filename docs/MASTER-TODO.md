@@ -73,8 +73,8 @@ G:\Mimir\
   - [x] `1.1.d` Implement `EnsureLocalDecisionModel` and CLI command `mimir setup` in `cmd/mimir/main.go` to auto-pull `d1-omni-600m` via Ollama or HuggingFace GGUF.
   - [x] `1.1.e` Verify with unit tests in `internal/decision/decider_test.go` (`go test ./internal/decision/...`).
 - [x] **1.2 Build Native GitIngest + Yggdrasil Mind Map (`Gjallarhorn-Ingest`)**
-  - [x] `1.2.a` Create `internal/ingest/ingest.go` to walk local directories or clone remote GitHub repos (`https://github.com/owner/repo`), respecting `.gitignore` and binary filters.
-  - [x] `1.2.b` Extract multi-language symbols (Go, Rust, Mojo, Dart, Python, TS/JS) and import edges into `MindMap` (`Node`, `Edge`, `IsTest`, `TokenEstimate`).
+  - [x] `1.2.a` Create `internal/ingest/ingest.go` to walk local directories or clone remote GitHub repos (`https://github.com/owner/repo`), using a built-in directory skip list (`node_modules`, `vendor`, `dist`, `build`, and similar) and binary filters (`.gitignore` files are not read).
+  - [x] `1.2.b` Extract multi-language symbols (Go, Rust, Python, TS/JS; no Mojo or Dart symbol patterns yet) and import edges into `MindMap` (`Node`, `Edge`, `IsTest`, `TokenEstimate`).
   - [x] `1.2.c` Generate `.mimir/digest.txt` (GitIngest format) + `.mimir/mindmap.json` and persist linked `KindCode` neurons (`PutNeuron` + `Relate`) into Cortex memory.
   - [x] `1.2.d` Expose `ingest_repo` tool (`internal/tools/ingest_tool.go`), CLI subcommand `mimir ingest <path|url>`, and TUI slash commands `/ingest` and `/mindmap`.
   - [x] `1.2.e` Verify with unit tests in `internal/ingest/ingest_test.go` and live self-ingestion (`.\bin\mimir.exe ingest .`).
@@ -120,14 +120,14 @@ G:\Mimir\
   - [x] `2.3.c` Add CLI command `mimir audit-web [dir]` and TUI command `/audit-web`.
   - [x] `2.3.d` Verify with unit tests in `internal/tools/web_audit_test.go`.
 - [x] **2.4 Build Level 3 Multi-Agent Software Factory Queue (`internal/swarm/factory.go`)**
-  - [x] `2.4.a` Create `internal/swarm/factory.go` implementing a kanban state machine (`Backlog -> Spec -> Implementing -> Testing -> Security/SEO Audit -> Done`) stored in SQLite/Cortex.
-  - [x] `2.4.b` Allow `Odin` (Architect) to decompose a high-level software spec into independent sub-tasks, assign each sub-task to a parallel `Thor` worker running in its own isolated git worktree, and require `Loki` (Test Critic) + `Heimdall` (Security & SEO/GEO Gate) sign-off before merging.
-  - [x] `2.4.c` Stream real-time worker state events (`WorkerSpawned`, `WorktreeCreated`, `ToolRunning`, `TestsPassed`, `Merged`) over the Web/SSE daemon (`internal/web/server.go`) for the Web & Flutter UIs.
+  - [x] `2.4.a` Create `internal/swarm/factory.go` implementing a kanban state machine (`Backlog -> Spec -> Implementing -> Testing -> Security/SEO Audit -> Done`) stored in a JSON state file (`.mimir/swarm/tasks.json`).
+  - [x] `2.4.b` Current state of the pipeline: `Odin` (Architect) writes a templated spec document from the task title and description (no LLM task decomposition yet), and each task runs sequentially in its own isolated git worktree. The `Thor` step currently records a templated build record only and does not write code. `Loki` runs the worktree test suite and `Heimdall` runs the web audit plus an epistemic critic pass over the task description; after those checks the branch merges automatically, with no human approval gate.
+  - [x] `2.4.c` Expose swarm task submit/list endpoints on the Web/SSE daemon (`internal/server`). Real-time worker state event streaming (`WorkerSpawned`, `WorktreeCreated`, `ToolRunning`, `TestsPassed`, `Merged`) for the Web & Flutter UIs is not implemented yet.
 - [x] **2.5 Build Unattended Run Engine & Two-Tier Testing Law (`internal/runengine/runengine.go`)**
   - [x] `2.5.a` Implement shell-less workspace file `Jail` (`Resolve`, `CheckWrite`, `ReadFile`, `WriteFile`, `ListDir`) blocking `..` traversal, symlink escapes, and writes to `.git/` or `.mimir/run.lock`.
   - [x] `2.5.b` Implement atomic single-run lockfile (`.mimir/run.lock` with PID, task, timestamp, and automatic stale lock recovery).
   - [x] `2.5.c` Implement `Limits` config (`MaxSteps`, `MaxTokens`, `Timeout`) and `Executor` seam interface (`GoTestExecutor` using discrete argv without shell interpolation).
-  - [x] `2.5.d` Enforce the **Two-Tier Testing Law**: Tier-1 inner edit loops run fast affected tests via `Huginn-Decider` (`RunInnerLoopTests`), while Tier-2 outer gates (`ReviewGate` / `ShipGate` via `mimir review` and `mimir ship`) always run the full test suite (`go test ./...`) + Checklist Gate + SDLC Deliverable Gate + Epistemic Critic Gate.
+  - [x] `2.5.d` Enforce the **Two-Tier Testing Law**: Tier-1 inner edit loops run fast affected tests via `Huginn-Decider` (`RunInnerLoopTests`), while Tier-2 outer gates (`ReviewGate` / `ShipGate` via `mimir review` and `mimir ship`) always run the full test suite (`go test ./...`) + Checklist Gate + SDLC Deliverable Gate; the Epistemic Critic Gate runs only when a draft report is supplied to the gate (the unattended path supplies none).
   - [x] `2.5.e` Verify with unit tests in `internal/runengine/runengine_test.go`.
 
 ---
@@ -186,9 +186,9 @@ G:\Mimir\
 > *Located in `G:\Mimir\ui\mimir_flutter\`, targeting Windows, macOS, Linux, iOS, and Android from a single 60fps Impeller codebase.*
 
 - [x] **5.1 Build E2EE Happy Relay & QR Pairing in Go Daemon (`internal/relay/happy_e2ee.go`)**
-  - [x] `5.1.a` Implement X25519 ephemeral key exchange + ChaCha20-Poly1305 / AES-256-GCM payload encryption in `internal/relay/happy_e2ee.go`.
+  - [x] `5.1.a` Implement X25519 ephemeral key exchange + ChaCha20-Poly1305 payload encryption in `internal/relay/happy_e2ee.go`.
   - [x] `5.1.b` Add CLI command `mimir pair` and TUI command `/pair` that renders an ASCII QR code in the terminal containing `mimir://pair?host=<ip:port>&pubkey=<base64>&token=<nonce>`.
-  - [x] `5.1.c` Stream encrypted `EventToken`, `EventTool`, `EventSteer`, `StopGateStatus`, and `ApprovalRequest` frames over WebSocket/SSE (`/api/v1/mobile/stream`).
+  - [x] `5.1.c` Relay frame encryption helpers exist in `internal/relay`, but streaming encrypted `EventToken`, `EventTool`, `EventSteer`, `StopGateStatus`, and `ApprovalRequest` frames over WebSocket/SSE (`/api/v1/mobile/stream`) is not wired into the agent loop yet; nothing in the binary sends or receives those frames today.
 - [x] **5.2 Scaffold Flutter Multi-Platform Project (`ui/mimir_flutter/`)**
   - [x] `5.2.a` Initialize `ui/mimir_flutter/pubspec.yaml` with `flutter_riverpod`, `go_router`, `cryptography` (X25519 + AES-GCM), `mobile_scanner` (QR pairing), and `flutter_highlight`.
   - [x] `5.2.b` Configure Nordic Glassmorphism dark theme (obsidian `#0B0F17`, Bifrost cyan `#00F0FF`, Odin gold `#F59E0B`, Thor emerald `#10B981`, Loki crimson `#EF4444` -- zero generic AI slop).
