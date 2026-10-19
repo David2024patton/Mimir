@@ -118,6 +118,20 @@ func (t *ListDirectoryTool) Run(ctx context.Context, args map[string]any) (strin
 	return b.String(), nil
 }
 
+// resolveWithinWorkDir maps targetPath into the workspace and proves the
+// result stays inside it, resolving symlinks on the longest existing
+// prefix so a planted link cannot smuggle the path outside.
+//
+// Known ceiling (accepted, audit FIX 4): the containment proof and the
+// caller's subsequent open are two separate steps, so this check has a
+// TOCTOU race. A symlink swapped in between the check and the open can
+// still redirect the open outside the workspace. Closing the race needs
+// descriptor-relative opens (openat2 style), which path-based
+// confinement cannot provide portably. The race is only winnable by a
+// writer who can already create entries inside the workspace while a
+// tool call runs, so the residual risk sits inside the trust domain the
+// workspace already grants. The limitation is accepted and recorded
+// here rather than engineered around.
 func resolveWithinWorkDir(workDir, targetPath string) (string, error) {
 	if strings.TrimSpace(targetPath) == "" {
 		targetPath = "."
