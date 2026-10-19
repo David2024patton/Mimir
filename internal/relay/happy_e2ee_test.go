@@ -344,3 +344,92 @@ func TestCompletePairingRejectsLowOrderKey(t *testing.T) {
 		t.Fatal("session must not be paired after a low-order key attempt")
 	}
 }
+
+// FIX 1: paired sessions must expire too. Before this fix they lived in
+// the Manager forever, so 64 pairings permanently exhausted the session
+// cap (a pairing DoS). Expiry is measured from the pairing time with the
+// Manager's PairedSessionTTL.
+func TestPairedSessionExpires(t *testing.T) {
+	mgr := NewManager()
+	mgr.PairedSessionTTL = time.Minute
+	sess, err := mgr.CreateSession("127.0.0.1:8420")
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	if err := sess.CompletePairing(sess.Nonce, clientKeyB64(t)); err != nil {
+		t.Fatalf("CompletePairing: %v", err)
+	}
+	if _, ok := mgr.GetSession(sess.ID); !ok {
+		t.Fatal("a freshly paired session must be live")
+	}
+
+	sess.mu.Lock()
+	sess.pairedAt = time.Now().Add(-2 * time.Minute)
+	sess.mu.Unlock()
+
+	if _, ok := mgr.GetSession(sess.ID); ok {
+		t.Fatal("expected paired session past its TTL to be gone from GetSession")
+	}
+}
+
+// FIX 1: the CreateSession cap must count live sessions only. Once paired
+// sessions expire, capacity frees up and creation succeeds again.
+func TestPairedExpiryFreesCapacity(t *testing.T) {
+	mgr := NewManager()
+	mgr.PairedSessionTTL = time.Minute
+	live := make([]*Session, 0, MaxLiveSessions)
+	for i := 0; i < MaxLiveSessions; i++ {
+		sess, err := mgr.CreateSession("127.0.0.1:8420")
+		if err != nil {
+			t.Fatalf("CreateSession %d: %v", i, err)
+		}
+		if err := sess.CompletePairing(sess.Nonce, clientKeyB64(t)); err != nil {
+			t.Fatalf("CompletePairing %d: %v", i, err)
+		}
+		live = append(live, sess)
+	}
+	if _, err := mgr.CreateSession("127.0.0.1:8420"); err == nil {
+		t.Fatal("expected error beyond the live session cap")
+	}
+
+	for _, sess := range live {
+		sess.mu.Lock()
+		sess.pairedAt = time.Now().Add(-2 * time.Minute)
+		sess.mu.Unlock()
+	}
+	if _, err := mgr.CreateSession("127.0.0.1:8420"); err != nil {
+		t.Fatalf("expected creation to succeed after paired sessions expired, got %v", err)
+	}
+}
+
+// FIX 1: RemoveSession ends a pairing on demand. It reports whether a
+// session existed; unknown IDs are a no-op reporting false.
+func TestRemoveSession(t *testing.T) {
+	mgr := NewManager()
+	sess, err := mgr.CreateSession("127.0.0.1:8420")
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	if err := sess.CompletePairing(sess.Nonce, clientKeyB64(t)); err != nil {
+		t.Fatalf("CompletePairing: %v", err)
+	}
+
+	if !mgr.RemoveSession(sess.ID) {
+		t.Fatal("RemoveSession must report true for a live session")
+	}
+	if _, ok := mgr.GetSession(sess.ID); ok {
+		t.Fatal("removed session must not be returned by GetSession")
+	}
+	if sess.IsPaired() {
+		t.Fatal("removed session must be torn down (no longer paired)")
+	}
+	if _, err := sess.EncryptFrame([]byte("x")); err == nil {
+		t.Fatal("removed session must not encrypt frames")
+	}
+	if mgr.RemoveSession(sess.ID) {
+		t.Fatal("second RemoveSession must report false")
+	}
+	if mgr.RemoveSession("pair_no-such-session") {
+		t.Fatal("RemoveSession of an unknown ID must report false")
+	}
+}

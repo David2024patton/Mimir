@@ -41,6 +41,11 @@ const (
 	// once, so the unauthenticated session-creation endpoint cannot be used
 	// to grow memory without bound.
 	MaxLiveSessions = 64
+	// DefaultPairedSessionTTL bounds how long a paired session stays live,
+	// measured from the moment pairing completes. Without it, paired
+	// sessions would occupy the MaxLiveSessions cap forever. A Manager can
+	// override it via its PairedSessionTTL field.
+	DefaultPairedSessionTTL = 24 * time.Hour
 	// nonceDirectionBit partitions the frame counter field of the AEAD
 	// nonce by direction: the host (this package) sets it on frames it
 	// encrypts, the phone clears it on frames it sends. See the package
@@ -61,6 +66,7 @@ type Session struct {
 	publicKey  [32]byte
 	sharedKey  [32]byte
 	paired     bool
+	pairedAt   time.Time // when pairing completed; paired expiry is measured from here
 	aead       cipher.AEAD
 	sendSeq    uint64 // last counter used by EncryptFrame, before the direction bit is applied
 	recvSeq    uint64 // highest counter accepted by DecryptFrame, in the phone (bit-clear) partition
@@ -87,18 +93,31 @@ func (s *Session) GenerateQRCodeASCII() (string, error) {
 type Manager struct {
 	sessions map[string]*Session
 	mu       sync.RWMutex
+	// PairedSessionTTL bounds the lifetime of a paired session, measured
+	// from pairing. Zero means DefaultPairedSessionTTL.
+	PairedSessionTTL time.Duration
 }
 
 // NewManager creates a thread-safe relay session manager.
 func NewManager() *Manager {
 	return &Manager{
-		sessions: make(map[string]*Session),
+		sessions:         make(map[string]*Session),
+		PairedSessionTTL: DefaultPairedSessionTTL,
 	}
 }
 
+// pairedTTL resolves the effective paired-session lifetime.
+func (m *Manager) pairedTTL() time.Duration {
+	if m.PairedSessionTTL > 0 {
+		return m.PairedSessionTTL
+	}
+	return DefaultPairedSessionTTL
+}
+
 // CreateSession generates a new X25519 ephemeral keypair and session tokens.
-// Unpaired sessions older than UnpairedSessionTTL are purged first, and
-// creation fails once MaxLiveSessions live sessions exist.
+// Expired sessions (unpaired or paired) are purged first, so the cap counts
+// live sessions only, and creation fails once MaxLiveSessions live sessions
+// exist.
 func (m *Manager) CreateSession(host string) (*Session, error) {
 	var privKey [32]byte
 	if _, err := io.ReadFull(rand.Reader, privKey[:]); err != nil {
@@ -146,23 +165,36 @@ func (m *Manager) CreateSession(host string) (*Session, error) {
 	return sess, nil
 }
 
-// purgeExpiredLocked deletes unpaired sessions past UnpairedSessionTTL.
-// Callers must hold m.mu.
+// purgeExpiredLocked deletes sessions past their TTL: unpaired sessions
+// past UnpairedSessionTTL from creation, paired sessions past the
+// Manager's paired TTL from pairing. Callers must hold m.mu.
 func (m *Manager) purgeExpiredLocked(now time.Time) {
 	for id, s := range m.sessions {
-		if !s.IsPaired() && now.Sub(s.CreatedAt) > UnpairedSessionTTL {
+		if m.expiredLocked(s, now) {
 			delete(m.sessions, id)
 		}
 	}
 }
 
-// sessionExpired reports whether an unpaired session has outlived its TTL.
-func (s *Session) sessionExpired(now time.Time) bool {
-	return !s.IsPaired() && now.Sub(s.CreatedAt) > UnpairedSessionTTL
+// expiredLocked reports whether s has outlived its TTL at now. Callers
+// must hold m.mu.
+func (m *Manager) expiredLocked(s *Session, now time.Time) bool {
+	if s.IsPaired() {
+		pairedAt := s.pairedAtTime()
+		return !pairedAt.IsZero() && now.Sub(pairedAt) > m.pairedTTL()
+	}
+	return now.Sub(s.CreatedAt) > UnpairedSessionTTL
 }
 
-// GetSession returns a session by ID if found. Unpaired sessions past
-// UnpairedSessionTTL are treated as gone and removed lazily.
+// pairedAtTime returns when pairing completed (zero if unpaired).
+func (s *Session) pairedAtTime() time.Time {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.pairedAt
+}
+
+// GetSession returns a session by ID if found. Sessions past their TTL
+// (unpaired or paired) are treated as gone and removed lazily.
 func (m *Manager) GetSession(id string) (*Session, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -170,11 +202,43 @@ func (m *Manager) GetSession(id string) (*Session, bool) {
 	if !ok {
 		return nil, false
 	}
-	if s.sessionExpired(time.Now()) {
+	if m.expiredLocked(s, time.Now()) {
 		delete(m.sessions, id)
 		return nil, false
 	}
 	return s, true
+}
+
+// RemoveSession ends a pairing immediately: the session is dropped from
+// the Manager, its keys are wiped, its listeners are closed, and it can
+// no longer encrypt or decrypt. It returns true if a session with that
+// ID existed; an unknown ID is a no-op and returns false.
+func (m *Manager) RemoveSession(id string) bool {
+	m.mu.Lock()
+	s, ok := m.sessions[id]
+	if ok {
+		delete(m.sessions, id)
+	}
+	m.mu.Unlock()
+	if !ok {
+		return false
+	}
+	s.teardown()
+	return true
+}
+
+// teardown wipes a session's key material and closes its listeners, so a
+// removed or expired session fails closed instead of silently continuing.
+func (s *Session) teardown() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for ch := range s.listeners {
+		close(ch)
+	}
+	s.listeners = make(map[chan []byte]struct{})
+	s.aead = nil
+	s.paired = false
+	s.sharedKey = [32]byte{}
 }
 
 // CompletePairing performs the X25519 Diffie-Hellman exchange with the
@@ -230,6 +294,7 @@ func (s *Session) CompletePairing(pairingToken, clientPubKeyB64 string) error {
 	s.sharedKey = sharedKey
 	s.aead = aead
 	s.paired = true
+	s.pairedAt = time.Now()
 	return nil
 }
 
@@ -344,12 +409,16 @@ func (s *Session) RegisterListener(ch chan []byte) {
 	s.listeners[ch] = struct{}{}
 }
 
-// UnregisterListener removes a listener channel.
+// UnregisterListener removes a listener channel, closing it if it was
+// registered. The membership check keeps a teardown that already closed
+// the channel from causing a double close here.
 func (s *Session) UnregisterListener(ch chan []byte) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.listeners, ch)
-	close(ch)
+	if _, ok := s.listeners[ch]; ok {
+		delete(s.listeners, ch)
+		close(ch)
+	}
 }
 
 // StreamHandler exposes Server-Sent Events (SSE) for the mobile app stream.
