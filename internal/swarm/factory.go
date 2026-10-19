@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -111,10 +112,28 @@ type factoryStore struct {
 func (f *Factory) loadFromDisk() {
 	raw, err := os.ReadFile(f.storagePath())
 	if err != nil {
+		// A missing store is the normal first-run case and starts empty
+		// quietly. Any other read failure is surfaced loudly: starting
+		// empty on an unreadable store would hide real queue loss.
+		if !errors.Is(err, os.ErrNotExist) {
+			slog.Error("swarm: task store could not be read; starting with an empty queue",
+				"path", f.storagePath(), "error", err)
+		}
 		return
 	}
 	var data factoryStore
 	if err := json.Unmarshal(raw, &data); err != nil {
+		// A corrupt store is never silently discarded: preserve the
+		// bytes under a side name for forensics and start empty, so the
+		// next save writes a fresh store instead of overwriting the
+		// evidence (audit FIX 3).
+		aside := fmt.Sprintf("%s.corrupt-%d", f.storagePath(), time.Now().UnixNano())
+		slog.Error("swarm: task store is corrupt; starting with an empty queue",
+			"path", f.storagePath(), "preserved_as", aside, "error", err)
+		if rerr := os.Rename(f.storagePath(), aside); rerr != nil {
+			slog.Error("swarm: could not preserve corrupt task store; the next save will overwrite it",
+				"path", f.storagePath(), "error", rerr)
+		}
 		return
 	}
 	f.taskOrder = data.Order
@@ -132,7 +151,11 @@ func (f *Factory) loadFromDisk() {
 	}
 }
 
-func (f *Factory) saveToDisk() {
+// saveToDisk persists the task queue. Persistence is part of the
+// queue's correctness (the nextID guarantee lives in this file), so
+// write failures are returned, never swallowed: a state that could not
+// be persisted must not be reported as real (audit FIX 3).
+func (f *Factory) saveToDisk() error {
 	data := factoryStore{
 		Order:  f.taskOrder,
 		Tasks:  f.tasks,
@@ -140,11 +163,16 @@ func (f *Factory) saveToDisk() {
 	}
 	raw, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return
+		return fmt.Errorf("swarm: encode task store: %w", err)
 	}
 	p := f.storagePath()
-	_ = os.MkdirAll(filepath.Dir(p), 0o755)
-	_ = os.WriteFile(p, append(raw, '\n'), 0o644)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		return fmt.Errorf("swarm: create task store directory: %w", err)
+	}
+	if err := os.WriteFile(p, append(raw, '\n'), 0o644); err != nil {
+		return fmt.Errorf("swarm: write task store: %w", err)
+	}
+	return nil
 }
 
 // Submit enqueues a new feature or bugfix task into the factory backlog.
@@ -176,7 +204,14 @@ func (f *Factory) Submit(title, description string) (*Task, error) {
 
 	f.tasks[id] = t
 	f.taskOrder = append(f.taskOrder, id)
-	f.saveToDisk()
+	if err := f.saveToDisk(); err != nil {
+		// Roll back the in-memory insert: a task that is not on disk was
+		// never queued. nextID is NOT rolled back; ID gaps are harmless,
+		// ID reuse is not (N12).
+		delete(f.tasks, id)
+		f.taskOrder = f.taskOrder[:len(f.taskOrder)-1]
+		return nil, err
+	}
 	return t, nil
 }
 
@@ -245,19 +280,29 @@ func (f *Factory) ExecuteTask(ctx context.Context, taskID string) error {
 	f.mu.Unlock()
 
 	// 1. Odin: Specification Phase
-	f.updateState(taskID, StateSpec, "odin")
-	specDoc, err := f.runOdinSpec(ctx, t)
-	if err != nil {
-		f.failTask(taskID, fmt.Sprintf("Odin spec phase failed: %v", err))
+	if err := f.updateState(taskID, StateSpec, "odin"); err != nil {
 		return err
 	}
-	f.recordArtifact(taskID, specDoc)
+	specDoc, err := f.runOdinSpec(ctx, t)
+	if err != nil {
+		if serr := f.failTask(taskID, fmt.Sprintf("Odin spec phase failed: %v", err)); serr != nil {
+			return fmt.Errorf("%v (also could not persist failed state: %w)", err, serr)
+		}
+		return err
+	}
+	if err := f.recordArtifact(taskID, specDoc); err != nil {
+		return err
+	}
 
 	// 2. Thor: Implementation in isolated Git Worktree
-	f.updateState(taskID, StateImplement, "thor")
+	if err := f.updateState(taskID, StateImplement, "thor"); err != nil {
+		return err
+	}
 	wtDir, err := f.setupWorktree(t.Branch)
 	if err != nil {
-		f.failTask(taskID, fmt.Sprintf("Thor worktree setup failed: %v", err))
+		if serr := f.failTask(taskID, fmt.Sprintf("Thor worktree setup failed: %v", err)); serr != nil {
+			return fmt.Errorf("%v (also could not persist failed state: %w)", err, serr)
+		}
 		return err
 	}
 	defer f.teardownWorktree(wtDir)
@@ -270,24 +315,36 @@ func (f *Factory) ExecuteTask(ctx context.Context, taskID string) error {
 		if errors.Is(err, ErrNoAgentConfigured) {
 			// Honest stop, not a failure and never a fake build: the task
 			// waits in StateBlocked until the factory is given an agent.
-			f.blockTask(taskID, err.Error())
+			if serr := f.blockTask(taskID, err.Error()); serr != nil {
+				return fmt.Errorf("%w (also could not persist blocked state: %v)", err, serr)
+			}
 			return err
 		}
-		f.failTask(taskID, fmt.Sprintf("Thor implementation failed: %v", err))
+		if serr := f.failTask(taskID, fmt.Sprintf("Thor implementation failed: %v", err)); serr != nil {
+			return fmt.Errorf("%v (also could not persist failed state: %w)", err, serr)
+		}
 		return err
 	}
 
 	// 3. Loki: Testing and Adversarial Debugging
-	f.updateState(taskID, StateTest, "loki")
+	if err := f.updateState(taskID, StateTest, "loki"); err != nil {
+		return err
+	}
 	if err := f.runLokiTesting(ctx, t, wtDir); err != nil {
-		f.failTask(taskID, fmt.Sprintf("Loki test phase failed: %v", err))
+		if serr := f.failTask(taskID, fmt.Sprintf("Loki test phase failed: %v", err)); serr != nil {
+			return fmt.Errorf("%v (also could not persist failed state: %w)", err, serr)
+		}
 		return err
 	}
 
 	// 4. Heimdall: Review Gate, Epistemic Critic & Web Audit
-	f.updateState(taskID, StateReview, "heimdall")
+	if err := f.updateState(taskID, StateReview, "heimdall"); err != nil {
+		return err
+	}
 	if err := f.runHeimdallReview(ctx, t, wtDir); err != nil {
-		f.failTask(taskID, fmt.Sprintf("Heimdall review gate failed: %v", err))
+		if serr := f.failTask(taskID, fmt.Sprintf("Heimdall review gate failed: %v", err)); serr != nil {
+			return fmt.Errorf("%v (also could not persist failed state: %w)", err, serr)
+		}
 		return err
 	}
 
@@ -295,7 +352,9 @@ func (f *Factory) ExecuteTask(ctx context.Context, taskID string) error {
 	// merge: the task waits in StateAwaitingMerge until a human calls
 	// ApproveMerge from the CLI or TUI. The committed task branch is left
 	// intact; only the worktree is torn down.
-	f.updateState(taskID, StateAwaitingMerge, "none")
+	if err := f.updateState(taskID, StateAwaitingMerge, "none"); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -324,12 +383,13 @@ func (f *Factory) ApproveMerge(ctx context.Context, taskID string) error {
 	}
 
 	if err := f.mergeTaskBranch(ctx, t.Branch); err != nil {
-		f.failTask(taskID, fmt.Sprintf("Git merge failed: %v", err))
+		if serr := f.failTask(taskID, fmt.Sprintf("Git merge failed: %v", err)); serr != nil {
+			return fmt.Errorf("%v (also could not persist failed state: %w)", err, serr)
+		}
 		return err
 	}
 
-	f.updateState(taskID, StateMerged, "none")
-	return nil
+	return f.updateState(taskID, StateMerged, "none")
 }
 
 // currentBranch returns the branch checked out in the main worktree.
@@ -343,46 +403,50 @@ func (f *Factory) currentBranch(ctx context.Context) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func (f *Factory) updateState(id string, st TaskState, assignedTo string) {
+func (f *Factory) updateState(id string, st TaskState, assignedTo string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if t, ok := f.tasks[id]; ok {
 		t.State = st
 		t.AssignedTo = assignedTo
 		t.UpdatedAt = time.Now().UTC()
-		f.saveToDisk()
+		return f.saveToDisk()
 	}
+	return nil
 }
 
-func (f *Factory) failTask(id string, errMsg string) {
+func (f *Factory) failTask(id string, errMsg string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if t, ok := f.tasks[id]; ok {
 		t.State = StateFailed
 		t.Error = errMsg
 		t.UpdatedAt = time.Now().UTC()
-		f.saveToDisk()
+		return f.saveToDisk()
 	}
+	return nil
 }
 
-func (f *Factory) blockTask(id string, reason string) {
+func (f *Factory) blockTask(id string, reason string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if t, ok := f.tasks[id]; ok {
 		t.State = StateBlocked
 		t.Error = reason
 		t.UpdatedAt = time.Now().UTC()
-		f.saveToDisk()
+		return f.saveToDisk()
 	}
+	return nil
 }
 
-func (f *Factory) recordArtifact(id, path string) {
+func (f *Factory) recordArtifact(id, path string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if t, ok := f.tasks[id]; ok {
 		t.Artifacts = append(t.Artifacts, path)
-		f.saveToDisk()
+		return f.saveToDisk()
 	}
+	return nil
 }
 
 func (f *Factory) runOdinSpec(ctx context.Context, t *Task) (string, error) {

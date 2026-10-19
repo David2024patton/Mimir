@@ -248,3 +248,72 @@ func TestApproveMerge_GatesAndTargetsBranch(t *testing.T) {
 		t.Fatal("expected error approving a task that is not awaiting merge")
 	}
 }
+
+// FIX 3 (audit): saveToDisk swallowed every error, so Submit reported
+// success for tasks that were never persisted (and the persisted nextID
+// guarantee silently broke with them). A failed persist must fail the
+// submit and roll back the in-memory task.
+func TestFactory_SubmitFailsWhenStoreUnwritable(t *testing.T) {
+	dir := t.TempDir()
+	// Block the store path: .mimir exists as a regular file, so creating
+	// .mimir/swarm fails regardless of process privileges.
+	if err := os.WriteFile(filepath.Join(dir, ".mimir"), []byte("not a dir"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	f := NewFactory(FactoryConfig{RootDir: dir, TargetBranch: "main"})
+	if _, err := f.Submit("Doomed Task", "cannot persist"); err == nil {
+		t.Fatal("expected Submit to fail when the task store cannot be written")
+	}
+	if got := f.ListTasks(); len(got) != 0 {
+		t.Fatalf("failed Submit must roll back the in-memory task, got %d tasks", len(got))
+	}
+}
+
+// FIX 3: a corrupt task store must not be silently discarded. It is
+// preserved under a side name and the factory starts empty; later saves
+// write a fresh store and never touch the preserved bytes.
+func TestFactory_CorruptStorePreserved(t *testing.T) {
+	dir := t.TempDir()
+	storeDir := filepath.Join(dir, ".mimir", "swarm")
+	if err := os.MkdirAll(storeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	garbage := []byte("{not json!!")
+	storePath := filepath.Join(storeDir, "tasks.json")
+	if err := os.WriteFile(storePath, garbage, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	f := NewFactory(FactoryConfig{RootDir: dir, TargetBranch: "main"})
+	if got := f.ListTasks(); len(got) != 0 {
+		t.Fatalf("corrupt store must start empty, got %d tasks", len(got))
+	}
+	matches, err := filepath.Glob(storePath + ".corrupt-*")
+	if err != nil || len(matches) != 1 {
+		t.Fatalf("expected exactly one preserved corrupt store, got %v (err %v)", matches, err)
+	}
+	preserved, err := os.ReadFile(matches[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(preserved) != string(garbage) {
+		t.Fatalf("preserved store content changed: %q", preserved)
+	}
+
+	// The factory still works, and the fresh save does not touch the
+	// preserved copy.
+	if _, err := f.Submit("Fresh Task", "after corruption"); err != nil {
+		t.Fatalf("Submit after corrupt store recovery failed: %v", err)
+	}
+	preserved2, _ := os.ReadFile(matches[0])
+	if string(preserved2) != string(garbage) {
+		t.Fatal("preserved corrupt store was modified by a later save")
+	}
+	raw, err := os.ReadFile(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) == string(garbage) {
+		t.Fatal("fresh store was not written after recovery")
+	}
+}
