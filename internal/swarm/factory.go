@@ -648,9 +648,9 @@ func (f *Factory) FormatStatus() string {
 
 	var b strings.Builder
 	b.WriteString("## Mímir Level 3 Autonomous Software Factory\n")
-	b.WriteString(fmt.Sprintf("- **Total Tasks**: %d\n", len(f.tasks)))
-	b.WriteString(fmt.Sprintf("- **Target Branch**: `%s`\n", f.cfg.TargetBranch))
-	b.WriteString(fmt.Sprintf("- **Worktree Base**: `%s`\n\n", f.worktreeRoot))
+	fmt.Fprintf(&b, "- **Total Tasks**: %d\n", len(f.tasks))
+	fmt.Fprintf(&b, "- **Target Branch**: `%s`\n", f.cfg.TargetBranch)
+	fmt.Fprintf(&b, "- **Worktree Base**: `%s`\n\n", f.worktreeRoot)
 
 	if len(f.taskOrder) == 0 {
 		b.WriteString("No tasks currently queued. Submit tasks with `mimir swarm add \"Title\" \"Description\"`.\n")
@@ -660,13 +660,13 @@ func (f *Factory) FormatStatus() string {
 	for _, id := range f.taskOrder {
 		t := f.tasks[id]
 		stateBadge := strings.ToUpper(string(t.State))
-		b.WriteString(fmt.Sprintf("* **[%s] %s (`%s`)**\n", stateBadge, t.Title, t.ID))
-		b.WriteString(fmt.Sprintf("  - State: `%s` | Assigned To: `%s` | Branch: `%s`\n", t.State, t.AssignedTo, t.Branch))
+		fmt.Fprintf(&b, "* **[%s] %s (`%s`)**\n", stateBadge, t.Title, t.ID)
+		fmt.Fprintf(&b, "  - State: `%s` | Assigned To: `%s` | Branch: `%s`\n", t.State, t.AssignedTo, t.Branch)
 		if t.Error != "" {
-			b.WriteString(fmt.Sprintf("  - Error: **%s**\n", t.Error))
+			fmt.Fprintf(&b, "  - Error: **%s**\n", t.Error)
 		}
 		if len(t.Artifacts) > 0 {
-			b.WriteString(fmt.Sprintf("  - Deliverables: %s\n", strings.Join(t.Artifacts, ", ")))
+			fmt.Fprintf(&b, "  - Deliverables: %s\n", strings.Join(t.Artifacts, ", "))
 		}
 	}
 

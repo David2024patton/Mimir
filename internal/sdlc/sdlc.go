@@ -270,7 +270,7 @@ func (m *Manager) BuildPhasePrompt(input string, isWebTask bool) string {
 	var b strings.Builder
 	b.WriteString("\n\n")
 	b.WriteString(spec.MicroPrompt)
-	b.WriteString(fmt.Sprintf(" (Method: %s | Deliverable: %s)", method, spec.Deliverable))
+	fmt.Fprintf(&b, " (Method: %s | Deliverable: %s)", method, spec.Deliverable)
 	if isWebTask && spec.WebOverlay != "" {
 		b.WriteString("\n")
 		b.WriteString(spec.WebOverlay)
@@ -330,7 +330,7 @@ func (m *Manager) FormatBoard() string {
 	m.mu.RUnlock()
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("SDLC Framework [Methodology: %s | Auto-Phase: %v]\n", method, auto))
+	fmt.Fprintf(&b, "SDLC Framework [Methodology: %s | Auto-Phase: %v]\n", method, auto)
 	for _, p := range AllPhases() {
 		marker := "  "
 		if p.ID == cur {
@@ -342,8 +342,8 @@ func (m *Manager) FormatBoard() string {
 		} else if p.ID == cur {
 			status = "ACTIVE"
 		}
-		b.WriteString(fmt.Sprintf("%s [%d/7] %-14s | Persona: %-8s | Deliverable: %-38s | %s\n",
-			marker, p.Step, p.Title, p.Persona, p.Deliverable, status))
+		fmt.Fprintf(&b, "%s [%d/7] %-14s | Persona: %-8s | Deliverable: %-38s | %s\n",
+			marker, p.Step, p.Title, p.Persona, p.Deliverable, status)
 	}
 	return strings.TrimRight(b.String(), "\n")
 }

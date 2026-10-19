@@ -138,7 +138,10 @@ func meHandler(auth *cortex.AuthStore) http.HandlerFunc {
 			Email     string `json:"email"`
 			CreatedAt string `json:"created_at"`
 		}
-		json.Unmarshal(b, &raw)
+		if err := json.Unmarshal(b, &raw); err != nil {
+			writeErrorJSON(w, http.StatusInternalServerError, "decode user row: "+err.Error())
+			return
+		}
 		writeJSON(w, map[string]any{
 			"id":         cortex.StripRecordID(raw.ID),
 			"email":      raw.Email,
