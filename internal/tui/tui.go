@@ -59,7 +59,7 @@ func Run(ctx context.Context, opts Options) error {
 		}
 	}
 
-	pid, model, local := opts.Agent.ModelInfo()
+	pid, model, _ := opts.Agent.ModelInfo()
 	toolCount := 0
 	if opts.Tools != nil {
 		toolCount = len(opts.Tools.ForMode(opts.Agent.Mode()))
@@ -76,7 +76,7 @@ func Run(ctx context.Context, opts Options) error {
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 
 	for {
-		pid, model, local = opts.Agent.ModelInfo()
+		pid, model, local := opts.Agent.ModelInfo()
 		totalTok := 0
 		if opts.Usage != nil {
 			totalTok = opts.Usage.TotalTokens()

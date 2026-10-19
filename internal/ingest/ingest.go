@@ -110,7 +110,7 @@ func Run(ctx context.Context, opts Options, store cortex.Store) (*Result, error)
 	}
 
 	rootDir := source
-	repoName := filepath.Base(source)
+	var repoName string
 	if isGitURL(source) {
 		tmpDir, cleanup, err := shallowClone(ctx, source, opts.Branch)
 		if err != nil {
