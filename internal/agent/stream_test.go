@@ -51,6 +51,9 @@ func TestRunStream(t *testing.T) {
 	a := New(Config{
 		Provider: &fakeStreamProvider{}, Tools: tools.Default(t.TempDir()),
 		Cortex: store, Model: "m",
+		// Edit mode now fails closed without an approver (F2/N1); this test
+		// exercises the stream loop, so it approves tool calls explicitly.
+		ApprovalFunc: func(string, string) bool { return true },
 	})
 
 	var events []Event

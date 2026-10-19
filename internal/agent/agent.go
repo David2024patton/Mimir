@@ -277,21 +277,31 @@ func (a *Agent) drainSteer() []string {
 	}
 }
 
+// phaseToolFilter returns the active SDLC phase's allowed tool set when a
+// methodology with phase-scoped tools is active (waterfall), or nil when no
+// phase restriction applies. It is the single source of the computation used
+// both to filter advertised schemas and to enforce the set at execution time.
+func (a *Agent) phaseToolFilter() map[string]bool {
+	a.mu.RLock()
+	sdlcMgr := a.cfg.SDLC
+	a.mu.RUnlock()
+	if sdlcMgr != nil && sdlcMgr.Methodology() == sdlc.MethodWaterfall {
+		return sdlcMgr.AllowedToolSet()
+	}
+	return nil
+}
+
 // schemas converts the registered tools visible in the current mode into model-facing tool schemas.
 // When SDLC Waterfall methodology is active, it also enforces the active phase's AllowedToolSet.
 func (a *Agent) schemas() []llm.ToolSchema {
 	a.mu.RLock()
 	reg := a.cfg.Tools
 	mode := a.cfg.Mode
-	sdlcMgr := a.cfg.SDLC
 	a.mu.RUnlock()
 	if reg == nil {
 		return nil
 	}
-	var phaseFilter map[string]bool
-	if sdlcMgr != nil && sdlcMgr.Methodology() == sdlc.MethodWaterfall {
-		phaseFilter = sdlcMgr.AllowedToolSet()
-	}
+	phaseFilter := a.phaseToolFilter()
 	var out []llm.ToolSchema
 	for _, t := range reg.ForMode(mode) {
 		if phaseFilter != nil && !phaseFilter[t.Name()] {
@@ -342,7 +352,18 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 		_ = json.Unmarshal([]byte(repairedArgs), &args)
 	}
 
+	// 0. SDLC phase enforcement at execution time (F5): schemas() only filters
+	// which tools are advertised, so a model that emits a call anyway (or a
+	// direct caller) must still be rejected when the active phase's allowed
+	// tool set does not include the tool.
+	if phaseFilter := a.phaseToolFilter(); phaseFilter != nil && !phaseFilter[tc.Name] {
+		st.Err = fmt.Sprintf("blocked by SDLC phase policy: tool %q is not in the active phase's allowed tool set", tc.Name)
+		st.Result = st.Err
+		return st
+	}
+
 	// 1. Fail-closed policy gate check (F2/F3/ADR-009)
+	approved := false
 	if gate != nil {
 		dec := gate.Evaluate(policy.Request{Tool: tc.Name, Args: args})
 		switch dec {
@@ -351,10 +372,19 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 			st.Result = st.Err
 			return st
 		case policy.RequireApproval:
-			if approve != nil && !approve(tc.Name, repairedArgs) {
-				st.Err = fmt.Sprintf("execution of tool %q rejected: user approval required by policy gate", tc.Name)
+			// Bypass mode is the user's explicit opt-out of approval prompts:
+			// RequireApproval verdicts are waived in bypass mode. Deny verdicts
+			// are NOT waived (handled above) and still block execution.
+			if mode == ModeBypass {
+				// Waived by explicit user opt-out; proceed without approval.
+			} else if approve == nil || !approve(tc.Name, repairedArgs) {
+				// Fail closed (N1): a RequireApproval verdict with no approver
+				// configured denies the call instead of silently passing.
+				st.Err = fmt.Sprintf("execution of tool %q denied: policy gate requires approval but no approver approved it", tc.Name)
 				st.Result = st.Err
 				return st
+			} else {
+				approved = true
 			}
 		case policy.Allow:
 			// Allowed to proceed
@@ -366,9 +396,11 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 		st.Result = st.Err
 		return st
 	}
-	if mode == ModeEdit && approve != nil && tools.IsWriteTool(tc.Name) {
-		if !approve(tc.Name, repairedArgs) {
-			st.Err = "tool execution rejected by user"
+	if mode == ModeEdit && !approved && tools.IsWriteTool(tc.Name) {
+		// Fail closed (N1): edit mode requires approval for write tools; with
+		// no approver configured the call is denied, not silently passed.
+		if approve == nil || !approve(tc.Name, repairedArgs) {
+			st.Err = "tool execution rejected: edit mode requires user approval for write tools and no approver approved it"
 			st.Result = st.Err
 			return st
 		}
