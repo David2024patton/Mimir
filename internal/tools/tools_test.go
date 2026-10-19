@@ -134,3 +134,56 @@ func TestWorkspaceConfinementPreventEscapes(t *testing.T) {
 		t.Fatalf("unexpected content: %s, %v", string(data), err)
 	}
 }
+
+// N9: a symlink inside the workspace pointing outside must not pass the
+// confinement check for read, write, or list; a symlink that stays inside
+// the workspace keeps working.
+func TestWorkspaceConfinementRejectsSymlinkEscape(t *testing.T) {
+	wsDir := t.TempDir()
+	outsideDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outsideDir, "secret.txt"), []byte("sensitive info"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outsideDir, filepath.Join(wsDir, "escape")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	// Positive control: an in-workspace symlink target.
+	realDir := filepath.Join(wsDir, "real")
+	if err := os.MkdirAll(realDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(realDir, "ok.txt"), []byte("inside"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(realDir, filepath.Join(wsDir, "alias")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	r := Default(wsDir)
+	ctx := context.Background()
+
+	rf, _ := r.Get("read_file")
+	if _, err := rf.Run(ctx, map[string]any{"path": "escape/secret.txt"}); err == nil {
+		t.Fatal("expected security error reading through symlink escape")
+	}
+	if out, err := rf.Run(ctx, map[string]any{"path": "alias/ok.txt"}); err != nil || out != "inside" {
+		t.Fatalf("expected in-workspace symlink read to succeed, got %q, %v", out, err)
+	}
+
+	wf, _ := r.Get("write_file")
+	if _, err := wf.Run(ctx, map[string]any{"path": "escape/new.txt", "content": "malicious"}); err == nil {
+		t.Fatal("expected security error writing through symlink escape")
+	}
+	if _, err := os.Stat(filepath.Join(outsideDir, "new.txt")); !os.IsNotExist(err) {
+		t.Fatal("write through symlink escape created a file outside the workspace")
+	}
+	// Writing a not-yet-existing file through an in-workspace path is fine.
+	if _, err := wf.Run(ctx, map[string]any{"path": "alias/new.txt", "content": "fine"}); err != nil {
+		t.Fatalf("expected write via in-workspace symlink parent to succeed: %v", err)
+	}
+
+	lf, _ := r.Get("list_directory")
+	if _, err := lf.Run(ctx, map[string]any{"path": "escape"}); err == nil {
+		t.Fatal("expected security error listing through symlink escape")
+	}
+}

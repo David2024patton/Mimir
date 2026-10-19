@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -22,14 +23,21 @@ import (
 type TaskState string
 
 const (
-	StateBacklog   TaskState = "backlog"   // Waiting for specification
-	StateSpec      TaskState = "spec"      // Odin (Orchestrator) writing requirements
-	StateImplement TaskState = "implement" // Thor (Builder) developing in worktree
-	StateTest      TaskState = "test"      // Loki (Tester/Debugger) validating and fixing
-	StateReview    TaskState = "review"    // Heimdall (Auditor) running SEO/GEO and web audit
-	StateMerged    TaskState = "merged"    // Merged back to target branch
-	StateFailed    TaskState = "failed"    // Halted due to unrecoverable test or review failure
+	StateBacklog       TaskState = "backlog"        // Waiting for specification
+	StateSpec          TaskState = "spec"           // Odin (Orchestrator) writing requirements
+	StateImplement     TaskState = "implement"      // Thor (Builder) developing in worktree
+	StateTest          TaskState = "test"           // Loki (Tester/Debugger) validating and fixing
+	StateReview        TaskState = "review"         // Heimdall (Auditor) running SEO/GEO and web audit
+	StateAwaitingMerge TaskState = "awaiting_merge" // All gates passed; a human must call ApproveMerge
+	StateMerged        TaskState = "merged"         // Merged back to target branch after human approval
+	StateBlocked       TaskState = "blocked"        // Cannot proceed without external input (e.g. no agent configured)
+	StateFailed        TaskState = "failed"         // Halted due to unrecoverable test or review failure
 )
+
+// ErrNoAgentConfigured is returned when a task reaches the Thor build phase
+// but the factory has no agent configured to do the work. The task is left
+// in StateBlocked, never reported as built.
+var ErrNoAgentConfigured = errors.New("swarm: no agent configured (FactoryConfig.AgentConfig.Provider is nil); Thor cannot implement tasks")
 
 // Task represents a discrete unit of work assigned to the autonomous software factory.
 type Task struct {
@@ -62,6 +70,7 @@ type Factory struct {
 	cfg          FactoryConfig
 	tasks        map[string]*Task
 	taskOrder    []string
+	nextID       int // persisted monotonic counter for task IDs (N12)
 	worktreeRoot string
 }
 
@@ -91,29 +100,43 @@ func (f *Factory) storagePath() string {
 	return filepath.Join(f.cfg.RootDir, ".mimir", "swarm", "tasks.json")
 }
 
+// factoryStore is the on-disk form of the factory queue. NextID persists the
+// task ID counter so IDs stay unique across process restarts and reloads.
+type factoryStore struct {
+	Order  []string         `json:"order"`
+	Tasks  map[string]*Task `json:"tasks"`
+	NextID int              `json:"next_id"`
+}
+
 func (f *Factory) loadFromDisk() {
 	raw, err := os.ReadFile(f.storagePath())
 	if err != nil {
 		return
 	}
-	var data struct {
-		Order []string         `json:"order"`
-		Tasks map[string]*Task `json:"tasks"`
-	}
+	var data factoryStore
 	if err := json.Unmarshal(raw, &data); err != nil {
 		return
 	}
 	f.taskOrder = data.Order
 	f.tasks = data.Tasks
+	if f.tasks == nil {
+		f.tasks = make(map[string]*Task)
+	}
+	// Legacy stores have no counter: derive it from the highest existing ID
+	// so a reloaded factory never reissues an ID (N12).
+	f.nextID = data.NextID
+	for id := range f.tasks {
+		if n, err := strconv.Atoi(strings.TrimPrefix(id, "task-")); err == nil && n > f.nextID {
+			f.nextID = n
+		}
+	}
 }
 
 func (f *Factory) saveToDisk() {
-	data := struct {
-		Order []string         `json:"order"`
-		Tasks map[string]*Task `json:"tasks"`
-	}{
-		Order: f.taskOrder,
-		Tasks: f.tasks,
+	data := factoryStore{
+		Order:  f.taskOrder,
+		Tasks:  f.tasks,
+		NextID: f.nextID,
 	}
 	raw, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -133,12 +156,11 @@ func (f *Factory) Submit(title, description string) (*Task, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	id := fmt.Sprintf("task-%d", len(f.tasks)+1)
-	cleanSlug := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(title), " ", "-"))
-	if len(cleanSlug) > 30 {
-		cleanSlug = cleanSlug[:30]
-	}
-	branch := fmt.Sprintf("swarm/%s-%s", id, cleanSlug)
+	// IDs come from a persisted monotonic counter, never from the live task
+	// count, so reloads and deletions cannot reissue an ID (N12).
+	f.nextID++
+	id := fmt.Sprintf("task-%d", f.nextID)
+	branch := fmt.Sprintf("swarm/%s-%s", id, sanitizeSlug(title))
 
 	t := &Task{
 		ID:          id,
@@ -156,6 +178,32 @@ func (f *Factory) Submit(title, description string) (*Task, error) {
 	f.taskOrder = append(f.taskOrder, id)
 	f.saveToDisk()
 	return t, nil
+}
+
+// sanitizeSlug reduces a task title to a git-ref-safe branch slug:
+// lowercase [a-z0-9] words joined by single dashes, at most 30 chars,
+// with a fallback when nothing usable remains (N12).
+func sanitizeSlug(title string) string {
+	var b strings.Builder
+	lastDash := false
+	for _, r := range strings.ToLower(strings.TrimSpace(title)) {
+		switch {
+		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
+			b.WriteRune(r)
+			lastDash = false
+		case !lastDash:
+			b.WriteByte('-')
+			lastDash = true
+		}
+	}
+	slug := strings.Trim(b.String(), "-")
+	if len(slug) > 30 {
+		slug = strings.TrimRight(slug[:30], "-")
+	}
+	if slug == "" {
+		slug = "task"
+	}
+	return slug
 }
 
 // ListTasks returns all tasks in submission order.
@@ -219,6 +267,12 @@ func (f *Factory) ExecuteTask(ctx context.Context, taskID string) error {
 	f.mu.Unlock()
 
 	if err := f.runThorImplement(ctx, t, wtDir, specDoc); err != nil {
+		if errors.Is(err, ErrNoAgentConfigured) {
+			// Honest stop, not a failure and never a fake build: the task
+			// waits in StateBlocked until the factory is given an agent.
+			f.blockTask(taskID, err.Error())
+			return err
+		}
 		f.failTask(taskID, fmt.Sprintf("Thor implementation failed: %v", err))
 		return err
 	}
@@ -237,7 +291,38 @@ func (f *Factory) ExecuteTask(ctx context.Context, taskID string) error {
 		return err
 	}
 
-	// 5. Merge worktree branch to target branch
+	// 5. Stop for human merge approval (N6). Passing every gate does NOT
+	// merge: the task waits in StateAwaitingMerge until a human calls
+	// ApproveMerge from the CLI or TUI. The committed task branch is left
+	// intact; only the worktree is torn down.
+	f.updateState(taskID, StateAwaitingMerge, "none")
+	return nil
+}
+
+// ApproveMerge is the human approval step for a task that passed all
+// factory gates. It merges the task branch into the factory TargetBranch
+// and marks the task StateMerged. The merge is refused when the main
+// worktree is not currently on TargetBranch, so an approval can never land
+// code on whatever branch happens to be checked out (N6).
+func (f *Factory) ApproveMerge(ctx context.Context, taskID string) error {
+	f.mu.RLock()
+	t, ok := f.tasks[taskID]
+	f.mu.RUnlock()
+	if !ok {
+		return fmt.Errorf("factory: task %q not found", taskID)
+	}
+	if t.State != StateAwaitingMerge {
+		return fmt.Errorf("factory: task %q is in state %q, not %q; only gate-passed tasks can be approved for merge", taskID, t.State, StateAwaitingMerge)
+	}
+
+	// A refusal (wrong branch checked out) leaves the task awaiting merge so
+	// the approval can be retried; only a failed merge attempt fails it.
+	if current, err := f.currentBranch(ctx); err != nil {
+		return err
+	} else if current != f.cfg.TargetBranch {
+		return fmt.Errorf("factory: refusing to merge %s: main worktree is on branch %q but the target branch is %q; check out %q first", t.Branch, current, f.cfg.TargetBranch, f.cfg.TargetBranch)
+	}
+
 	if err := f.mergeTaskBranch(ctx, t.Branch); err != nil {
 		f.failTask(taskID, fmt.Sprintf("Git merge failed: %v", err))
 		return err
@@ -245,6 +330,17 @@ func (f *Factory) ExecuteTask(ctx context.Context, taskID string) error {
 
 	f.updateState(taskID, StateMerged, "none")
 	return nil
+}
+
+// currentBranch returns the branch checked out in the main worktree.
+func (f *Factory) currentBranch(ctx context.Context) (string, error) {
+	head := exec.CommandContext(ctx, "git", "rev-parse", "--abbrev-ref", "HEAD")
+	head.Dir = f.cfg.RootDir
+	out, err := head.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("cannot determine current branch of main worktree: %s (%v)", string(out), err)
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 func (f *Factory) updateState(id string, st TaskState, assignedTo string) {
@@ -264,6 +360,17 @@ func (f *Factory) failTask(id string, errMsg string) {
 	if t, ok := f.tasks[id]; ok {
 		t.State = StateFailed
 		t.Error = errMsg
+		t.UpdatedAt = time.Now().UTC()
+		f.saveToDisk()
+	}
+}
+
+func (f *Factory) blockTask(id string, reason string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if t, ok := f.tasks[id]; ok {
+		t.State = StateBlocked
+		t.Error = reason
 		t.UpdatedAt = time.Now().UTC()
 		f.saveToDisk()
 	}
@@ -332,18 +439,78 @@ func (f *Factory) teardownWorktree(wtDir string) {
 	_ = cmd.Run()
 }
 
+// runThorImplement runs one real agent pass inside the task worktree using
+// the factory's configured agent, then commits whatever the agent produced
+// to the task branch so the branch (not the disposable worktree) carries
+// the work into the review and merge gates. Without a configured agent it
+// returns ErrNoAgentConfigured: Thor never fabricates a build record and
+// claims work it did not do.
 func (f *Factory) runThorImplement(ctx context.Context, t *Task, wtDir, specDoc string) error {
-	// Thor operates inside wtDir. For standard factory tasks, verify build environment and record progress.
+	if f.cfg.AgentConfig.Provider == nil {
+		return ErrNoAgentConfigured
+	}
+
+	cfg := f.cfg.AgentConfig
+	// The worker's tools must be rooted in the task worktree, not the main
+	// checkout, so every file and shell action stays inside the jail.
+	cfg.Tools = tools.Default(wtDir)
+	if cfg.Mode == "" {
+		// Autonomous worker: there is no human at this terminal to answer
+		// approval prompts. The policy gate (cfg.Gate) still applies.
+		cfg.Mode = agent.ModeBypass
+	}
+	worker := agent.New(cfg)
+
+	specBody := ""
+	if raw, err := os.ReadFile(specDoc); err == nil {
+		specBody = string(raw)
+	}
+	prompt := fmt.Sprintf("You are Thor, the builder in an autonomous software factory. "+
+		"Implement the task below inside the current workspace, which is a dedicated git worktree on branch %s. "+
+		"Make the smallest complete change that satisfies the spec, run the project's tests if practical, then stop.\n\n"+
+		"Task: %s\n\nDescription: %s\n\nSpecification:\n%s",
+		t.Branch, t.Title, t.Description, specBody)
+	if _, err := worker.Run(ctx, prompt, nil); err != nil {
+		return fmt.Errorf("thor agent run failed: %w", err)
+	}
+
 	buildRecord := filepath.Join(wtDir, ".mimir", "sdlc", fmt.Sprintf("04-BUILD-%s.md", t.ID))
 	_ = os.MkdirAll(filepath.Dir(buildRecord), 0o755)
-
 	content := fmt.Sprintf("# Thor Implementation Record: %s\n\n"+
 		"- Task ID: `%s`\n"+
 		"- Worktree: `%s`\n"+
-		"- Status: Ready for Loki verification\n",
-		t.Title, t.ID, wtDir)
+		"- Status: Agent pass complete; changes committed to `%s` for Loki verification\n",
+		t.Title, t.ID, wtDir, t.Branch)
+	if err := os.WriteFile(buildRecord, []byte(content), 0o644); err != nil {
+		return err
+	}
 
-	return os.WriteFile(buildRecord, []byte(content), 0o644)
+	return f.commitWorktreeChanges(ctx, wtDir, t)
+}
+
+// commitWorktreeChanges commits all pending worktree changes to the task
+// branch. A clean worktree (agent changed nothing) is not an error.
+func (f *Factory) commitWorktreeChanges(ctx context.Context, wtDir string, t *Task) error {
+	status := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	status.Dir = wtDir
+	out, err := status.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git status in worktree failed: %s (%v)", string(out), err)
+	}
+	if strings.TrimSpace(string(out)) == "" {
+		return nil
+	}
+	add := exec.CommandContext(ctx, "git", "add", "-A")
+	add.Dir = wtDir
+	if out, err := add.CombinedOutput(); err != nil {
+		return fmt.Errorf("git add in worktree failed: %s (%v)", string(out), err)
+	}
+	commit := exec.CommandContext(ctx, "git", "commit", "-m", fmt.Sprintf("feat(swarm): %s (%s)", t.Title, t.ID))
+	commit.Dir = wtDir
+	if out, err := commit.CombinedOutput(); err != nil {
+		return fmt.Errorf("git commit in worktree failed: %s (%v)", string(out), err)
+	}
+	return nil
 }
 
 func (f *Factory) runLokiTesting(ctx context.Context, t *Task, wtDir string) error {
@@ -373,12 +540,23 @@ func (f *Factory) runHeimdallReview(ctx context.Context, t *Task, wtDir string) 
 }
 
 func (f *Factory) mergeTaskBranch(ctx context.Context, branch string) error {
-	// Merge task branch into target branch
+	// The merge must land on the configured target branch and nowhere else
+	// (N6): refuse when the main worktree has a different branch checked out.
+	current, err := f.currentBranch(ctx)
+	if err != nil {
+		return err
+	}
+	if current != f.cfg.TargetBranch {
+		return fmt.Errorf("refusing to merge %s: main worktree is on branch %q but the target branch is %q; check out %q first", branch, current, f.cfg.TargetBranch, f.cfg.TargetBranch)
+	}
+
 	cmd := exec.CommandContext(ctx, "git", "merge", "--no-ff", "-m", fmt.Sprintf("feat(swarm): merge %s", branch), branch)
 	cmd.Dir = f.cfg.RootDir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		// Abort conflicted merge if needed
-		_ = exec.Command("git", "merge", "--abort").Run()
+		abort := exec.CommandContext(ctx, "git", "merge", "--abort")
+		abort.Dir = f.cfg.RootDir
+		_ = abort.Run()
 		return fmt.Errorf("git merge error: %s (%v)", string(out), err)
 	}
 	return nil
