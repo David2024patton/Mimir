@@ -212,6 +212,9 @@ func (f *Factory) Submit(title, description string) (*Task, error) {
 		f.taskOrder = f.taskOrder[:len(f.taskOrder)-1]
 		return nil, err
 	}
+	// Trust-boundary record (audit FIX 5): identifiers only, never the
+	// task description.
+	slog.Info("swarm: task submitted", "task_id", t.ID, "branch", t.Branch)
 	return t, nil
 }
 
@@ -355,6 +358,8 @@ func (f *Factory) ExecuteTask(ctx context.Context, taskID string) error {
 	if err := f.updateState(taskID, StateAwaitingMerge, "none"); err != nil {
 		return err
 	}
+	// Gate pass summary (audit FIX 5): identifiers only.
+	slog.Info("swarm: task passed all gates; awaiting merge approval", "task_id", taskID, "branch", t.Branch)
 	return nil
 }
 
@@ -382,12 +387,16 @@ func (f *Factory) ApproveMerge(ctx context.Context, taskID string) error {
 		return fmt.Errorf("factory: refusing to merge %s: main worktree is on branch %q but the target branch is %q; check out %q first", t.Branch, current, f.cfg.TargetBranch, f.cfg.TargetBranch)
 	}
 
+	// Trust-boundary records (audit FIX 5): the approval decision and
+	// the merge itself, identifiers only.
+	slog.Info("swarm: merge approved", "task_id", taskID, "branch", t.Branch)
 	if err := f.mergeTaskBranch(ctx, t.Branch); err != nil {
 		if serr := f.failTask(taskID, fmt.Sprintf("Git merge failed: %v", err)); serr != nil {
 			return fmt.Errorf("%v (also could not persist failed state: %w)", err, serr)
 		}
 		return err
 	}
+	slog.Info("swarm: merge performed", "task_id", taskID, "branch", t.Branch)
 
 	return f.updateState(taskID, StateMerged, "none")
 }
@@ -422,7 +431,13 @@ func (f *Factory) failTask(id string, errMsg string) error {
 		t.State = StateFailed
 		t.Error = errMsg
 		t.UpdatedAt = time.Now().UTC()
-		return f.saveToDisk()
+		err := f.saveToDisk()
+		// Gate and pipeline failures funnel through failTask, so this is
+		// the fail-side summary record (audit FIX 5). Identifiers only:
+		// the error text can carry model or tool output and stays out of
+		// the log.
+		slog.Error("swarm: task failed", "task_id", id, "branch", t.Branch)
+		return err
 	}
 	return nil
 }
