@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
 )
 
@@ -295,5 +296,243 @@ func TestUpdateFlow_UsesPlatformBinary(t *testing.T) {
 	leg, _ := os.ReadFile(filepath.Join(localBin, "mimir_tyr_engine.exe"))
 	if string(leg) != "legacy-local-stale" {
 		t.Fatalf("legacy binary must be untouched on a platform host, got %q", leg)
+	}
+}
+
+// FIX 1 (audit): the https-only rule was validated on the initial URL only,
+// so a redirect could silently downgrade an update download to plain http
+// on any host. The download client must refuse non-https redirect targets
+// (unless the operator opted into an insecure channel) and cap redirects.
+func TestHTTPGet_RefusesRedirectToPlainHTTP(t *testing.T) {
+	t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "")
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("downgraded-payload"))
+	}))
+	defer target.Close()
+	entry := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL+"/file", http.StatusFound)
+	}))
+	defer entry.Close()
+
+	body, err := httpGet(context.Background(), entry.URL+"/start", 1<<20)
+	if !errors.Is(err, ErrInsecureRedirect) {
+		t.Fatalf("expected ErrInsecureRedirect, got err=%v body=%q", err, body)
+	}
+}
+
+func TestHTTPGet_FollowsRedirectChainWithinCap(t *testing.T) {
+	t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "1")
+	srv := httptest.NewServer(redirectChainHandler(3))
+	defer srv.Close()
+
+	body, err := httpGet(context.Background(), srv.URL+"/hop?n=0", 1<<20)
+	if err != nil {
+		t.Fatalf("redirect chain within the cap should succeed: %v", err)
+	}
+	if string(body) != "landed" {
+		t.Fatalf("unexpected body %q", body)
+	}
+}
+
+func TestHTTPGet_TooManyRedirects(t *testing.T) {
+	t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "1")
+	srv := httptest.NewServer(redirectChainHandler(7))
+	defer srv.Close()
+
+	_, err := httpGet(context.Background(), srv.URL+"/hop?n=0", 1<<20)
+	if !errors.Is(err, ErrTooManyRedirects) {
+		t.Fatalf("expected ErrTooManyRedirects, got %v", err)
+	}
+}
+
+// redirectChainHandler redirects /hop?n=k to k+1 while k < hops, then
+// serves the final payload.
+func redirectChainHandler(hops int) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/hop", func(w http.ResponseWriter, r *http.Request) {
+		n, _ := strconv.Atoi(r.URL.Query().Get("n"))
+		if n < hops {
+			http.Redirect(w, r, fmt.Sprintf("/hop?n=%d", n+1), http.StatusFound)
+			return
+		}
+		_, _ = w.Write([]byte("landed"))
+	})
+	return mux
+}
+
+// The policy unit test covers the https side of the rule, which the live
+// httptest servers above cannot exercise (their certificates are not
+// trusted by the default transport, so the first hop would fail before
+// any redirect is offered).
+func TestUpdateRedirectPolicy(t *testing.T) {
+	mkReq := func(rawurl string) *http.Request {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodGet, rawurl, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return req
+	}
+	via := func(n int) []*http.Request {
+		out := make([]*http.Request, n)
+		for i := range out {
+			out[i] = mkReq("https://updates.example.com/start")
+		}
+		return out
+	}
+
+	t.Run("https target allowed without override", func(t *testing.T) {
+		t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "")
+		if err := updateRedirectPolicy(mkReq("https://cdn.example.com/bin"), via(1)); err != nil {
+			t.Fatalf("https redirect target should be allowed, got %v", err)
+		}
+	})
+	t.Run("http target refused without override", func(t *testing.T) {
+		t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "")
+		if err := updateRedirectPolicy(mkReq("http://cdn.example.com/bin"), via(1)); !errors.Is(err, ErrInsecureRedirect) {
+			t.Fatalf("expected ErrInsecureRedirect, got %v", err)
+		}
+	})
+	t.Run("http target allowed with override", func(t *testing.T) {
+		t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "1")
+		if err := updateRedirectPolicy(mkReq("http://cdn.example.com/bin"), via(1)); err != nil {
+			t.Fatalf("override should allow http redirect target, got %v", err)
+		}
+	})
+	t.Run("fifth redirect allowed, sixth refused", func(t *testing.T) {
+		t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "")
+		if err := updateRedirectPolicy(mkReq("https://cdn.example.com/bin"), via(5)); err != nil {
+			t.Fatalf("fifth redirect should be allowed, got %v", err)
+		}
+		if err := updateRedirectPolicy(mkReq("https://cdn.example.com/bin"), via(6)); !errors.Is(err, ErrTooManyRedirects) {
+			t.Fatalf("expected ErrTooManyRedirects, got %v", err)
+		}
+	})
+}
+
+// setRemoteVersion rewrites the version of the first engine in a
+// published tree's manifest, leaving the hashes untouched.
+func setRemoteVersion(t *testing.T, pub, version string) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(pub, "engines", "bin", "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var remote Manifest
+	if err := json.Unmarshal(raw, &remote); err != nil {
+		t.Fatal(err)
+	}
+	remote.Engines[0].Version = version
+	writeManifest(t, pub, remote)
+}
+
+// writeLocalInstall creates a local install tree: one tyr-core binary
+// with the given content and a local manifest claiming the given version.
+func writeLocalInstall(t *testing.T, version, payload string) string {
+	t.Helper()
+	local := t.TempDir()
+	localBin := filepath.Join(local, "engines", "bin")
+	if err := os.MkdirAll(localBin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(localBin, "mimir_tyr_engine.exe"), []byte(payload), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	localManifest := Manifest{
+		SchemaVersion: "1.0", Owner: RequiredOwner, Website: "https://alphaflux.net",
+		License: "LICENSE-ENGINES.md", Attribution: AttributionNotice,
+		Engines: []EngineEntry{{ID: "tyr-core", Version: version, Binary: "engines/bin/mimir_tyr_engine.exe"}},
+	}
+	raw, _ := json.Marshal(localManifest)
+	if err := os.WriteFile(filepath.Join(localBin, "manifest.json"), raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return local
+}
+
+// FIX 2 (audit): downgrade protection treated an unparseable version pair
+// as a pass. For an engine that is already installed, an unparseable
+// remote version means "not a downgrade" cannot be proven, so the update
+// must be refused unless forced.
+func TestApplyUpdates_RefusesUnparseableRemoteForInstalled(t *testing.T) {
+	pub, _ := publishTree(t, "engine-banana", RequiredOwner)
+	setRemoteVersion(t, pub, "banana")
+	srv := httptest.NewServer(http.FileServer(http.Dir(pub)))
+	defer srv.Close()
+
+	local := writeLocalInstall(t, "0.3.0", "engine-v0.3.0-local")
+	plan, err := CheckForUpdates(context.Background(), local, srv.URL)
+	if err != nil {
+		t.Fatalf("CheckForUpdates: %v", err)
+	}
+	if len(plan.Changes) != 1 {
+		t.Fatalf("expected 1 change, got %+v", plan.Changes)
+	}
+	if _, err := ApplyUpdates(context.Background(), local, plan); !errors.Is(err, ErrUnverifiableVersion) {
+		t.Fatalf("expected ErrUnverifiableVersion for installed engine with unparseable remote version, got %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(local, "engines", "bin", "mimir_tyr_engine.exe"))
+	if string(got) != "engine-v0.3.0-local" {
+		t.Fatalf("binary must be untouched after refusal, got %q", got)
+	}
+
+	// The downgrade override forces it through.
+	t.Setenv("MIMIR_ENGINE_ALLOW_DOWNGRADE", "1")
+	if _, err := ApplyUpdates(context.Background(), local, plan); err != nil {
+		t.Fatalf("forced update should apply, got %v", err)
+	}
+	got, _ = os.ReadFile(filepath.Join(local, "engines", "bin", "mimir_tyr_engine.exe"))
+	if string(got) != "engine-banana" {
+		t.Fatalf("expected remote binary after forced update, got %q", got)
+	}
+}
+
+// FIX 2: the mirror image. An installed engine whose LOCAL version is
+// unparseable cannot be ordered against the remote either; refuse.
+func TestApplyUpdates_RefusesUnparseableLocalForInstalled(t *testing.T) {
+	pub, _ := publishTree(t, "engine-v0.2.0", RequiredOwner)
+	setRemoteVersion(t, pub, "0.2.0")
+	srv := httptest.NewServer(http.FileServer(http.Dir(pub)))
+	defer srv.Close()
+
+	local := writeLocalInstall(t, "weird-local", "engine-weird")
+	plan, err := CheckForUpdates(context.Background(), local, srv.URL)
+	if err != nil {
+		t.Fatalf("CheckForUpdates: %v", err)
+	}
+	if len(plan.Changes) != 1 {
+		t.Fatalf("expected 1 change, got %+v", plan.Changes)
+	}
+	if _, err := ApplyUpdates(context.Background(), local, plan); !errors.Is(err, ErrUnverifiableVersion) {
+		t.Fatalf("expected ErrUnverifiableVersion for installed engine with unparseable local version, got %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(local, "engines", "bin", "mimir_tyr_engine.exe"))
+	if string(got) != "engine-weird" {
+		t.Fatalf("binary must be untouched after refusal, got %q", got)
+	}
+}
+
+// FIX 2: a brand new engine (no local version at all) keeps the
+// permissive path even when its remote version is unparseable.
+func TestApplyUpdates_NewEngineUnparseableVersionAllowed(t *testing.T) {
+	pub, _ := publishTree(t, "engine-banana", RequiredOwner)
+	setRemoteVersion(t, pub, "banana")
+	srv := httptest.NewServer(http.FileServer(http.Dir(pub)))
+	defer srv.Close()
+
+	local := t.TempDir() // nothing installed
+	plan, err := CheckForUpdates(context.Background(), local, srv.URL)
+	if err != nil {
+		t.Fatalf("CheckForUpdates: %v", err)
+	}
+	if len(plan.Changes) != 1 || plan.Changes[0].LocalVersion != "none" {
+		t.Fatalf("expected one missing_local change, got %+v", plan.Changes)
+	}
+	if _, err := ApplyUpdates(context.Background(), local, plan); err != nil {
+		t.Fatalf("new engine install should be allowed, got %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(local, "engines", "bin", "mimir_tyr_engine.exe"))
+	if string(got) != "engine-banana" {
+		t.Fatalf("expected installed binary, got %q", got)
 	}
 }

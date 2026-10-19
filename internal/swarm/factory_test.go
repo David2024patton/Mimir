@@ -1,14 +1,20 @@
 package swarm
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/David2024patton/Mimir/internal/agent"
+	"github.com/David2024patton/Mimir/internal/cortex"
+	"github.com/David2024patton/Mimir/internal/llm"
 )
 
 func TestFactory_SubmitAndListTasks(t *testing.T) {
@@ -246,5 +252,176 @@ func TestApproveMerge_GatesAndTargetsBranch(t *testing.T) {
 	}
 	if err := f.ApproveMerge(context.Background(), other.ID); err == nil {
 		t.Fatal("expected error approving a task that is not awaiting merge")
+	}
+}
+
+// FIX 3 (audit): saveToDisk swallowed every error, so Submit reported
+// success for tasks that were never persisted (and the persisted nextID
+// guarantee silently broke with them). A failed persist must fail the
+// submit and roll back the in-memory task.
+func TestFactory_SubmitFailsWhenStoreUnwritable(t *testing.T) {
+	dir := t.TempDir()
+	// Block the store path: .mimir exists as a regular file, so creating
+	// .mimir/swarm fails regardless of process privileges.
+	if err := os.WriteFile(filepath.Join(dir, ".mimir"), []byte("not a dir"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	f := NewFactory(FactoryConfig{RootDir: dir, TargetBranch: "main"})
+	if _, err := f.Submit("Doomed Task", "cannot persist"); err == nil {
+		t.Fatal("expected Submit to fail when the task store cannot be written")
+	}
+	if got := f.ListTasks(); len(got) != 0 {
+		t.Fatalf("failed Submit must roll back the in-memory task, got %d tasks", len(got))
+	}
+}
+
+// FIX 3: a corrupt task store must not be silently discarded. It is
+// preserved under a side name and the factory starts empty; later saves
+// write a fresh store and never touch the preserved bytes.
+func TestFactory_CorruptStorePreserved(t *testing.T) {
+	dir := t.TempDir()
+	storeDir := filepath.Join(dir, ".mimir", "swarm")
+	if err := os.MkdirAll(storeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	garbage := []byte("{not json!!")
+	storePath := filepath.Join(storeDir, "tasks.json")
+	if err := os.WriteFile(storePath, garbage, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	f := NewFactory(FactoryConfig{RootDir: dir, TargetBranch: "main"})
+	if got := f.ListTasks(); len(got) != 0 {
+		t.Fatalf("corrupt store must start empty, got %d tasks", len(got))
+	}
+	matches, err := filepath.Glob(storePath + ".corrupt-*")
+	if err != nil || len(matches) != 1 {
+		t.Fatalf("expected exactly one preserved corrupt store, got %v (err %v)", matches, err)
+	}
+	preserved, err := os.ReadFile(matches[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(preserved) != string(garbage) {
+		t.Fatalf("preserved store content changed: %q", preserved)
+	}
+
+	// The factory still works, and the fresh save does not touch the
+	// preserved copy.
+	if _, err := f.Submit("Fresh Task", "after corruption"); err != nil {
+		t.Fatalf("Submit after corrupt store recovery failed: %v", err)
+	}
+	preserved2, _ := os.ReadFile(matches[0])
+	if string(preserved2) != string(garbage) {
+		t.Fatal("preserved corrupt store was modified by a later save")
+	}
+	raw, err := os.ReadFile(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) == string(garbage) {
+		t.Fatal("fresh store was not written after recovery")
+	}
+}
+
+// stubProvider is a deterministic llm.Provider that finishes immediately
+// with no tool calls, so Thor's agent pass completes without a model.
+type stubProvider struct{}
+
+func (stubProvider) ID() string { return "stub" }
+
+func (stubProvider) Generate(context.Context, llm.GenerateRequest) (llm.GenerateResponse, error) {
+	return llm.GenerateResponse{Content: "done", FinishReason: "stop"}, nil
+}
+
+func (stubProvider) Stream(context.Context, llm.GenerateRequest) (<-chan llm.StreamEvent, error) {
+	return nil, nil
+}
+
+// captureSlog redirects the default slog logger into a buffer for the
+// duration of the test.
+func captureSlog(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return &buf
+}
+
+// FIX 5 (audit): the factory's trust boundaries (submit, gate outcome,
+// merge approval, merge) must leave a log record carrying only the task
+// ID and branch, never task description contents.
+func TestFactory_TrustBoundaryLogging(t *testing.T) {
+	buf := captureSlog(t)
+	dir := t.TempDir()
+	initGitRepo(t, dir)
+	// Loki runs `go test ./...` in the worktree, so the repo needs a Go
+	// module with a buildable package.
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module swarmtest\n\ngo 1.24\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitCmd(t, dir, "add", ".")
+	gitCmd(t, dir, "commit", "-m", "add go module")
+
+	f := NewFactory(FactoryConfig{
+		RootDir:      dir,
+		TargetBranch: "main",
+		AgentConfig: agent.Config{
+			Provider: stubProvider{},
+			Cortex:   cortex.NewMemoryStore(),
+			Model:    "stub-model",
+		},
+	})
+	task, err := f.Submit("Logging Feature", "TOPSECRET description marker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.ExecuteTask(context.Background(), task.ID); err != nil {
+		t.Fatalf("ExecuteTask: %v", err)
+	}
+	got, _ := f.GetTask(task.ID)
+	if got.State != StateAwaitingMerge {
+		t.Fatalf("expected StateAwaitingMerge, got %s (error %q)", got.State, got.Error)
+	}
+	if err := f.ApproveMerge(context.Background(), task.ID); err != nil {
+		t.Fatalf("ApproveMerge: %v", err)
+	}
+
+	out := buf.String()
+	for _, want := range []string{"task submitted", "passed all gates", "merge approved", "merge performed", task.ID, task.Branch} {
+		if !strings.Contains(out, want) {
+			t.Errorf("log is missing %q\nlog:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "TOPSECRET") {
+		t.Fatalf("log leaked task description contents:\n%s", out)
+	}
+}
+
+// FIX 5: a gate or pipeline failure is logged through the same funnel,
+// again with task ID and branch only.
+func TestFactory_FailureLogging(t *testing.T) {
+	buf := captureSlog(t)
+	dir := t.TempDir() // deliberately not a git repo: worktree setup fails
+	f := NewFactory(FactoryConfig{RootDir: dir, TargetBranch: "main"})
+	task, err := f.Submit("Will Fail", "TOPSECRET failure marker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.ExecuteTask(context.Background(), task.ID); err == nil {
+		t.Fatal("expected ExecuteTask to fail outside a git repo")
+	}
+	out := buf.String()
+	for _, want := range []string{"task failed", task.ID, task.Branch} {
+		if !strings.Contains(out, want) {
+			t.Errorf("log is missing %q\nlog:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "TOPSECRET") {
+		t.Fatalf("log leaked task description contents:\n%s", out)
 	}
 }
