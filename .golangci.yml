@@ -1,0 +1,40 @@
+version: "2"
+
+# Mimir lint baseline (golangci-lint v2).
+#
+# Every linter stays enabled. The only configuration is a short list of
+# errcheck function exclusions for call sites where the error is
+# provably meaningless, so real unchecked errors elsewhere still fail
+# the run. In particular this config does NOT exclude any parsing or
+# decoding call (json.Unmarshal, fmt.Sscanf and friends are checked in
+# code, fail closed), and it has no path-based exclusions.
+linters:
+  settings:
+    errcheck:
+      exclude-functions:
+        # Writes to the terminal, stderr, and strings.Builder cannot be
+        # recovered from at the call site: a failed terminal print has
+        # nowhere to report itself, and strings.Builder writes never
+        # fail. Writes whose failure matters (HTTP response streams)
+        # are checked in code instead of relying on this exclusion.
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        # Deferred Close on files, listeners, and HTTP response bodies:
+        # by the time a deferred Close runs, the operation it belonged
+        # to has already reported its own result, and a Close error on
+        # a read side carries no actionable information. Operations
+        # whose success depends on the close (for example writing an
+        # email body) check the returned error in code. errcheck names
+        # concrete receiver types separately from the interface, so the
+        # concrete io.Closer implementations used with defer are listed
+        # alongside it; they are the same idiom, not separate policy.
+        - (io.Closer).Close
+        - (*os.File).Close
+        - (net.Listener).Close
+        - (*crypto/tls.Conn).Close
+        # SMTP Quit sends the polite goodbye after the message writer
+        # has already been closed and its error checked; a failed Quit
+        # cannot unsend or corrupt the delivered message. Same class as
+        # Close above.
+        - (*net/smtp.Client).Quit
