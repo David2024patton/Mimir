@@ -20,6 +20,10 @@ type fakeTokenDB struct {
 	stored     string   // the token column value present in the table
 	createSQL  []string // captured CREATE statements
 	tokenQuery []string // token values seen in SELECT token = '...' clauses
+
+	// numericUserID makes the matched row carry a JSON number in user_id
+	// instead of a string, so decoding the row into the auth structs fails.
+	numericUserID bool
 }
 
 var tokenEqRe = regexp.MustCompile(`token = '([^']*)'`)
@@ -31,26 +35,30 @@ func (f *fakeTokenDB) handler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.Contains(sql, "CREATE auth_token"):
 		f.createSQL = append(f.createSQL, sql)
-		fmt.Fprint(w, `[{"result":[],"status":"OK"}]`)
+		_, _ = fmt.Fprint(w, `[{"result":[],"status":"OK"}]`)
 	case strings.Contains(sql, "SELECT * FROM auth_token"):
 		var rows []map[string]any
 		for _, m := range tokenEqRe.FindAllStringSubmatch(sql, -1) {
 			f.tokenQuery = append(f.tokenQuery, m[1])
 			if m[1] == f.stored {
-				rows = []map[string]any{{
+				row := map[string]any{
 					"id":      "auth_token:t1",
 					"user_id": "user:u42",
 					"token":   f.stored,
-				}}
+				}
+				if f.numericUserID {
+					row["user_id"] = 12345
+				}
+				rows = []map[string]any{row}
 			}
 		}
 		if rows == nil {
 			rows = []map[string]any{}
 		}
 		out, _ := json.Marshal([]map[string]any{{"result": rows, "status": "OK"}})
-		w.Write(out)
+		_, _ = w.Write(out)
 	default:
-		fmt.Fprint(w, `[{"result":[],"status":"OK"}]`)
+		_, _ = fmt.Fprint(w, `[{"result":[],"status":"OK"}]`)
 	}
 }
 
@@ -90,6 +98,23 @@ func TestValidateTokenAcceptsHashedStoredToken(t *testing.T) {
 	}
 	if userID != "u42" {
 		t.Fatalf("userID = %q, want u42", userID)
+	}
+}
+
+// A stored token row whose fields do not decode (here user_id is a JSON
+// number, not a string) must fail closed: ValidateToken returns an error
+// instead of a session for an empty user.
+func TestValidateTokenRejectsMalformedRow(t *testing.T) {
+	plaintext := generateToken()
+	db := &fakeTokenDB{stored: hashToken(plaintext), numericUserID: true}
+	a := newFakeAuthStore(t, db)
+
+	userID, err := a.ValidateToken(context.Background(), plaintext)
+	if err == nil {
+		t.Fatalf("malformed token row validated as user %q; want a decode error", userID)
+	}
+	if userID != "" {
+		t.Fatalf("userID = %q, want empty on decode failure", userID)
 	}
 }
 

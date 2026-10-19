@@ -29,31 +29,31 @@ func RenderBanner(version, providerID, model, mode, effort, storeDesc, webURL st
 	b.WriteString(ansiGold + ansiBold + "  ╭──────────────────────────────────────────────────────────────────╮\n" + ansiReset)
 	title := fmt.Sprintf("Mímir %s", version)
 	sub := "the agent that remembers · tiny self-hosted CLI & TUI"
-	b.WriteString(fmt.Sprintf("  %s│%s  %s%-16s%s %s%-46s%s %s│%s\n",
-		ansiGold, ansiReset, ansiBold, title, ansiReset, ansiDim, sub, ansiReset, ansiGold, ansiReset))
+	fmt.Fprintf(&b, "  %s│%s  %s%-16s%s %s%-46s%s %s│%s\n",
+		ansiGold, ansiReset, ansiBold, title, ansiReset, ansiDim, sub, ansiReset, ansiGold, ansiReset)
 	b.WriteString(ansiGold + "  ├──────────────────────────────────────────────────────────────────┤\n" + ansiReset)
 
 	provLine := fmt.Sprintf("%s · %s", providerID, model)
 	if providerID == "" || providerID == "none" {
 		provLine = "none (run Ollama on :11434 or set MIMIR_BASE_URL / MIMO_API_KEY)"
 	}
-	b.WriteString(fmt.Sprintf("  %s│%s  %sModel:%s   %-55s%s│%s\n",
-		ansiGold, ansiReset, ansiCyan, ansiReset, truncate(provLine, 55), ansiGold, ansiReset))
+	fmt.Fprintf(&b, "  %s│%s  %sModel:%s   %-55s%s│%s\n",
+		ansiGold, ansiReset, ansiCyan, ansiReset, truncate(provLine, 55), ansiGold, ansiReset)
 
 	effStr := effort
 	if effStr == "" {
 		effStr = "default"
 	}
 	modeLine := fmt.Sprintf("mode=%s  ·  effort=%s  ·  tools=%d", mode, effStr, toolCount)
-	b.WriteString(fmt.Sprintf("  %s│%s  %sState:%s   %-55s%s│%s\n",
-		ansiGold, ansiReset, ansiGreen, ansiReset, truncate(modeLine, 55), ansiGold, ansiReset))
+	fmt.Fprintf(&b, "  %s│%s  %sState:%s   %-55s%s│%s\n",
+		ansiGold, ansiReset, ansiGreen, ansiReset, truncate(modeLine, 55), ansiGold, ansiReset)
 
-	b.WriteString(fmt.Sprintf("  %s│%s  %sCortex:%s  %-55s%s│%s\n",
-		ansiGold, ansiReset, ansiPurple, ansiReset, truncate(storeDesc, 55), ansiGold, ansiReset))
+	fmt.Fprintf(&b, "  %s│%s  %sCortex:%s  %-55s%s│%s\n",
+		ansiGold, ansiReset, ansiPurple, ansiReset, truncate(storeDesc, 55), ansiGold, ansiReset)
 
 	if webURL != "" {
-		b.WriteString(fmt.Sprintf("  %s│%s  %sWeb UI:%s  %-55s%s│%s\n",
-			ansiGold, ansiReset, ansiGold, ansiReset, truncate(webURL, 55), ansiGold, ansiReset))
+		fmt.Fprintf(&b, "  %s│%s  %sWeb UI:%s  %-55s%s│%s\n",
+			ansiGold, ansiReset, ansiGold, ansiReset, truncate(webURL, 55), ansiGold, ansiReset)
 	}
 
 	b.WriteString(ansiGold + "  ╰──────────────────────────────────────────────────────────────────╯\n" + ansiReset)
@@ -64,9 +64,10 @@ func RenderBanner(version, providerID, model, mode, effort, storeDesc, webURL st
 // RenderStatusBar renders the 1-line status bar shown before each prompt.
 func RenderStatusBar(providerID, model, mode, effort string, estTokens, totalTokens int, local, smol bool) string {
 	modeBadge := ansiGreen + "[" + mode + "]" + ansiReset
-	if mode == "ro" {
+	switch mode {
+	case "ro":
 		modeBadge = ansiCyan + "[ro (read-only)]" + ansiReset
-	} else if mode == "bypass" {
+	case "bypass":
 		modeBadge = ansiGold + "[bypass]" + ansiReset
 	}
 	smolBadge := ""
@@ -102,8 +103,8 @@ func RenderToolPill(name, args, result, errStr string) string {
 		status = ansiRed + "✗ " + truncate(errStr, 70) + ansiReset
 	}
 	summary := summarizeToolArgs(name, args)
-	b.WriteString(fmt.Sprintf("  %s %s%s%s %s%s%s %s\n",
-		icon, ansiBgBadge+ansiBold, " "+name+" ", ansiReset, ansiDim, summary, ansiReset, status))
+	fmt.Fprintf(&b, "  %s %s%s%s %s%s%s %s\n",
+		icon, ansiBgBadge+ansiBold, " "+name+" ", ansiReset, ansiDim, summary, ansiReset, status)
 
 	// Show a compact 4-line preview for shell/read/edit outputs
 	if strings.TrimSpace(result) != "" && errStr == "" {
@@ -120,10 +121,10 @@ func RenderToolPill(name, args, result, errStr string) string {
 			} else if strings.HasPrefix(line, "-") {
 				color = ansiRed
 			}
-			b.WriteString(fmt.Sprintf("    %s│ %s%s\n", ansiGray, color+truncate(line, 88), ansiReset))
+			fmt.Fprintf(&b, "    %s│ %s%s\n", ansiGray, color+truncate(line, 88), ansiReset)
 		}
 		if len(lines) > maxLines {
-			b.WriteString(fmt.Sprintf("    %s╰─ ... (%d more lines)%s\n", ansiDim, len(lines)-maxLines, ansiReset))
+			fmt.Fprintf(&b, "    %s╰─ ... (%d more lines)%s\n", ansiDim, len(lines)-maxLines, ansiReset)
 		}
 	}
 	return b.String()
@@ -150,7 +151,7 @@ func FormatMarkdown(text string) string {
 			continue
 		}
 		if inChoice {
-			out.WriteString(fmt.Sprintf("  %s│%s %s%s%s\n", ansiGold, ansiReset, ansiCyan+ansiBold, trimmed, ansiReset))
+			fmt.Fprintf(&out, "  %s│%s %s%s%s\n", ansiGold, ansiReset, ansiCyan+ansiBold, trimmed, ansiReset)
 			continue
 		}
 		if strings.HasPrefix(trimmed, "```") {

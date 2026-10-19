@@ -8,6 +8,8 @@ import (
 	"encoding/binary"
 	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -483,5 +485,124 @@ func TestRelayLifecycleLogging(t *testing.T) {
 	}
 	if strings.Contains(out, sess.Nonce) {
 		t.Error("log output must never contain the pairing token")
+	}
+}
+
+// Expiry must TERMINATE a paired session, not just drop it from the
+// Manager's map. Before this fix, expireLocked only deleted the map
+// entry: the session object kept its keys and AEAD, could still encrypt
+// frames, and Broadcast still delivered to registered listeners, so a
+// "gone" session kept working for anyone holding the object.
+func TestExpiredPairedSessionIsTornDown(t *testing.T) {
+	mgr := NewManager()
+	mgr.PairedSessionTTL = time.Minute
+	sess, err := mgr.CreateSession("127.0.0.1:8420")
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	if err := sess.CompletePairing(sess.Nonce, clientKeyB64(t)); err != nil {
+		t.Fatalf("CompletePairing: %v", err)
+	}
+
+	ch := make(chan []byte, 4)
+	sess.RegisterListener(ch)
+
+	// Sanity: the live session encrypts and broadcasts to the listener.
+	if _, err := sess.EncryptFrame([]byte("before")); err != nil {
+		t.Fatalf("live session must encrypt: %v", err)
+	}
+	if err := sess.Broadcast("ping", map[string]any{"x": 1}); err != nil {
+		t.Fatalf("live session must broadcast: %v", err)
+	}
+	select {
+	case <-ch:
+	default:
+		t.Fatal("expected the broadcast to reach the registered listener")
+	}
+
+	// Backdate past the paired TTL and trigger expiry via GetSession.
+	sess.mu.Lock()
+	sess.pairedAt = time.Now().Add(-2 * time.Minute)
+	sess.mu.Unlock()
+	if _, ok := mgr.GetSession(sess.ID); ok {
+		t.Fatal("expected expired session to be gone from GetSession")
+	}
+
+	if sess.IsPaired() {
+		t.Fatal("expired session must be unpaired by expiry teardown")
+	}
+	if _, err := sess.EncryptFrame([]byte("after")); err == nil {
+		t.Fatal("expired session must not encrypt frames")
+	}
+	if _, err := sess.DecryptFrame([]byte("0123456789abcdef0123")); err == nil {
+		t.Fatal("expired session must not decrypt frames")
+	}
+	if err := sess.Broadcast("ping", map[string]any{"x": 2}); err == nil {
+		t.Fatal("expired session must not broadcast")
+	}
+	// The registered listener channel must be closed by the teardown.
+	select {
+	case _, ok := <-ch:
+		if ok {
+			t.Fatal("listener channel must be closed by expiry teardown, got a frame instead")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("listener channel was not closed by expiry teardown")
+	}
+}
+
+// A StreamHandler connected before expiry must end when the session
+// expires: teardown closes its listener channel, which is the handler's
+// signal to return. Before the fix, expiry never closed the channel, so
+// the handler hung until the client disconnected.
+func TestStreamHandlerEndsOnSessionExpiry(t *testing.T) {
+	mgr := NewManager()
+	mgr.PairedSessionTTL = time.Minute
+	sess, err := mgr.CreateSession("127.0.0.1:8420")
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	if err := sess.CompletePairing(sess.Nonce, clientKeyB64(t)); err != nil {
+		t.Fatalf("CompletePairing: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/stream", nil)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		sess.StreamHandler()(rec, req)
+	}()
+
+	// Wait until the handler has registered its listener channel.
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		sess.mu.RLock()
+		n := len(sess.listeners)
+		sess.mu.RUnlock()
+		if n == 1 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("stream handler never registered a listener")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	// Expire the session through the CreateSession purge path.
+	sess.mu.Lock()
+	sess.pairedAt = time.Now().Add(-2 * time.Minute)
+	sess.mu.Unlock()
+	if _, err := mgr.CreateSession("127.0.0.1:8420"); err != nil {
+		t.Fatalf("CreateSession (purge trigger): %v", err)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("stream handler did not return after the session expired")
+	}
+	if sess.IsPaired() {
+		t.Fatal("expired session must be unpaired by expiry teardown")
 	}
 }

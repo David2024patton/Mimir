@@ -89,7 +89,9 @@ func parseID(id string) int {
 		return 0
 	}
 	var n int
-	fmt.Sscanf(id[i+1:], "%d", &n)
+	if _, err := fmt.Sscanf(id[i+1:], "%d", &n); err != nil {
+		return 0
+	}
 	return n
 }
 

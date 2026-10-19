@@ -178,11 +178,20 @@ func (m *Manager) purgeExpiredLocked(now time.Time) {
 	}
 }
 
-// expireLocked deletes an expired session and records the expiry.
-// Callers must hold m.mu.
+// expireLocked deletes an expired session and tears it down, so expiry
+// terminates the session exactly the way RemoveSession does: the keys
+// are wiped, the session unpairs, and listener channels are closed,
+// which is what ends any live StreamHandler's loop. Callers must hold
+// m.mu. teardown acquires only the session's own lock; the manager lock
+// is always taken before the session lock (expiredLocked already reads
+// session state under m.mu), so the ordering stays consistent and
+// teardown cannot deadlock here. Its channel closes cannot race
+// Broadcast sends either, because both happen under the session lock.
 func (m *Manager) expireLocked(id string, s *Session) {
 	delete(m.sessions, id)
-	slog.Info("relay session expired", "session_id", id, "paired", s.IsPaired())
+	paired := s.IsPaired()
+	s.teardown()
+	slog.Info("relay session expired", "session_id", id, "paired", paired)
 }
 
 // expiredLocked reports whether s has outlived its TTL at now. Callers
@@ -465,7 +474,9 @@ func (s *Session) StreamHandler() http.HandlerFunc {
 		defer s.UnregisterListener(ch)
 
 		// Initial connection frame
-		fmt.Fprintf(w, "event: connected\ndata: %s\n\n", s.ID)
+		if _, err := fmt.Fprintf(w, "event: connected\ndata: %s\n\n", s.ID); err != nil {
+			return
+		}
 		flusher.Flush()
 
 		ctx := r.Context()
@@ -478,7 +489,9 @@ func (s *Session) StreamHandler() http.HandlerFunc {
 					return
 				}
 				b64 := base64.StdEncoding.EncodeToString(msg)
-				fmt.Fprintf(w, "data: %s\n\n", b64)
+				if _, err := fmt.Fprintf(w, "data: %s\n\n", b64); err != nil {
+					return
+				}
 				flusher.Flush()
 			}
 		}

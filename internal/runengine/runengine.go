@@ -422,12 +422,12 @@ func (r GateReport) FormatMarkdown() string {
 	if !r.Passed {
 		verdict = "FAIL (BLOCKED)"
 	}
-	b.WriteString(fmt.Sprintf("## Mimir Deterministic %s Gate: `%s`\n", strings.ToUpper(r.Mode), verdict))
-	b.WriteString(fmt.Sprintf("- **Checklist Gate**: `pass=%v` (`pending_todos=%d`)\n", r.ChecklistPassed, r.PendingTodos))
-	b.WriteString(fmt.Sprintf("- **SDLC Deliverable Gate**: `pass=%v` (`phase=%s`, `missing=%d`)\n", r.SDLCPassed, r.SDLCPhase, len(r.MissingArtifacts)))
-	b.WriteString(fmt.Sprintf("- **Tier-2 Full Test Suite (`./...`)**: `pass=%v` (`elapsed=%s`)\n",
-		r.FullSuiteResult.Passed, r.FullSuiteResult.Elapsed.Round(time.Millisecond)))
-	b.WriteString(fmt.Sprintf("- **Epistemic Critic Gate**: `pass=%v`\n", r.EpistemicPassed))
+	fmt.Fprintf(&b, "## Mimir Deterministic %s Gate: `%s`\n", strings.ToUpper(r.Mode), verdict)
+	fmt.Fprintf(&b, "- **Checklist Gate**: `pass=%v` (`pending_todos=%d`)\n", r.ChecklistPassed, r.PendingTodos)
+	fmt.Fprintf(&b, "- **SDLC Deliverable Gate**: `pass=%v` (`phase=%s`, `missing=%d`)\n", r.SDLCPassed, r.SDLCPhase, len(r.MissingArtifacts))
+	fmt.Fprintf(&b, "- **Tier-2 Full Test Suite (`./...`)**: `pass=%v` (`elapsed=%s`)\n",
+		r.FullSuiteResult.Passed, r.FullSuiteResult.Elapsed.Round(time.Millisecond))
+	fmt.Fprintf(&b, "- **Epistemic Critic Gate**: `pass=%v`\n", r.EpistemicPassed)
 	if len(r.BlockingReasons) > 0 {
 		b.WriteString("\n### Blocking Reasons\n")
 		for _, reason := range r.BlockingReasons {

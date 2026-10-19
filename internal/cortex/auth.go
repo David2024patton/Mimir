@@ -216,7 +216,9 @@ func (a *AuthStore) VerifyOTP(ctx context.Context, email, code string) (*User, *
 	var raw struct {
 		ID string `json:"id"`
 	}
-	json.Unmarshal(b, &raw)
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return nil, nil, fmt.Errorf("decode otp row: %w", err)
+	}
 	otpID := StripRecordID(raw.ID)
 
 	// Mark OTP as used
@@ -256,7 +258,9 @@ func (a *AuthStore) findOrCreateUser(ctx context.Context, email string) (*User, 
 			Email     string `json:"email"`
 			CreatedAt string `json:"created_at"`
 		}
-		json.Unmarshal(b, &raw)
+		if err := json.Unmarshal(b, &raw); err != nil {
+			return nil, fmt.Errorf("decode user row: %w", err)
+		}
 		return &User{
 			ID:        StripRecordID(raw.ID),
 			Email:     raw.Email,
@@ -322,7 +326,9 @@ func (a *AuthStore) ValidateToken(ctx context.Context, token string) (string, er
 		ID     string `json:"id"`
 		UserID string `json:"user_id"`
 	}
-	json.Unmarshal(b, &raw)
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return "", fmt.Errorf("decode token row: %w", err)
+	}
 	return StripRecordID(raw.UserID), nil
 }
 

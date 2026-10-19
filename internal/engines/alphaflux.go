@@ -212,15 +212,15 @@ func FormatStatus(rootDir string) string {
 		return fmt.Sprintf("Alpha Flux LLC Engine Registry: ERROR (%v)", err)
 	}
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("## %s\n", AttributionNotice))
-	b.WriteString(fmt.Sprintf("- **License Holder**: `%s` (`%s`)\n", m.Owner, m.Website))
-	b.WriteString(fmt.Sprintf("- **License File**: `%s`\n", m.License))
-	b.WriteString(fmt.Sprintf("- **Host Platform**: `%s_%s`\n\n", runtime.GOOS, runtime.GOARCH))
+	fmt.Fprintf(&b, "## %s\n", AttributionNotice)
+	fmt.Fprintf(&b, "- **License Holder**: `%s` (`%s`)\n", m.Owner, m.Website)
+	fmt.Fprintf(&b, "- **License File**: `%s`\n", m.License)
+	fmt.Fprintf(&b, "- **Host Platform**: `%s_%s`\n\n", runtime.GOOS, runtime.GOARCH)
 	for _, e := range m.Engines {
 		binRel, wantSHA, _, found := e.ResolveBinary()
 		if !found || binRel == "" {
-			b.WriteString(fmt.Sprintf("* **%s (`%s`)** -- Stack: `%s` | Source Branch: `%s`\n", e.Name, e.ID, e.Stack, e.Branch))
-			b.WriteString(fmt.Sprintf("  - Status: **UNAVAILABLE FOR %s_%s**\n", runtime.GOOS, runtime.GOARCH))
+			fmt.Fprintf(&b, "* **%s (`%s`)** -- Stack: `%s` | Source Branch: `%s`\n", e.Name, e.ID, e.Stack, e.Branch)
+			fmt.Fprintf(&b, "  - Status: **UNAVAILABLE FOR %s_%s**\n", runtime.GOOS, runtime.GOARCH)
 			continue
 		}
 		binPath := filepath.Join(rootDir, filepath.FromSlash(binRel))
@@ -231,10 +231,10 @@ func FormatStatus(rootDir string) string {
 		} else if !strings.EqualFold(sum, wantSHA) {
 			status = "SHA256_MISMATCH"
 		}
-		b.WriteString(fmt.Sprintf("* **%s (`%s`)** -- Stack: `%s` | Source Branch: `%s`\n", e.Name, e.ID, e.Stack, e.Branch))
-		b.WriteString(fmt.Sprintf("  - Binary: `%s` (%d KB | sha256: `%s...`) -> **%s**\n",
-			binRel, sz/1024, truncateHex(wantSHA, 12), status))
-		b.WriteString(fmt.Sprintf("  - Role: %s\n", e.Description))
+		fmt.Fprintf(&b, "* **%s (`%s`)** -- Stack: `%s` | Source Branch: `%s`\n", e.Name, e.ID, e.Stack, e.Branch)
+		fmt.Fprintf(&b, "  - Binary: `%s` (%d KB | sha256: `%s...`) -> **%s**\n",
+			binRel, sz/1024, truncateHex(wantSHA, 12), status)
+		fmt.Fprintf(&b, "  - Role: %s\n", e.Description)
 	}
 	return strings.TrimRight(b.String(), "\n")
 }

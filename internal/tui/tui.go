@@ -59,7 +59,7 @@ func Run(ctx context.Context, opts Options) error {
 		}
 	}
 
-	pid, model, local := opts.Agent.ModelInfo()
+	pid, model, _ := opts.Agent.ModelInfo()
 	toolCount := 0
 	if opts.Tools != nil {
 		toolCount = len(opts.Tools.ForMode(opts.Agent.Mode()))
@@ -76,7 +76,7 @@ func Run(ctx context.Context, opts Options) error {
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 
 	for {
-		pid, model, local = opts.Agent.ModelInfo()
+		pid, model, local := opts.Agent.ModelInfo()
 		totalTok := 0
 		if opts.Usage != nil {
 			totalTok = opts.Usage.TotalTokens()
@@ -384,9 +384,10 @@ func handleSlashCommand(
 		fmt.Fprintf(out, "  %s├────────────────────────────────────────────────────────────────────┤%s\n", ansiGold, ansiReset)
 		for _, p := range config.BuiltinProviders() {
 			badge := ansiDim + "[BYOK]" + ansiReset
-			if p.BillingMode == "subscription" {
+			switch p.BillingMode {
+			case "subscription":
 				badge = ansiGold + "[SUB]" + ansiReset
-			} else if p.BillingMode == "local_free" {
+			case "local_free":
 				badge = ansiGreen + "[LOCAL]" + ansiReset
 			}
 			status := ansiDim + "unset" + ansiReset

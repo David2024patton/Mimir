@@ -83,10 +83,10 @@ func GenerateHandoffMarkdown(sessionID string, history []llm.Message, todoLines 
 
 	var b strings.Builder
 	b.WriteString("# Mímir Session Handoff & Continuity State\n")
-	b.WriteString(fmt.Sprintf("- **Session ID**: `%s`\n", state.SessionID))
-	b.WriteString(fmt.Sprintf("- **Generated At**: `%s`\n", state.Timestamp.Format(time.RFC3339)))
+	fmt.Fprintf(&b, "- **Session ID**: `%s`\n", state.SessionID)
+	fmt.Fprintf(&b, "- **Generated At**: `%s`\n", state.Timestamp.Format(time.RFC3339))
 	if mindMapSummary != "" {
-		b.WriteString(fmt.Sprintf("- **Repository State**: %s\n", mindMapSummary))
+		fmt.Fprintf(&b, "- **Repository State**: %s\n", mindMapSummary)
 	}
 	b.WriteString("\n")
 
