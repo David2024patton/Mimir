@@ -194,13 +194,67 @@ func isInteractiveStdin() bool {
 	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
+// leadingSubcommands are the positional first arguments whose dispatch
+// branch returns before the one-shot prompt path. "chat" and "trace" are
+// deliberately absent: they are mode words of the prompt path itself.
+var leadingSubcommands = map[string]bool{
+	"setup": true, "init": true,
+	"ingest": true, "gitingest": true,
+	"providers": true, "subscribe": true,
+	"sdlc": true, "phase": true,
+	"audit": true, "critic": true,
+	"engines": true, "update": true,
+	"swarm": true, "factory": true,
+	"audit-web": true, "web-audit": true,
+	"review": true, "ship": true,
+	"handoff": true, "pair": true,
+	"serve": true,
+}
+
+// reachesPromptRun reports whether main's dispatch will reach the one-shot
+// prompt path with a non-empty prompt: a leading subcommand returns first,
+// -p supplies the prompt directly, and a chat/trace prefix is a mode word,
+// not prompt text.
+func reachesPromptRun(positional []string, promptFlag string) bool {
+	if len(positional) > 0 && leadingSubcommands[positional[0]] {
+		return false
+	}
+	if strings.TrimSpace(promptFlag) != "" {
+		return true
+	}
+	args := positional
+	if len(args) > 0 && (args[0] == "chat" || args[0] == "trace") {
+		args = args[1:]
+	}
+	return strings.TrimSpace(strings.Join(args, " ")) != ""
+}
+
+// approverForRun selects the ApprovalFunc for the agent this process runs.
+//
+// One-stdin-owner rule: the stdin terminal approver may exist ONLY on the
+// one-shot prompt path, where this process reads stdin for nothing else.
+// The TUI reads stdin through its own bufio.Scanner, so a second buffered
+// reader on the same fd would starve or deadlock it, and the prompt (which
+// goes to stderr) is invisible behind the TUI. Under serve/--web the agent
+// is driven by remote HTTP callers: the prompt would land on the
+// operator's terminal with no caller identity attached, and an unanswered
+// prompt would block an HTTP handler goroutine forever. Those paths get a
+// nil approver, and RequireApproval denies fail-closed.
+func approverForRun(oneShot bool, stdinIsTerminal bool) func(toolName, rawArgs string) bool {
+	if oneShot && stdinIsTerminal {
+		return terminalApprover
+	}
+	return nil
+}
+
 var (
 	approvalMu     sync.Mutex
 	approvalReader *bufio.Reader
 )
 
-// terminalApprover is the interactive ApprovalFunc wired when stdin is a
-// terminal (F2/N1): it prompts on stderr with the tool name and truncated
+// terminalApprover is the interactive ApprovalFunc wired for one-shot
+// prompt runs at a terminal (F2/N1, FIX 2): it prompts on stderr with the
+// tool name and truncated
 // args and approves only on an explicit y/yes line read from stdin. A read
 // error or any other answer denies, keeping the gate fail-closed. Prompts
 // are serialized because several runs can share the one terminal.
@@ -363,12 +417,12 @@ func main() {
 	}
 	tracker := llm.NewTracker()
 
-	// F2/N1: interactive terminal runs get a real approver. Non-terminal runs
-	// (scripts, CI, detached processes) get none, and the gate fails closed.
-	var approver func(toolName, rawArgs string) bool
-	if isInteractiveStdin() {
-		approver = terminalApprover
-	}
+	// F2/N1 + FIX 2: the terminal approver is installed only when this
+	// process will run the one-shot prompt path, the sole path that owns
+	// stdin exclusively; see approverForRun for the one-stdin-owner rule.
+	// TUI, serve, and --web agents get no stdin approver, and scripts or
+	// CI (no terminal) get none either: the gate fails closed there.
+	approver := approverForRun(reachesPromptRun(positional, promptFlag), isInteractiveStdin())
 
 	a := agent.New(agent.Config{
 		Provider:     provider,
