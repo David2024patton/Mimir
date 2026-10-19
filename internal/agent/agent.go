@@ -294,10 +294,19 @@ func (a *Agent) phaseToolFilter() map[string]bool {
 // schemas converts the registered tools visible in the current mode into model-facing tool schemas.
 // When SDLC Waterfall methodology is active, it also enforces the active phase's AllowedToolSet.
 func (a *Agent) schemas() []llm.ToolSchema {
+	return a.schemasForMode("")
+}
+
+// schemasForMode is schemas() under a per-request mode override ("" = the
+// agent's configured mode). The mode decides which tools ForMode exposes.
+func (a *Agent) schemasForMode(modeOverride string) []llm.ToolSchema {
 	a.mu.RLock()
 	reg := a.cfg.Tools
 	mode := a.cfg.Mode
 	a.mu.RUnlock()
+	if m, ok := validMode(modeOverride); ok {
+		mode = m
+	}
 	if reg == nil {
 		return nil
 	}
@@ -336,7 +345,24 @@ func (a *Agent) todoLines() []string {
 	return lines
 }
 
+// validMode reports whether mode is a canonical permission mode and returns
+// it. Used to validate per-request mode overrides (N2).
+func validMode(mode string) (string, bool) {
+	switch mode {
+	case ModeReadOnly, ModeEdit, ModeBypass:
+		return mode, true
+	}
+	return "", false
+}
+
 func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
+	return a.executeToolCallMode(ctx, tc, "")
+}
+
+// executeToolCallMode runs one tool call under the given per-request mode
+// override ("" means the agent's configured mode). The override is local to
+// this invocation and never mutates the agent's stored mode (N2).
+func (a *Agent) executeToolCallMode(ctx context.Context, tc llm.ToolCall, modeOverride string) Step {
 	repairedArgs := llm.RepairJSON(tc.Arguments)
 	st := Step{Name: tc.Name, Args: repairedArgs}
 
@@ -346,6 +372,9 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 	approve := a.cfg.ApprovalFunc
 	gate := a.cfg.Gate
 	a.mu.RUnlock()
+	if m, ok := validMode(modeOverride); ok {
+		mode = m
+	}
 
 	var args map[string]any
 	if repairedArgs != "" {
@@ -468,8 +497,10 @@ func (a *Agent) buildPromptForInput(input string, memories []cortex.Neuron, sche
 
 // runLoop drives the infer -> act cycle until the model returns text or the step
 // cap is hit. It returns the final text reply and a trace of tool executions.
-func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step, error) {
-	schemas := a.schemas()
+// modeOverride is the per-request permission mode ("" = agent default); it is
+// local to this run and never written back to the agent (N2).
+func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message, modeOverride string) (string, []Step, error) {
+	schemas := a.schemasForMode(modeOverride)
 	var trace []Step
 	var last string
 	smol := a.SmolMode()
@@ -523,7 +554,7 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step
 			return last, trace, nil
 		}
 		for _, tc := range resp.ToolCalls {
-			st := a.executeToolCall(ctx, tc)
+			st := a.executeToolCallMode(ctx, tc, modeOverride)
 			trace = append(trace, st)
 			msgs = append(msgs, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: st.Result})
 		}
@@ -567,10 +598,34 @@ func (a *Agent) RunFull(ctx context.Context, input string, history []llm.Message
 	return a.runTurn(ctx, input, history)
 }
 
+// RunWithMode is Run under a per-request permission mode override (N2): the
+// mode applies to this invocation only and never changes the agent's stored
+// mode, so concurrent or sequential requests cannot leak modes into each other.
+func (a *Agent) RunWithMode(ctx context.Context, mode, input string, history []llm.Message) (string, error) {
+	r, err := a.runTurnMode(ctx, mode, input, history)
+	return r.Reply, err
+}
+
+// RunFullWithMode is RunFull under a per-request permission mode override (N2).
+func (a *Agent) RunFullWithMode(ctx context.Context, mode, input string, history []llm.Message) (Result, error) {
+	return a.runTurnMode(ctx, mode, input, history)
+}
+
 // RunStream runs one conversational turn while streaming updates to emit as they
 // happen: recalled memories, token deltas of the model's reply, tool executions, and
 // a final done event carrying the full reply (F2.1 streaming + tool calling).
 func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Message, emit func(Event)) error {
+	return a.runStreamMode(ctx, "", input, history, emit)
+}
+
+// RunStreamWithMode is RunStream under a per-request permission mode override
+// (N2): the mode applies to this invocation only and never changes the agent's
+// stored mode.
+func (a *Agent) RunStreamWithMode(ctx context.Context, mode, input string, history []llm.Message, emit func(Event)) error {
+	return a.runStreamMode(ctx, mode, input, history, emit)
+}
+
+func (a *Agent) runStreamMode(ctx context.Context, modeOverride, input string, history []llm.Message, emit func(Event)) error {
 	memories, err := a.cfg.Cortex.Search(ctx, input, 5)
 	if err != nil {
 		emit(Event{Type: EventError, Err: err.Error()})
@@ -579,7 +634,7 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 	for _, m := range memories {
 		emit(Event{Type: EventMemory, Text: m.Content})
 	}
-	schemas := a.schemas()
+	schemas := a.schemasForMode(modeOverride)
 	msgs := []llm.Message{
 		{Role: "system", Content: a.buildPromptForInput(input, memories, schemas)},
 	}
@@ -655,7 +710,7 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 			return nil
 		}
 		for _, tc := range toolCalls {
-			st := a.executeToolCall(ctx, tc)
+			st := a.executeToolCallMode(ctx, tc, modeOverride)
 			emit(Event{Type: EventTool, Step: &st})
 			msgs = append(msgs, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: st.Result})
 		}
@@ -682,6 +737,11 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 }
 
 func (a *Agent) runTurn(ctx context.Context, input string, history []llm.Message) (Result, error) {
+	return a.runTurnMode(ctx, "", input, history)
+}
+
+// runTurnMode is runTurn under a per-request mode override ("" = agent default).
+func (a *Agent) runTurnMode(ctx context.Context, modeOverride, input string, history []llm.Message) (Result, error) {
 	memories, err := a.cfg.Cortex.Search(ctx, input, 5)
 	if err != nil {
 		return Result{}, err
@@ -690,13 +750,13 @@ func (a *Agent) runTurn(ctx context.Context, input string, history []llm.Message
 	for i, m := range memories {
 		recalled[i] = m.Content
 	}
-	schemas := a.schemas()
+	schemas := a.schemasForMode(modeOverride)
 	msgs := []llm.Message{
 		{Role: "system", Content: a.buildPromptForInput(input, memories, schemas)},
 	}
 	msgs = append(msgs, history...)
 	msgs = append(msgs, llm.Message{Role: "user", Content: input})
-	reply, trace, err := a.runLoop(ctx, msgs)
+	reply, trace, err := a.runLoop(ctx, msgs, modeOverride)
 	if err != nil {
 		return Result{Trace: trace, Recalled: recalled}, err
 	}

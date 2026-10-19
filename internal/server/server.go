@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/David2024patton/Mimir/internal/agent"
 	"github.com/David2024patton/Mimir/internal/cortex"
@@ -35,6 +36,32 @@ func Serve(d Deps) error {
 func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, auth *cortex.AuthStore, usage *llm.Tracker) http.Handler {
 	mux := http.NewServeMux()
 	relayMgr := relay.NewManager()
+
+	// Per-session permission modes (N2): a mode set for one session must never
+	// mutate the shared agent's mode for every other user. /chat resolves the
+	// effective mode per request: an explicit request mode wins, then the
+	// session's stored mode, then the agent default.
+	var modeMu sync.Mutex
+	sessionModes := map[string]string{}
+	setSessionMode := func(sessionID, mode string) {
+		modeMu.Lock()
+		defer modeMu.Unlock()
+		sessionModes[sessionID] = mode
+	}
+	sessionMode := func(sessionID string) string {
+		modeMu.Lock()
+		defer modeMu.Unlock()
+		return sessionModes[sessionID]
+	}
+	requestMode := func(explicit, sessionID string) string {
+		if m, ok := parseMode(explicit); ok {
+			return m
+		}
+		if sessionID != "" {
+			return sessionMode(sessionID)
+		}
+		return ""
+	}
 
 	// Public
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -117,14 +144,19 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		mode := strings.ToLower(strings.TrimSpace(req.Mode))
-		switch mode {
-		case "ro", "edit", "bypass":
-			ag.SetMode(mode)
-			writeJSON(w, map[string]any{"status": "ok", "mode": mode})
-		default:
+		mode, ok := parseMode(req.Mode)
+		if !ok {
 			http.Error(w, "invalid mode: ro, edit, or bypass required", http.StatusBadRequest)
+			return
 		}
+		if req.SessionID == "" {
+			// A mode without a session would have to mutate the shared agent,
+			// which is exactly the N2 leak; modes are per-session state now.
+			http.Error(w, "session_id is required: modes are stored per session", http.StatusBadRequest)
+			return
+		}
+		setSessionMode(req.SessionID, mode)
+		writeJSON(w, map[string]any{"status": "ok", "mode": mode, "session_id": req.SessionID})
 	})
 	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
 		pid, model, local := ag.ModelInfo()
@@ -301,13 +333,7 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 				return
 			}
 		}
-		if req.Mode != "" {
-			switch strings.ToLower(req.Mode) {
-			case "ro", "edit", "bypass":
-				ag.SetMode(strings.ToLower(req.Mode))
-			}
-		}
-		res, err := ag.RunFull(r.Context(), strings.TrimSpace(req.Prompt), history)
+		res, err := ag.RunFullWithMode(r.Context(), requestMode(req.Mode, req.SessionID), strings.TrimSpace(req.Prompt), history)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -370,14 +396,8 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 				Content: req.Prompt,
 			})
 		}
-		if req.Mode != "" {
-			switch strings.ToLower(req.Mode) {
-			case "ro", "edit", "bypass":
-				ag.SetMode(strings.ToLower(req.Mode))
-			}
-		}
 		var assistantReply string
-		err := ag.RunStream(r.Context(), strings.TrimSpace(req.Prompt), history, func(e agent.Event) {
+		err := ag.RunStreamWithMode(r.Context(), requestMode(req.Mode, req.SessionID), strings.TrimSpace(req.Prompt), history, func(e agent.Event) {
 			b, err := json.Marshal(e)
 			if err != nil {
 				return
@@ -472,6 +492,16 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 	mux.Handle("/api/swarm", authMiddleware(auth)(api))
 
 	return mux
+}
+
+// parseMode validates a client-supplied permission mode string and returns
+// its canonical form.
+func parseMode(s string) (string, bool) {
+	switch m := strings.ToLower(strings.TrimSpace(s)); m {
+	case agent.ModeReadOnly, agent.ModeEdit, agent.ModeBypass:
+		return m, true
+	}
+	return "", false
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

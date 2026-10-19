@@ -329,3 +329,50 @@ func TestServerSessionIDORProtection(t *testing.T) {
 		t.Errorf("expected 200 OK for rightful session owner, got %d", wAlice.Code)
 	}
 }
+
+// TestServerModeIsPerRequest proves the N2 fix: a /chat request carrying
+// mode=bypass, and a /api/mobile/mode call, must not flip the shared agent's
+// stored mode for every other user.
+func TestServerModeIsPerRequest(t *testing.T) {
+	store, _ := cortex.NewMemoryStoreAt(filepath.Join(t.TempDir(), "cortex.json"))
+	ag := agent.New(agent.Config{Provider: &fakeText{"ok"}, Tools: tools.NewRegistry(), Cortex: store, Model: "m"})
+	srv := httptest.NewServer(Handler(ag, store, nil, nil, nil))
+	defer srv.Close()
+
+	if got := ag.Mode(); got != agent.ModeEdit {
+		t.Fatalf("precondition: agent mode = %q, want edit", got)
+	}
+
+	resp, err := http.Post(srv.URL+"/chat", "application/json", strings.NewReader(`{"prompt":"hi","mode":"bypass"}`))
+	if err != nil {
+		t.Fatalf("chat post: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("chat status = %d", resp.StatusCode)
+	}
+	if got := ag.Mode(); got != agent.ModeEdit {
+		t.Errorf("after bypass /chat request: agent mode = %q, want edit (no global flip)", got)
+	}
+
+	resp, err = http.Post(srv.URL+"/api/mobile/mode", "application/json", strings.NewReader(`{"session_id":"s1","mode":"bypass"}`))
+	if err != nil {
+		t.Fatalf("mobile mode post: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("mobile mode status = %d", resp.StatusCode)
+	}
+	if got := ag.Mode(); got != agent.ModeEdit {
+		t.Errorf("after /api/mobile/mode: agent mode = %q, want edit (mode must be per-session)", got)
+	}
+
+	resp, err = http.Post(srv.URL+"/api/mobile/mode", "application/json", strings.NewReader(`{"mode":"bypass"}`))
+	if err != nil {
+		t.Fatalf("mobile mode post: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("mobile mode without session_id: status = %d, want 400", resp.StatusCode)
+	}
+}
