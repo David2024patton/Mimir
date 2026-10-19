@@ -204,7 +204,9 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		if !checkMobileSession(w, r, "steer", req.SessionID) {
 			return
 		}
-		ag.Steer(req.Message)
+		// The steer is queued under the caller's own session (validated
+		// above); delivery is bound to that session inside the agent.
+		ag.Steer(req.SessionID, req.Message)
 		// FIX 6: log the acceptance with the message LENGTH only; steer
 		// text is user content and never goes in the logs.
 		slog.Default().Info("mobile steer accepted",
@@ -422,7 +424,9 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 				return
 			}
 		}
-		res, err := ag.RunFullWithMode(r.Context(), requestMode(req.Mode, req.SessionID), strings.TrimSpace(req.Prompt), history)
+		// The run is bound to the request's session so steering queued for
+		// this session is delivered only here, never into another run.
+		res, err := ag.RunFullWithMode(agent.WithSessionID(r.Context(), req.SessionID), requestMode(req.Mode, req.SessionID), strings.TrimSpace(req.Prompt), history)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -486,7 +490,7 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			})
 		}
 		var assistantReply string
-		err := ag.RunStreamWithMode(r.Context(), requestMode(req.Mode, req.SessionID), strings.TrimSpace(req.Prompt), history, func(e agent.Event) {
+		err := ag.RunStreamWithMode(agent.WithSessionID(r.Context(), req.SessionID), requestMode(req.Mode, req.SessionID), strings.TrimSpace(req.Prompt), history, func(e agent.Event) {
 			b, err := json.Marshal(e)
 			if err != nil {
 				return
