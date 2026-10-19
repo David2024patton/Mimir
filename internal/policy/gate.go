@@ -47,6 +47,11 @@ func DefaultDevGate() *Gate {
 	g.AddRule(Rule{Pattern: "load_skill", Decision: Allow})
 	g.AddRule(Rule{Pattern: "epistemic_audit", Decision: Allow})
 	g.AddRule(Rule{Pattern: "web_seo_audit", Decision: Allow})
+	// SDLC self-guards sign_off/set_method in waterfall mode, and ingest_repo
+	// only reads a source into the Cortex digest; both must be reachable or
+	// default-deny silently blocks headline features (gate regression).
+	g.AddRule(Rule{Pattern: "sdlc", Decision: Allow})
+	g.AddRule(Rule{Pattern: "ingest_repo", Decision: Allow})
 
 	// Modifications require approval unless bypass mode or explicit rule
 	g.AddRule(Rule{Pattern: "write_file", Decision: RequireApproval})
