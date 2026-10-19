@@ -58,7 +58,40 @@ var (
 	// ErrDowngradeRefused is returned when an update would install an older
 	// engine version than the one already present.
 	ErrDowngradeRefused = errors.New("engines: refusing to downgrade an engine (set MIMIR_ENGINE_ALLOW_DOWNGRADE=1 to force)")
+	// ErrInsecureRedirect is returned when an update download is redirected
+	// to a non-https URL and the operator has not opted into an insecure
+	// channel. Validating the initial URL is not enough: a redirect must
+	// not be able to downgrade the transport after the check.
+	ErrInsecureRedirect = errors.New("engines: update download redirected to a non-https URL (set MIMIR_UPDATE_ALLOW_INSECURE=1 to override)")
+	// ErrTooManyRedirects is returned when an update download exceeds the
+	// redirect cap.
+	ErrTooManyRedirects = errors.New("engines: update download exceeded the maximum number of redirects")
 )
+
+// maxUpdateRedirects caps how many redirects an update download follows.
+const maxUpdateRedirects = 5
+
+// updateRedirectPolicy is the redirect policy for every update download.
+// A redirect target must stay on https unless the operator explicitly
+// opted into an insecure channel, and the chain is capped so a hostile or
+// broken host cannot bounce the client forever. req is the redirect
+// target about to be fetched; via holds the requests already made, so
+// len(via) is the number of the redirect being attempted.
+func updateRedirectPolicy(req *http.Request, via []*http.Request) error {
+	if len(via) > maxUpdateRedirects {
+		return fmt.Errorf("%w: stopped after %d redirects", ErrTooManyRedirects, maxUpdateRedirects)
+	}
+	if req.URL.Scheme != "https" && os.Getenv("MIMIR_UPDATE_ALLOW_INSECURE") != "1" {
+		return fmt.Errorf("%w: %s", ErrInsecureRedirect, req.URL.Redacted())
+	}
+	return nil
+}
+
+// updateHTTPClient builds the client used for all update downloads, with
+// the redirect policy attached.
+func updateHTTPClient() *http.Client {
+	return &http.Client{Timeout: 2 * time.Minute, CheckRedirect: updateRedirectPolicy}
+}
 
 // validateUpdateBase enforces transport security for the update channel
 // (N7): the base serves executable code, so plain http is refused unless
@@ -318,7 +351,7 @@ func httpGet(ctx context.Context, url string, limit int64) ([]byte, error) {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "mimir-updater")
-	resp, err := (&http.Client{Timeout: 2 * time.Minute}).Do(req)
+	resp, err := updateHTTPClient().Do(req)
 	if err != nil {
 		return nil, err
 	}

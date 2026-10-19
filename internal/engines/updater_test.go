@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
 )
 
@@ -296,4 +297,115 @@ func TestUpdateFlow_UsesPlatformBinary(t *testing.T) {
 	if string(leg) != "legacy-local-stale" {
 		t.Fatalf("legacy binary must be untouched on a platform host, got %q", leg)
 	}
+}
+
+// FIX 1 (audit): the https-only rule was validated on the initial URL only,
+// so a redirect could silently downgrade an update download to plain http
+// on any host. The download client must refuse non-https redirect targets
+// (unless the operator opted into an insecure channel) and cap redirects.
+func TestHTTPGet_RefusesRedirectToPlainHTTP(t *testing.T) {
+	t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "")
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("downgraded-payload"))
+	}))
+	defer target.Close()
+	entry := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL+"/file", http.StatusFound)
+	}))
+	defer entry.Close()
+
+	body, err := httpGet(context.Background(), entry.URL+"/start", 1<<20)
+	if !errors.Is(err, ErrInsecureRedirect) {
+		t.Fatalf("expected ErrInsecureRedirect, got err=%v body=%q", err, body)
+	}
+}
+
+func TestHTTPGet_FollowsRedirectChainWithinCap(t *testing.T) {
+	t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "1")
+	srv := httptest.NewServer(redirectChainHandler(3))
+	defer srv.Close()
+
+	body, err := httpGet(context.Background(), srv.URL+"/hop?n=0", 1<<20)
+	if err != nil {
+		t.Fatalf("redirect chain within the cap should succeed: %v", err)
+	}
+	if string(body) != "landed" {
+		t.Fatalf("unexpected body %q", body)
+	}
+}
+
+func TestHTTPGet_TooManyRedirects(t *testing.T) {
+	t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "1")
+	srv := httptest.NewServer(redirectChainHandler(7))
+	defer srv.Close()
+
+	_, err := httpGet(context.Background(), srv.URL+"/hop?n=0", 1<<20)
+	if !errors.Is(err, ErrTooManyRedirects) {
+		t.Fatalf("expected ErrTooManyRedirects, got %v", err)
+	}
+}
+
+// redirectChainHandler redirects /hop?n=k to k+1 while k < hops, then
+// serves the final payload.
+func redirectChainHandler(hops int) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/hop", func(w http.ResponseWriter, r *http.Request) {
+		n, _ := strconv.Atoi(r.URL.Query().Get("n"))
+		if n < hops {
+			http.Redirect(w, r, fmt.Sprintf("/hop?n=%d", n+1), http.StatusFound)
+			return
+		}
+		_, _ = w.Write([]byte("landed"))
+	})
+	return mux
+}
+
+// The policy unit test covers the https side of the rule, which the live
+// httptest servers above cannot exercise (their certificates are not
+// trusted by the default transport, so the first hop would fail before
+// any redirect is offered).
+func TestUpdateRedirectPolicy(t *testing.T) {
+	mkReq := func(rawurl string) *http.Request {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodGet, rawurl, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return req
+	}
+	via := func(n int) []*http.Request {
+		out := make([]*http.Request, n)
+		for i := range out {
+			out[i] = mkReq("https://updates.example.com/start")
+		}
+		return out
+	}
+
+	t.Run("https target allowed without override", func(t *testing.T) {
+		t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "")
+		if err := updateRedirectPolicy(mkReq("https://cdn.example.com/bin"), via(1)); err != nil {
+			t.Fatalf("https redirect target should be allowed, got %v", err)
+		}
+	})
+	t.Run("http target refused without override", func(t *testing.T) {
+		t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "")
+		if err := updateRedirectPolicy(mkReq("http://cdn.example.com/bin"), via(1)); !errors.Is(err, ErrInsecureRedirect) {
+			t.Fatalf("expected ErrInsecureRedirect, got %v", err)
+		}
+	})
+	t.Run("http target allowed with override", func(t *testing.T) {
+		t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "1")
+		if err := updateRedirectPolicy(mkReq("http://cdn.example.com/bin"), via(1)); err != nil {
+			t.Fatalf("override should allow http redirect target, got %v", err)
+		}
+	})
+	t.Run("fifth redirect allowed, sixth refused", func(t *testing.T) {
+		t.Setenv("MIMIR_UPDATE_ALLOW_INSECURE", "")
+		if err := updateRedirectPolicy(mkReq("https://cdn.example.com/bin"), via(5)); err != nil {
+			t.Fatalf("fifth redirect should be allowed, got %v", err)
+		}
+		if err := updateRedirectPolicy(mkReq("https://cdn.example.com/bin"), via(6)); !errors.Is(err, ErrTooManyRedirects) {
+			t.Fatalf("expected ErrTooManyRedirects, got %v", err)
+		}
+	})
 }
