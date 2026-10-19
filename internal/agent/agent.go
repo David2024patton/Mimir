@@ -86,11 +86,20 @@ type Event struct {
 	Err   string `json:"err,omitempty"`
 }
 
+// maxSteersPerSession caps how many steering instructions may wait in one
+// session's queue. It matches the capacity of the single global channel this
+// design replaced, now applied per session instead of process-wide.
+const maxSteersPerSession = 16
+
 // Agent runs the gather -> infer -> act -> verify loop.
 type Agent struct {
-	mu      sync.RWMutex
-	cfg     Config
-	steerCh chan string
+	mu  sync.RWMutex
+	cfg Config
+	// steerMu guards steers, the per-session steering queues. Queues are
+	// keyed by chat session ID so an instruction can only ever be delivered
+	// into a run of the session it was queued for.
+	steerMu sync.Mutex
+	steers  map[string][]string
 }
 
 // New returns an Agent wired to the given dependencies.
@@ -120,8 +129,8 @@ func New(cfg Config) *Agent {
 		cfg.Hooks = NewHookRunner(".")
 	}
 	return &Agent{
-		cfg:     cfg,
-		steerCh: make(chan string, 16),
+		cfg:    cfg,
+		steers: make(map[string][]string),
 	}
 }
 
@@ -277,29 +286,79 @@ func (a *Agent) ModelInfo() (string, string, bool) {
 	return pid, a.cfg.Model, a.cfg.Local
 }
 
-// Steer queues a mid-turn user steering instruction to be injected cleanly at the
-// next joined tool boundary without aborting the turn (sausheong/harness pattern).
-func (a *Agent) Steer(msg string) {
-	msg = strings.TrimSpace(msg)
-	if msg == "" {
-		return
+// sessionContextKey is the context key carrying the chat session a run
+// belongs to. It exists solely so steering instructions queued for a session
+// are delivered only into runs of that same session.
+type sessionContextKey struct{}
+
+// WithSessionID returns a context that binds agent runs started with it to
+// the given chat session for steering delivery. Runs started from a context
+// carrying no session ID (one-shot CLI runs, swarm worker runs, tests)
+// receive no session steering at all: the binding fails closed.
+func WithSessionID(ctx context.Context, sessionID string) context.Context {
+	if ctx == nil || sessionID == "" {
+		return ctx
 	}
-	select {
-	case a.steerCh <- msg:
-	default:
-	}
+	return context.WithValue(ctx, sessionContextKey{}, sessionID)
 }
 
-func (a *Agent) drainSteer() []string {
-	var out []string
-	for {
-		select {
-		case m := <-a.steerCh:
-			out = append(out, m)
-		default:
-			return out
-		}
+// sessionIDFromContext returns the chat session bound to ctx, or "" when the
+// run is sessionless.
+func sessionIDFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
 	}
+	id, _ := ctx.Value(sessionContextKey{}).(string)
+	return id
+}
+
+// Steer queues a mid-turn user steering instruction for one chat session, to
+// be injected cleanly at the next joined tool boundary of a run OF THAT
+// SESSION without aborting the turn (sausheong/harness pattern). Delivery is
+// bound to the session: drainSteer only ever returns a session's queue to a
+// run carrying that session's ID, so a steer can never leak into another
+// user's run or into a sessionless run.
+//
+// Steer reports whether the instruction was actually queued. It returns
+// false when the session ID or the message is empty, or when the session's
+// queue already holds maxSteersPerSession instructions; callers must surface
+// that failure instead of reporting success for a dropped instruction.
+//
+// Queue memory stays bounded: each session holds at most
+// maxSteersPerSession short strings, a queue is deleted when drained, and
+// the only production enqueue path is the server's mobile steer handler,
+// which first proves the named session exists and belongs to the caller, so
+// queues cannot be minted by spamming invented session IDs.
+func (a *Agent) Steer(sessionID, msg string) bool {
+	msg = strings.TrimSpace(msg)
+	if sessionID == "" || msg == "" {
+		return false
+	}
+	a.steerMu.Lock()
+	defer a.steerMu.Unlock()
+	q := a.steers[sessionID]
+	if len(q) >= maxSteersPerSession {
+		return false
+	}
+	a.steers[sessionID] = append(q, msg)
+	return true
+}
+
+// drainSteer returns and clears the steering instructions queued for
+// sessionID. An empty sessionID drains nothing (fail closed): session
+// steers are never delivered into sessionless runs.
+func (a *Agent) drainSteer(sessionID string) []string {
+	if sessionID == "" {
+		return nil
+	}
+	a.steerMu.Lock()
+	defer a.steerMu.Unlock()
+	q := a.steers[sessionID]
+	if len(q) == 0 {
+		return nil
+	}
+	delete(a.steers, sessionID)
+	return q
 }
 
 // phaseToolFilter returns the active SDLC phase's allowed tool set when a
@@ -609,8 +668,9 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message, modeOverride st
 			trace = append(trace, st)
 			msgs = append(msgs, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: st.Result})
 		}
-		// Inject any mid-turn user steering messages queued during tool execution.
-		for _, sm := range a.drainSteer() {
+		// Inject any mid-turn user steering messages queued for THIS run's
+		// session during tool execution (empty session drains nothing).
+		for _, sm := range a.drainSteer(sessionIDFromContext(ctx)) {
 			msgs = append(msgs, llm.Message{Role: "user", Content: "[User steering instruction]: " + sm})
 		}
 	}
@@ -758,7 +818,7 @@ func (a *Agent) runStreamMode(ctx context.Context, modeOverride, input string, h
 			emit(Event{Type: EventTool, Step: &st})
 			msgs = append(msgs, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: st.Result})
 		}
-		for _, sm := range a.drainSteer() {
+		for _, sm := range a.drainSteer(sessionIDFromContext(ctx)) {
 			emit(Event{Type: EventSteer, Text: sm})
 			msgs = append(msgs, llm.Message{Role: "user", Content: "[User steering instruction]: " + sm})
 		}

@@ -175,7 +175,8 @@ func TestMobileSteerUnknownSessionRejected(t *testing.T) {
 }
 
 // TestMobileSteerOwnSessionAccepted is the positive control: the owner can
-// steer their own session and the instruction reaches the next agent run.
+// steer their own session and the instruction reaches the next run OF THAT
+// SESSION (delivery is session-bound, so the run must carry the session ID).
 func TestMobileSteerOwnSessionAccepted(t *testing.T) {
 	f := newMobileFixture(t)
 	w := postAs(f.handler, "/api/mobile/steer",
@@ -183,7 +184,11 @@ func TestMobileSteerOwnSessionAccepted(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("own steer status = %d, want 200 (body: %s)", w.Code, w.Body.String())
 	}
-	f.chat(t)
+	w = postAs(f.handler, "/chat",
+		`{"prompt":"go","session_id":"`+f.alice+`"}`, "user_alice")
+	if w.Code != http.StatusOK {
+		t.Fatalf("own-session /chat status = %d, want 200 (body: %s)", w.Code, w.Body.String())
+	}
 	if !f.prov.sawSteering("please pivot") {
 		t.Error("accepted own-session steer never reached the agent run")
 	}
