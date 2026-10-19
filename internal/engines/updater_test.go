@@ -409,3 +409,130 @@ func TestUpdateRedirectPolicy(t *testing.T) {
 		}
 	})
 }
+
+// setRemoteVersion rewrites the version of the first engine in a
+// published tree's manifest, leaving the hashes untouched.
+func setRemoteVersion(t *testing.T, pub, version string) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(pub, "engines", "bin", "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var remote Manifest
+	if err := json.Unmarshal(raw, &remote); err != nil {
+		t.Fatal(err)
+	}
+	remote.Engines[0].Version = version
+	writeManifest(t, pub, remote)
+}
+
+// writeLocalInstall creates a local install tree: one tyr-core binary
+// with the given content and a local manifest claiming the given version.
+func writeLocalInstall(t *testing.T, version, payload string) string {
+	t.Helper()
+	local := t.TempDir()
+	localBin := filepath.Join(local, "engines", "bin")
+	if err := os.MkdirAll(localBin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(localBin, "mimir_tyr_engine.exe"), []byte(payload), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	localManifest := Manifest{
+		SchemaVersion: "1.0", Owner: RequiredOwner, Website: "https://alphaflux.net",
+		License: "LICENSE-ENGINES.md", Attribution: AttributionNotice,
+		Engines: []EngineEntry{{ID: "tyr-core", Version: version, Binary: "engines/bin/mimir_tyr_engine.exe"}},
+	}
+	raw, _ := json.Marshal(localManifest)
+	if err := os.WriteFile(filepath.Join(localBin, "manifest.json"), raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return local
+}
+
+// FIX 2 (audit): downgrade protection treated an unparseable version pair
+// as a pass. For an engine that is already installed, an unparseable
+// remote version means "not a downgrade" cannot be proven, so the update
+// must be refused unless forced.
+func TestApplyUpdates_RefusesUnparseableRemoteForInstalled(t *testing.T) {
+	pub, _ := publishTree(t, "engine-banana", RequiredOwner)
+	setRemoteVersion(t, pub, "banana")
+	srv := httptest.NewServer(http.FileServer(http.Dir(pub)))
+	defer srv.Close()
+
+	local := writeLocalInstall(t, "0.3.0", "engine-v0.3.0-local")
+	plan, err := CheckForUpdates(context.Background(), local, srv.URL)
+	if err != nil {
+		t.Fatalf("CheckForUpdates: %v", err)
+	}
+	if len(plan.Changes) != 1 {
+		t.Fatalf("expected 1 change, got %+v", plan.Changes)
+	}
+	if _, err := ApplyUpdates(context.Background(), local, plan); !errors.Is(err, ErrUnverifiableVersion) {
+		t.Fatalf("expected ErrUnverifiableVersion for installed engine with unparseable remote version, got %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(local, "engines", "bin", "mimir_tyr_engine.exe"))
+	if string(got) != "engine-v0.3.0-local" {
+		t.Fatalf("binary must be untouched after refusal, got %q", got)
+	}
+
+	// The downgrade override forces it through.
+	t.Setenv("MIMIR_ENGINE_ALLOW_DOWNGRADE", "1")
+	if _, err := ApplyUpdates(context.Background(), local, plan); err != nil {
+		t.Fatalf("forced update should apply, got %v", err)
+	}
+	got, _ = os.ReadFile(filepath.Join(local, "engines", "bin", "mimir_tyr_engine.exe"))
+	if string(got) != "engine-banana" {
+		t.Fatalf("expected remote binary after forced update, got %q", got)
+	}
+}
+
+// FIX 2: the mirror image. An installed engine whose LOCAL version is
+// unparseable cannot be ordered against the remote either; refuse.
+func TestApplyUpdates_RefusesUnparseableLocalForInstalled(t *testing.T) {
+	pub, _ := publishTree(t, "engine-v0.2.0", RequiredOwner)
+	setRemoteVersion(t, pub, "0.2.0")
+	srv := httptest.NewServer(http.FileServer(http.Dir(pub)))
+	defer srv.Close()
+
+	local := writeLocalInstall(t, "weird-local", "engine-weird")
+	plan, err := CheckForUpdates(context.Background(), local, srv.URL)
+	if err != nil {
+		t.Fatalf("CheckForUpdates: %v", err)
+	}
+	if len(plan.Changes) != 1 {
+		t.Fatalf("expected 1 change, got %+v", plan.Changes)
+	}
+	if _, err := ApplyUpdates(context.Background(), local, plan); !errors.Is(err, ErrUnverifiableVersion) {
+		t.Fatalf("expected ErrUnverifiableVersion for installed engine with unparseable local version, got %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(local, "engines", "bin", "mimir_tyr_engine.exe"))
+	if string(got) != "engine-weird" {
+		t.Fatalf("binary must be untouched after refusal, got %q", got)
+	}
+}
+
+// FIX 2: a brand new engine (no local version at all) keeps the
+// permissive path even when its remote version is unparseable.
+func TestApplyUpdates_NewEngineUnparseableVersionAllowed(t *testing.T) {
+	pub, _ := publishTree(t, "engine-banana", RequiredOwner)
+	setRemoteVersion(t, pub, "banana")
+	srv := httptest.NewServer(http.FileServer(http.Dir(pub)))
+	defer srv.Close()
+
+	local := t.TempDir() // nothing installed
+	plan, err := CheckForUpdates(context.Background(), local, srv.URL)
+	if err != nil {
+		t.Fatalf("CheckForUpdates: %v", err)
+	}
+	if len(plan.Changes) != 1 || plan.Changes[0].LocalVersion != "none" {
+		t.Fatalf("expected one missing_local change, got %+v", plan.Changes)
+	}
+	if _, err := ApplyUpdates(context.Background(), local, plan); err != nil {
+		t.Fatalf("new engine install should be allowed, got %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(local, "engines", "bin", "mimir_tyr_engine.exe"))
+	if string(got) != "engine-banana" {
+		t.Fatalf("expected installed binary, got %q", got)
+	}
+}

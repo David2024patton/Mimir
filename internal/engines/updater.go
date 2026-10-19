@@ -66,6 +66,10 @@ var (
 	// ErrTooManyRedirects is returned when an update download exceeds the
 	// redirect cap.
 	ErrTooManyRedirects = errors.New("engines: update download exceeded the maximum number of redirects")
+	// ErrUnverifiableVersion is returned when an update targets an engine
+	// that is already installed but either version string is unparseable,
+	// so the updater cannot prove the update is not a downgrade.
+	ErrUnverifiableVersion = errors.New("engines: cannot verify update direction for an installed engine with an unparseable version (set MIMIR_ENGINE_ALLOW_DOWNGRADE=1 to force)")
 )
 
 // maxUpdateRedirects caps how many redirects an update download follows.
@@ -234,6 +238,15 @@ func compareVersions(a, b string) (cmp int, ok bool) {
 		}
 	}
 	return 0, true
+}
+
+// hasLocalVersion reports whether a plan change carries an actual local
+// version record. CheckForUpdates marks engines that are not installed
+// yet with LocalVersion "none" (no binary on disk) or "unknown" (a binary
+// is present but the local manifest does not track the engine); neither
+// is a local version.
+func hasLocalVersion(v string) bool {
+	return v != "" && v != "none" && v != "unknown"
 }
 
 // probeVersion runs `<binary> --attribution=... version` and reads the "version" field.
@@ -443,10 +456,20 @@ func ApplyUpdates(ctx context.Context, rootDir string, plan UpdatePlan) ([]strin
 	}
 	// Downgrade protection (N7): a manifest that would move an engine
 	// backwards is refused unless the operator explicitly forces it.
+	// The check fails closed for engines that are already installed
+	// (audit FIX 2): when a local version is on record but either
+	// version string is unparseable, no ordering can be proven, so the
+	// update is refused rather than silently waved through. Engines
+	// with no recorded local version (new installs and untracked
+	// binaries) keep the permissive path.
 	if os.Getenv("MIMIR_ENGINE_ALLOW_DOWNGRADE") != "1" {
 		for _, c := range plan.Changes {
-			if cmp, ok := compareVersions(c.RemoteVersion, c.LocalVersion); ok && cmp < 0 {
+			cmp, ok := compareVersions(c.RemoteVersion, c.LocalVersion)
+			switch {
+			case ok && cmp < 0:
 				return nil, fmt.Errorf("%w: %s %s -> %s", ErrDowngradeRefused, c.ID, c.LocalVersion, c.RemoteVersion)
+			case !ok && hasLocalVersion(c.LocalVersion):
+				return nil, fmt.Errorf("%w: %s local=%q remote=%q", ErrUnverifiableVersion, c.ID, c.LocalVersion, c.RemoteVersion)
 			}
 		}
 	}
