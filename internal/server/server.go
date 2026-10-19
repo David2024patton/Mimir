@@ -446,7 +446,11 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			})
 		}
 		if err != nil {
-			_, _ = w.Write([]byte(fmt.Sprintf("data: {\"type\":\"error\",\"err\":%q}\n\n", err.Error())))
+			// Marshal the error frame (FIX 3): the previous hand-rolled %q
+			// frame emitted \xNN escapes for control bytes, which are not
+			// valid JSON, so strict SSE consumers could not parse it.
+			frame, _ := json.Marshal(map[string]string{"type": "error", "err": err.Error()})
+			_, _ = w.Write([]byte("data: " + string(frame) + "\n\n"))
 			flusher.Flush()
 		}
 	})
