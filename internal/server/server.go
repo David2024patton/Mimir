@@ -112,7 +112,11 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		}
 		var req struct {
 			SessionID string `json:"session_id"`
-			ClientPub string `json:"client_pubkey"`
+			// PairingToken is the session nonce from the QR code / pair URI:
+			// it proves the phone actually scanned the code, so a caller that
+			// merely learned the session ID cannot hijack the pairing.
+			PairingToken string `json:"pairing_token"`
+			ClientPub    string `json:"client_pubkey"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -123,7 +127,7 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			http.Error(w, "session not found", http.StatusNotFound)
 			return
 		}
-		if err := sess.CompletePairing(req.ClientPub); err != nil {
+		if err := sess.CompletePairing(req.PairingToken, req.ClientPub); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}

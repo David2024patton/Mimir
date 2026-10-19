@@ -43,7 +43,7 @@ Usage:
   mimir ship [draft] [ctx]    run the Tier-2 Production Ship Gate and advance SDLC to Deployment
   mimir audit <draft> [ctx]   run the Epistemic Critic & Verification Node against a draft report
   mimir audit-web [dir]       run Impeccable anti-slop UI + 4-Layer SEO/GEO & Conversion detectors
-  mimir swarm [list|add|run]  manage Level 3 Multi-Agent Software Factory queue in isolated worktrees
+  mimir swarm [list|add|run|approve] manage Level 3 Multi-Agent Software Factory queue in isolated worktrees
   mimir engines               show Alpha Flux LLC engine binaries, versions, and integrity
   mimir engines run <id> ...  run an engine binary (attribution handshake added automatically)
   mimir engines publish       (maintainers) rehash engines/bin/* and rewrite manifest.json
@@ -566,6 +566,24 @@ func main() {
 			RootDir:      cwd,
 			MaxWorkers:   4,
 			TargetBranch: "main",
+			// Thor (the builder persona) runs a real agent built from this
+			// config; without a provider the factory now honestly blocks
+			// tasks with ErrNoAgentConfigured instead of fabricating work.
+			// Mode is deliberately left unset: the factory's worker default
+			// is autonomous bypass with the policy gate still applied, and
+			// the human control point is `mimir swarm approve`, not a
+			// terminal prompt nobody is watching.
+			AgentConfig: agent.Config{
+				Provider:   provider,
+				Tools:      toolReg,
+				Cortex:     store,
+				Model:      model,
+				Usage:      tracker,
+				Local:      local,
+				Effort:     effort,
+				Gate:       policy.DefaultDevGate(),
+				AutoVerify: true,
+			},
 		})
 		sub := ""
 		if len(positional) > 1 {
@@ -601,9 +619,27 @@ func main() {
 				fmt.Fprintf(os.Stderr, "swarm run failed: %v\n", err)
 				os.Exit(1)
 			}
-			fmt.Printf("✓ Task %s passed Odin -> Thor -> Loki -> Heimdall pipeline and merged to main!\n", taskID)
+			// ExecuteTask stops at the merge gate: passing every persona gate
+			// leaves the task awaiting human approval, never auto-merged.
+			if t, ok := f.GetTask(taskID); ok && t.State != swarm.StateMerged {
+				fmt.Printf("✓ Task %s passed Odin -> Thor -> Loki -> Heimdall pipeline (state: %s). Nothing was merged.\n", taskID, t.State)
+				fmt.Printf("  Review the task branch, then merge it with: mimir swarm approve %s\n", taskID)
+			} else {
+				fmt.Printf("✓ Task %s passed Odin -> Thor -> Loki -> Heimdall pipeline and merged to main!\n", taskID)
+			}
+		case "approve":
+			if len(positional) < 3 {
+				fmt.Fprintln(os.Stderr, "usage: mimir swarm approve <task-id>")
+				os.Exit(2)
+			}
+			taskID := positional[2]
+			if err := f.ApproveMerge(context.Background(), taskID); err != nil {
+				fmt.Fprintf(os.Stderr, "swarm approve failed: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("✓ Task %s approved and merged to main.\n", taskID)
 		default:
-			fmt.Fprintf(os.Stderr, "unknown swarm subcommand %q (list, add, run)\n", sub)
+			fmt.Fprintf(os.Stderr, "unknown swarm subcommand %q (list, add, run, approve)\n", sub)
 			os.Exit(2)
 		}
 		return
