@@ -621,11 +621,18 @@ func main() {
 			}
 			// ExecuteTask stops at the merge gate: passing every persona gate
 			// leaves the task awaiting human approval, never auto-merged.
-			if t, ok := f.GetTask(taskID); ok && t.State != swarm.StateMerged {
+			// A task that cannot be read back after execution is an error
+			// (FIX 4): it must never fall through to a success message.
+			t, ok := f.GetTask(taskID)
+			if !ok {
+				fmt.Fprintf(os.Stderr, "swarm run: task %s not found after execution\n", taskID)
+				os.Exit(1)
+			}
+			if t.State == swarm.StateMerged {
+				fmt.Printf("✓ Task %s passed Odin -> Thor -> Loki -> Heimdall pipeline and merged to main!\n", taskID)
+			} else {
 				fmt.Printf("✓ Task %s passed Odin -> Thor -> Loki -> Heimdall pipeline (state: %s). Nothing was merged.\n", taskID, t.State)
 				fmt.Printf("  Review the task branch, then merge it with: mimir swarm approve %s\n", taskID)
-			} else {
-				fmt.Printf("✓ Task %s passed Odin -> Thor -> Loki -> Heimdall pipeline and merged to main!\n", taskID)
 			}
 		case "approve":
 			if len(positional) < 3 {
