@@ -16,8 +16,8 @@ import (
 type Sidecar struct {
 	BinPath  string // path to the surreal binary (auto-located if empty)
 	Addr     string // bind address, e.g. 127.0.0.1:8000
-	User     string // default root
-	Pass     string // default root
+	User     string // default: MIMIR_SURREAL_USER, then the conventional root account name
+	Pass     string // default: MIMIR_SURREAL_PASS, else a random per-run password (F19); never logged
 	DataPath string // "memory" if empty, else a file/dir path for durable storage
 
 	cmd  *exec.Cmd
@@ -82,14 +82,34 @@ func (s *Sidecar) Start(ctx context.Context) error {
 		s.Addr = "127.0.0.1:8000"
 	}
 	if s.User == "" {
-		s.User = "root"
+		s.User = os.Getenv(envSurrealUser)
+	}
+	if s.User == "" {
+		s.User = defaultSurrealUser
 	}
 	if s.Pass == "" {
-		s.Pass = "root"
+		s.Pass = os.Getenv(envSurrealPass)
 	}
 	if s.Healthy(ctx) {
-		return nil // reuse an already-running server
+		// Reuse an already-running server. Only share credentials we
+		// actually know (explicit or env); a generated password would not
+		// match a server we did not launch.
+		if s.Pass != "" {
+			registerSidecarCreds(s.HTTPAddr(), s.User, s.Pass)
+		}
+		return nil
 	}
+	if s.Pass == "" {
+		// Zero-config local install: invent a per-run password so no known
+		// credential exists (F19). It is registered for the in-process
+		// client and never logged or persisted.
+		pass, err := generateSurrealPassword()
+		if err != nil {
+			return fmt.Errorf("surreal: %w", err)
+		}
+		s.Pass = pass
+	}
+	registerSidecarCreds(s.HTTPAddr(), s.User, s.Pass)
 	if s.BinPath == "" {
 		s.BinPath = LocateSurreal()
 	}

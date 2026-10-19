@@ -2,15 +2,19 @@ package engines
 
 import (
 	"context"
+	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -45,6 +49,158 @@ func UpdateBase() string {
 		return strings.TrimRight(v, "/")
 	}
 	return DefaultUpdateBase
+}
+
+var (
+	// ErrInsecureUpdateBase is returned when the update base is not https
+	// and the operator has not explicitly opted into an insecure channel.
+	ErrInsecureUpdateBase = errors.New("engines: update base must use https (set MIMIR_UPDATE_ALLOW_INSECURE=1 to override)")
+	// ErrDowngradeRefused is returned when an update would install an older
+	// engine version than the one already present.
+	ErrDowngradeRefused = errors.New("engines: refusing to downgrade an engine (set MIMIR_ENGINE_ALLOW_DOWNGRADE=1 to force)")
+)
+
+// validateUpdateBase enforces transport security for the update channel
+// (N7): the base serves executable code, so plain http is refused unless
+// the operator explicitly sets MIMIR_UPDATE_ALLOW_INSECURE=1.
+func validateUpdateBase(base string) error {
+	u, err := url.Parse(base)
+	if err != nil {
+		return fmt.Errorf("engines: invalid update base %q: %w", base, err)
+	}
+	if u.Scheme == "https" {
+		return nil
+	}
+	if os.Getenv("MIMIR_UPDATE_ALLOW_INSECURE") == "1" {
+		fmt.Fprintf(os.Stderr, "WARNING: engine update base %q is not https. MIMIR_UPDATE_ALLOW_INSECURE=1 is set, so binaries will be downloaded over an insecure channel.\n", base)
+		return nil
+	}
+	return fmt.Errorf("%w: got %q", ErrInsecureUpdateBase, base)
+}
+
+// ManifestSigningBytes returns the canonical bytes an ed25519 manifest
+// signature covers: the manifest encoded with encoding/json (struct field
+// order, no indentation) with the Signature field cleared. Verifiers
+// re-encode the parsed manifest the same way, so the served file's own
+// formatting does not matter.
+//
+// Release signing procedure for maintainers (N7):
+//  1. Generate an ed25519 keypair once (crypto/ed25519.GenerateKey) and
+//     keep the private key offline, outside the repo.
+//  2. After BuildManifest writes engines/bin/manifest.json, load it, call
+//     SignManifest(manifest, priv), store the result in the manifest's
+//     "signature" field, and commit the signed manifest.
+//  3. Give installs the public key out of band via the environment:
+//     MIMIR_ENGINE_PUBKEY=<base64 raw 32-byte public key>. Clients with
+//     the variable set refuse unsigned or badly signed manifests.
+func ManifestSigningBytes(m Manifest) ([]byte, error) {
+	m.Signature = ""
+	return json.Marshal(m)
+}
+
+// SignManifest returns the base64 ed25519 signature for a manifest, in the
+// form stored in Manifest.Signature.
+func SignManifest(m Manifest, priv ed25519.PrivateKey) (string, error) {
+	canonical, err := ManifestSigningBytes(m)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(ed25519.Sign(priv, canonical)), nil
+}
+
+// engineUpdatePubKey reads the operator-pinned manifest verification key
+// from MIMIR_ENGINE_PUBKEY (base64 raw public key). Nil means the operator
+// has not pinned a key.
+func engineUpdatePubKey() (ed25519.PublicKey, error) {
+	v := strings.TrimSpace(os.Getenv("MIMIR_ENGINE_PUBKEY"))
+	if v == "" {
+		return nil, nil
+	}
+	raw, err := base64.StdEncoding.DecodeString(v)
+	if err != nil {
+		raw2, err2 := base64.RawStdEncoding.DecodeString(v)
+		if err2 != nil {
+			return nil, fmt.Errorf("engines: MIMIR_ENGINE_PUBKEY is not valid base64: %w", err)
+		}
+		raw = raw2
+	}
+	if len(raw) != ed25519.PublicKeySize {
+		return nil, fmt.Errorf("engines: MIMIR_ENGINE_PUBKEY must decode to %d bytes, got %d", ed25519.PublicKeySize, len(raw))
+	}
+	return ed25519.PublicKey(raw), nil
+}
+
+// verifyRemoteManifest authenticates a fetched manifest (N7). With a
+// pinned key the manifest must carry a valid signature. Without one, the
+// update still works (hash-only integrity, as before) but a loud warning
+// states plainly that it is unauthenticated.
+func verifyRemoteManifest(m Manifest) error {
+	pub, err := engineUpdatePubKey()
+	if err != nil {
+		return err
+	}
+	if pub == nil {
+		fmt.Fprintln(os.Stderr, "WARNING: MIMIR_ENGINE_PUBKEY is not set, so this engine update is UNAUTHENTICATED. The manifest and binaries are trusted purely because they came from the update host. Set MIMIR_ENGINE_PUBKEY to require signed manifests.")
+		return nil
+	}
+	if strings.TrimSpace(m.Signature) == "" {
+		return errors.New("engines: MIMIR_ENGINE_PUBKEY is set but the remote manifest carries no signature; refusing update")
+	}
+	sig, err := base64.StdEncoding.DecodeString(m.Signature)
+	if err != nil {
+		return fmt.Errorf("engines: remote manifest signature is not valid base64: %w", err)
+	}
+	canonical, err := ManifestSigningBytes(m)
+	if err != nil {
+		return err
+	}
+	if !ed25519.Verify(pub, canonical, sig) {
+		return errors.New("engines: remote manifest signature verification failed; refusing update")
+	}
+	return nil
+}
+
+// compareVersions orders dotted numeric versions ("0.3.0" vs "0.2.9").
+// ok is false when either side is missing or not dotted numeric, in which
+// case callers must not treat the pair as comparable.
+func compareVersions(a, b string) (cmp int, ok bool) {
+	parse := func(s string) ([]int, bool) {
+		s = strings.TrimSpace(strings.TrimPrefix(s, "v"))
+		if s == "" || s == "none" || s == "unknown" {
+			return nil, false
+		}
+		parts := strings.Split(s, ".")
+		out := make([]int, len(parts))
+		for i, p := range parts {
+			n, err := strconv.Atoi(p)
+			if err != nil {
+				return nil, false
+			}
+			out[i] = n
+		}
+		return out, true
+	}
+	av, aok := parse(a)
+	bv, bok := parse(b)
+	if !aok || !bok {
+		return 0, false
+	}
+	for i := 0; i < len(av) || i < len(bv); i++ {
+		var x, y int
+		if i < len(av) {
+			x = av[i]
+		}
+		if i < len(bv) {
+			y = bv[i]
+		}
+		if x != y {
+			if x < y {
+				return -1, true
+			}
+			return 1, true
+		}
+	}
+	return 0, true
 }
 
 // probeVersion runs `<binary> --attribution=... version` and reads the "version" field.
@@ -177,6 +333,9 @@ func httpGet(ctx context.Context, url string, limit int64) ([]byte, error) {
 // by SHA-256 (not by version string), so any rebuilt engine is detected.
 func CheckForUpdates(ctx context.Context, rootDir, base string) (UpdatePlan, error) {
 	plan := UpdatePlan{Source: base}
+	if err := validateUpdateBase(base); err != nil {
+		return plan, err
+	}
 	raw, err := httpGet(ctx, base+"/engines/bin/manifest.json", 1<<20)
 	if err != nil {
 		return plan, err
@@ -189,6 +348,10 @@ func CheckForUpdates(ctx context.Context, rootDir, base string) (UpdatePlan, err
 	if !strings.EqualFold(remote.Owner, RequiredOwner) || !strings.Contains(remote.Attribution, RequiredOwner) {
 		return plan, fmt.Errorf("%w: remote manifest at %s", ErrAttributionRequired, base)
 	}
+	// Authenticate the manifest before trusting any hash in it (N7).
+	if err := verifyRemoteManifest(remote); err != nil {
+		return plan, err
+	}
 	plan.Remote = remote
 
 	local, _ := readManifestFile(rootDir)
@@ -198,16 +361,22 @@ func CheckForUpdates(ctx context.Context, rootDir, base string) (UpdatePlan, err
 	}
 	for _, re := range remote.Engines {
 		le, known := localByID[re.ID]
-		binPath := filepath.Join(rootDir, filepath.FromSlash(re.Binary))
+		// Diff the file Invoke will actually execute on this host (the
+		// platform-resolved binary), not the legacy top-level path (N8).
+		binRel, wantSHA, _, found := re.ResolveBinary()
+		if !found || binRel == "" {
+			continue // nothing published for this host platform
+		}
+		binPath := filepath.Join(rootDir, filepath.FromSlash(binRel))
 		sum, _, ferr := FileSHA256(binPath)
 		switch {
 		case ferr != nil:
 			plan.Changes = append(plan.Changes, EngineDiff{ID: re.ID, LocalVersion: "none", RemoteVersion: re.Version, Reason: "missing_local", Remote: re})
 		case !known:
-			if !strings.EqualFold(sum, re.SHA256) {
+			if !strings.EqualFold(sum, wantSHA) {
 				plan.Changes = append(plan.Changes, EngineDiff{ID: re.ID, LocalVersion: "unknown", RemoteVersion: re.Version, Reason: "new", Remote: re})
 			}
-		case !strings.EqualFold(sum, re.SHA256):
+		case !strings.EqualFold(sum, wantSHA):
 			plan.Changes = append(plan.Changes, EngineDiff{ID: re.ID, LocalVersion: le.Version, RemoteVersion: re.Version, Reason: "changed", Remote: re})
 		}
 	}
@@ -231,6 +400,23 @@ func ApplyUpdates(ctx context.Context, rootDir string, plan UpdatePlan) ([]strin
 	if len(plan.Changes) == 0 {
 		return nil, nil
 	}
+	// Re-run the trust checks here too: a plan does not have to come from
+	// CheckForUpdates, and nothing executable is fetched before these pass.
+	if err := validateUpdateBase(plan.Source); err != nil {
+		return nil, err
+	}
+	if err := verifyRemoteManifest(plan.Remote); err != nil {
+		return nil, err
+	}
+	// Downgrade protection (N7): a manifest that would move an engine
+	// backwards is refused unless the operator explicitly forces it.
+	if os.Getenv("MIMIR_ENGINE_ALLOW_DOWNGRADE") != "1" {
+		for _, c := range plan.Changes {
+			if cmp, ok := compareVersions(c.RemoteVersion, c.LocalVersion); ok && cmp < 0 {
+				return nil, fmt.Errorf("%w: %s %s -> %s", ErrDowngradeRefused, c.ID, c.LocalVersion, c.RemoteVersion)
+			}
+		}
+	}
 	type staged struct{ tmp, dst string }
 	var ready []staged
 	cleanup := func() {
@@ -239,12 +425,19 @@ func ApplyUpdates(ctx context.Context, rootDir string, plan UpdatePlan) ([]strin
 		}
 	}
 	for _, c := range plan.Changes {
-		data, err := httpGet(ctx, plan.Source+"/"+c.Remote.Binary, 256<<20)
+		// Download, verify, and replace the platform-resolved binary that
+		// Invoke executes on this host, not the legacy top-level path (N8).
+		binRel, wantSHA, _, found := c.Remote.ResolveBinary()
+		if !found || binRel == "" {
+			cleanup()
+			return nil, fmt.Errorf("engines: update for %s has no binary for host platform %s_%s", c.ID, runtime.GOOS, runtime.GOARCH)
+		}
+		data, err := httpGet(ctx, plan.Source+"/"+binRel, 256<<20)
 		if err != nil {
 			cleanup()
 			return nil, err
 		}
-		dst := filepath.Join(rootDir, filepath.FromSlash(c.Remote.Binary))
+		dst := filepath.Join(rootDir, filepath.FromSlash(binRel))
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 			cleanup()
 			return nil, err
@@ -256,9 +449,9 @@ func ApplyUpdates(ctx context.Context, rootDir string, plan UpdatePlan) ([]strin
 		}
 		ready = append(ready, staged{tmp: tmp, dst: dst})
 		sum, _, _ := FileSHA256(tmp)
-		if !strings.EqualFold(sum, c.Remote.SHA256) {
+		if !strings.EqualFold(sum, wantSHA) {
 			cleanup()
-			return nil, fmt.Errorf("%w: downloaded %s sha256=%s want=%s", ErrBinaryIntegrity, c.Remote.Binary, sum, c.Remote.SHA256)
+			return nil, fmt.Errorf("%w: downloaded %s sha256=%s want=%s", ErrBinaryIntegrity, binRel, sum, wantSHA)
 		}
 	}
 	var updated []string

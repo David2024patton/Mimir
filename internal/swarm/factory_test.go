@@ -1,6 +1,12 @@
 package swarm
 
 import (
+	"context"
+	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -80,5 +86,165 @@ func TestFactory_StateTransitionsAndArtifacts(t *testing.T) {
 	failed, _ := f.GetTask(task.ID)
 	if failed.State != StateFailed || !strings.Contains(failed.Error, "simulated test failure") {
 		t.Errorf("expected failed state with error message, got %+v", failed)
+	}
+}
+
+// N12: IDs come from a persisted counter, so a factory reloaded from disk
+// never reissues an ID that an earlier instance already handed out.
+func TestFactory_UniqueIDsAcrossReload(t *testing.T) {
+	dir := t.TempDir()
+	cfg := FactoryConfig{RootDir: dir, TargetBranch: "main"}
+
+	f1 := NewFactory(cfg)
+	if _, err := f1.Submit("One", "first"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f1.Submit("Two", "second"); err != nil {
+		t.Fatal(err)
+	}
+
+	f2 := NewFactory(cfg) // reload from disk
+	third, err := f2.Submit("Three", "third")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if third.ID != "task-3" {
+		t.Fatalf("expected task-3 after reload, got %s", third.ID)
+	}
+	seen := map[string]bool{}
+	for _, task := range f2.ListTasks() {
+		if seen[task.ID] {
+			t.Fatalf("duplicate task ID %s", task.ID)
+		}
+		seen[task.ID] = true
+	}
+}
+
+// N12: branch slugs are git-ref-safe regardless of title punctuation.
+func TestFactory_SanitizesBranchSlug(t *testing.T) {
+	dir := t.TempDir()
+	f := NewFactory(FactoryConfig{RootDir: dir, TargetBranch: "main"})
+
+	task, err := f.Submit("Fix: Auth!! (ASAP) ### v2.0", "desc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "swarm/task-1-fix-auth-asap-v2-0"
+	if task.Branch != want {
+		t.Errorf("expected branch %q, got %q", want, task.Branch)
+	}
+
+	safe := regexp.MustCompile(`^swarm/task-\d+-[a-z0-9-]+$`)
+	bang, err := f.Submit("!!!", "desc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !safe.MatchString(bang.Branch) {
+		t.Errorf("branch for punctuation-only title is not ref-safe: %q", bang.Branch)
+	}
+}
+
+func gitCmd(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
+}
+
+func initGitRepo(t *testing.T, dir string) {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	gitCmd(t, dir, "init")
+	gitCmd(t, dir, "symbolic-ref", "HEAD", "refs/heads/main")
+	gitCmd(t, dir, "config", "user.email", "swarm-test@example.com")
+	gitCmd(t, dir, "config", "user.name", "Swarm Test")
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# test repo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitCmd(t, dir, "add", ".")
+	gitCmd(t, dir, "commit", "-m", "init")
+}
+
+// N6: with no agent configured, ExecuteTask must stop honestly in
+// StateBlocked instead of fabricating an implementation.
+func TestExecuteTask_BlockedWithoutAgent(t *testing.T) {
+	dir := t.TempDir()
+	initGitRepo(t, dir)
+	f := NewFactory(FactoryConfig{RootDir: dir, TargetBranch: "main"})
+	task, err := f.Submit("Add Feature Y", "Detailed description")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = f.ExecuteTask(context.Background(), task.ID)
+	if !errors.Is(err, ErrNoAgentConfigured) {
+		t.Fatalf("expected ErrNoAgentConfigured, got %v", err)
+	}
+	got, _ := f.GetTask(task.ID)
+	if got.State != StateBlocked {
+		t.Fatalf("expected StateBlocked, got %s", got.State)
+	}
+}
+
+// N6: ExecuteTask never merges on its own. A gate-passed task waits in
+// StateAwaitingMerge until ApproveMerge is called, and ApproveMerge lands
+// the merge on TargetBranch only.
+func TestApproveMerge_GatesAndTargetsBranch(t *testing.T) {
+	dir := t.TempDir()
+	initGitRepo(t, dir)
+	f := NewFactory(FactoryConfig{RootDir: dir, TargetBranch: "main"})
+	task, err := f.Submit("Add Feature Z", "Detailed description")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate Thor's committed work on the task branch.
+	wtDir, err := f.setupWorktree(task.Branch)
+	if err != nil {
+		t.Fatalf("setupWorktree: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "feature.txt"), []byte("z\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitCmd(t, wtDir, "add", ".")
+	gitCmd(t, wtDir, "commit", "-m", "feat: feature z")
+	f.teardownWorktree(wtDir)
+	f.updateState(task.ID, StateAwaitingMerge, "none")
+
+	// Approving from the wrong checked-out branch is refused and the task
+	// stays awaiting merge (retryable).
+	gitCmd(t, dir, "checkout", "-b", "other")
+	if err := f.ApproveMerge(context.Background(), task.ID); err == nil {
+		t.Fatal("expected refusal when main worktree is not on the target branch")
+	}
+	got, _ := f.GetTask(task.ID)
+	if got.State != StateAwaitingMerge {
+		t.Fatalf("expected task to stay StateAwaitingMerge after refusal, got %s", got.State)
+	}
+	gitCmd(t, dir, "checkout", "main")
+
+	// Approval on the target branch merges and flips the state.
+	if err := f.ApproveMerge(context.Background(), task.ID); err != nil {
+		t.Fatalf("ApproveMerge: %v", err)
+	}
+	got, _ = f.GetTask(task.ID)
+	if got.State != StateMerged {
+		t.Fatalf("expected StateMerged, got %s", got.State)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "feature.txt")); err != nil {
+		t.Fatalf("merged file missing from target branch worktree: %v", err)
+	}
+
+	// A task that never passed the gates cannot be approved.
+	other, err := f.Submit("Backlog Task", "not run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.ApproveMerge(context.Background(), other.ID); err == nil {
+		t.Fatal("expected error approving a task that is not awaiting merge")
 	}
 }

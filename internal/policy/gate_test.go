@@ -58,3 +58,15 @@ func TestDefaultDevGate(t *testing.T) {
 		t.Errorf("unregistered tool decision = %q, want deny (fail-closed)", d)
 	}
 }
+
+// TestDefaultDevGateCoversRegisteredTools proves the gate regression is fixed:
+// the sdlc and ingest_repo tools (registered in tools.Default) must not fall
+// through to default-deny in the shipped gate.
+func TestDefaultDevGateCoversRegisteredTools(t *testing.T) {
+	g := DefaultDevGate()
+	for _, tool := range []string{"sdlc", "ingest_repo"} {
+		if d := g.Evaluate(Request{Tool: tool}); d == Deny {
+			t.Errorf("%s decision = deny, want non-deny (tool must stay reachable)", tool)
+		}
+	}
+}

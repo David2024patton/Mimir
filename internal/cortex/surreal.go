@@ -20,8 +20,8 @@ type SurrealConfig struct {
 	Addr      string   // e.g. http://127.0.0.1:8000
 	Namespace string   // default "mimir"
 	Database  string   // default "mimir"
-	User      string   // default "root"
-	Pass      string   // default "root"
+	User      string   // default: MIMIR_SURREAL_USER, then the conventional root account name
+	Pass      string   // default: MIMIR_SURREAL_PASS, then the managed sidecar credential; no built-in default (F19)
 	Dimension int      // embedding dimension (must match the Embedder); default 768
 	Embedder  Embedder // optional; nil => Search is full-text only
 }
@@ -101,12 +101,11 @@ func NewSurrealStore(ctx context.Context, cfg SurrealConfig) (*SurrealStore, err
 	if cfg.Database == "" {
 		cfg.Database = "mimir"
 	}
-	if cfg.User == "" {
-		cfg.User = "root"
+	user, pass, err := resolveSurrealCreds(cfg.User, cfg.Pass, cfg.Addr)
+	if err != nil {
+		return nil, err
 	}
-	if cfg.Pass == "" {
-		cfg.Pass = "root"
-	}
+	cfg.User, cfg.Pass = user, pass
 	if cfg.Dimension == 0 {
 		cfg.Dimension = 768
 	}

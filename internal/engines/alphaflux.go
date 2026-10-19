@@ -87,6 +87,11 @@ type Manifest struct {
 	Attribution   string        `json:"required_attribution"`
 	UpdatedAt     string        `json:"updated_at"`
 	Engines       []EngineEntry `json:"engines"`
+	// Signature is a base64 ed25519 signature over ManifestSigningBytes of
+	// this manifest (the manifest JSON with this field cleared). It lets
+	// clients authenticate an update instead of trusting the host that
+	// served both the binaries and the hashes (N7).
+	Signature string `json:"signature,omitempty"`
 }
 
 // VerifyAttribution enforces the Alpha Flux LLC license requirement on the manifest

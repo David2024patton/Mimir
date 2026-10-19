@@ -439,7 +439,17 @@ func (t *WebAuditTool) Run(_ context.Context, args map[string]any) (string, erro
 	if target == "" {
 		target = "."
 	}
-	rep, err := AuditWebDirectory(target)
+	// The path is model-supplied, so it gets the same workspace confinement
+	// (including symlink resolution) as the file tools (N9).
+	workDir := t.WorkDir
+	if workDir == "" {
+		workDir = "."
+	}
+	resolved, err := resolveWithinWorkDir(workDir, target)
+	if err != nil {
+		return "", fmt.Errorf("web_seo_audit: %w", err)
+	}
+	rep, err := AuditWebDirectory(resolved)
 	if err != nil {
 		return "", err
 	}

@@ -4,8 +4,11 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"os"
 	"strings"
+	"sync"
 
 	"github.com/David2024patton/Mimir/internal/agent"
 	"github.com/David2024patton/Mimir/internal/cortex"
@@ -27,14 +30,61 @@ type Deps struct {
 func Serve(d Deps) error {
 	addr := d.Addr
 	if addr == "" {
-		addr = ":8420"
+		addr = "127.0.0.1:8420"
+	}
+	// F16 remainder: the default bind is loopback, but an explicitly configured
+	// non-loopback address with no auth store (file backend) would expose an
+	// unauthenticated server to the network. Refuse to start unless the
+	// operator explicitly accepts that with MIMIR_ALLOW_UNAUTHENTICATED=1.
+	if d.Auth == nil && os.Getenv("MIMIR_ALLOW_UNAUTHENTICATED") != "1" && !isLoopbackAddr(addr) {
+		return fmt.Errorf("refusing to serve on non-loopback address %s without authentication: use the surreal backend for auth, or set MIMIR_ALLOW_UNAUTHENTICATED=1 to accept the risk", addr)
 	}
 	return http.ListenAndServe(addr, Handler(d.Agent, d.Store, d.Sessions, d.Auth, d.Usage))
+}
+
+// isLoopbackAddr reports whether a listen address binds only the loopback
+// interface. An empty host binds all interfaces and is not loopback.
+func isLoopbackAddr(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return false
+	}
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, auth *cortex.AuthStore, usage *llm.Tracker) http.Handler {
 	mux := http.NewServeMux()
 	relayMgr := relay.NewManager()
+
+	// Per-session permission modes (N2): a mode set for one session must never
+	// mutate the shared agent's mode for every other user. /chat resolves the
+	// effective mode per request: an explicit request mode wins, then the
+	// session's stored mode, then the agent default.
+	var modeMu sync.Mutex
+	sessionModes := map[string]string{}
+	setSessionMode := func(sessionID, mode string) {
+		modeMu.Lock()
+		defer modeMu.Unlock()
+		sessionModes[sessionID] = mode
+	}
+	sessionMode := func(sessionID string) string {
+		modeMu.Lock()
+		defer modeMu.Unlock()
+		return sessionModes[sessionID]
+	}
+	requestMode := func(explicit, sessionID string) string {
+		if m, ok := parseMode(explicit); ok {
+			return m
+		}
+		if sessionID != "" {
+			return sessionMode(sessionID)
+		}
+		return ""
+	}
 
 	// Public
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +112,11 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		}
 		var req struct {
 			SessionID string `json:"session_id"`
-			ClientPub string `json:"client_pubkey"`
+			// PairingToken is the session nonce from the QR code / pair URI:
+			// it proves the phone actually scanned the code, so a caller that
+			// merely learned the session ID cannot hijack the pairing.
+			PairingToken string `json:"pairing_token"`
+			ClientPub    string `json:"client_pubkey"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -73,7 +127,7 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			http.Error(w, "session not found", http.StatusNotFound)
 			return
 		}
-		if err := sess.CompletePairing(req.ClientPub); err != nil {
+		if err := sess.CompletePairing(req.PairingToken, req.ClientPub); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -117,16 +171,25 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		mode := strings.ToLower(strings.TrimSpace(req.Mode))
-		switch mode {
-		case "ro", "edit", "bypass":
-			ag.SetMode(mode)
-			writeJSON(w, map[string]any{"status": "ok", "mode": mode})
-		default:
+		mode, ok := parseMode(req.Mode)
+		if !ok {
 			http.Error(w, "invalid mode: ro, edit, or bypass required", http.StatusBadRequest)
+			return
 		}
+		if req.SessionID == "" {
+			// A mode without a session would have to mutate the shared agent,
+			// which is exactly the N2 leak; modes are per-session state now.
+			http.Error(w, "session_id is required: modes are stored per session", http.StatusBadRequest)
+			return
+		}
+		setSessionMode(req.SessionID, mode)
+		writeJSON(w, map[string]any{"status": "ok", "mode": mode, "session_id": req.SessionID})
 	})
-	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
+	// /api/status discloses provider, model, mode, and SDLC phase (N10): when
+	// an auth store is configured it requires authentication like every other
+	// API route; in local mode the middleware passes through (loopback-only
+	// bind per the F16 fix), so local behavior is unchanged.
+	mux.Handle("/api/status", authMiddleware(auth)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		pid, model, local := ag.ModelInfo()
 		sdlcMgr := ag.SDLC()
 		currPhase := ""
@@ -144,7 +207,7 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			"sdlc_phase":  currPhase,
 			"attribution": engines.AttributionNotice,
 		})
-	})
+	})))
 	mux.HandleFunc("/auth/send-code", sendCodeHandler(auth))
 	mux.HandleFunc("/auth/verify-code", verifyCodeHandler(auth))
 
@@ -301,13 +364,7 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 				return
 			}
 		}
-		if req.Mode != "" {
-			switch strings.ToLower(req.Mode) {
-			case "ro", "edit", "bypass":
-				ag.SetMode(strings.ToLower(req.Mode))
-			}
-		}
-		res, err := ag.RunFull(r.Context(), strings.TrimSpace(req.Prompt), history)
+		res, err := ag.RunFullWithMode(r.Context(), requestMode(req.Mode, req.SessionID), strings.TrimSpace(req.Prompt), history)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -370,14 +427,8 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 				Content: req.Prompt,
 			})
 		}
-		if req.Mode != "" {
-			switch strings.ToLower(req.Mode) {
-			case "ro", "edit", "bypass":
-				ag.SetMode(strings.ToLower(req.Mode))
-			}
-		}
 		var assistantReply string
-		err := ag.RunStream(r.Context(), strings.TrimSpace(req.Prompt), history, func(e agent.Event) {
+		err := ag.RunStreamWithMode(r.Context(), requestMode(req.Mode, req.SessionID), strings.TrimSpace(req.Prompt), history, func(e agent.Event) {
 			b, err := json.Marshal(e)
 			if err != nil {
 				return
@@ -400,25 +451,6 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		}
 	})
 
-	api.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		pid, model, local := ag.ModelInfo()
-		sdlcMgr := ag.SDLC()
-		currPhase := ""
-		if sdlcMgr != nil {
-			currPhase = sdlcMgr.CurrentPhase().Title
-		}
-		writeJSON(w, map[string]any{
-			"status":      "ok",
-			"provider":    pid,
-			"model":       model,
-			"local":       local,
-			"mode":        ag.Mode(),
-			"effort":      ag.Effort(),
-			"smol":        ag.SmolMode(),
-			"sdlc_phase":  currPhase,
-			"attribution": engines.AttributionNotice,
-		})
-	})
 	api.HandleFunc("/engines", func(w http.ResponseWriter, r *http.Request) {
 		m, err := engines.LoadManifest(".")
 		if err != nil {
@@ -472,6 +504,16 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 	mux.Handle("/api/swarm", authMiddleware(auth)(api))
 
 	return mux
+}
+
+// parseMode validates a client-supplied permission mode string and returns
+// its canonical form.
+func parseMode(s string) (string, bool) {
+	switch m := strings.ToLower(strings.TrimSpace(s)); m {
+	case agent.ModeReadOnly, agent.ModeEdit, agent.ModeBypass:
+		return m, true
+	}
+	return "", false
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

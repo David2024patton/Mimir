@@ -2,12 +2,16 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/David2024patton/Mimir/internal/agent"
@@ -19,7 +23,6 @@ import (
 	"github.com/David2024patton/Mimir/internal/ingest"
 	"github.com/David2024patton/Mimir/internal/llm"
 	"github.com/David2024patton/Mimir/internal/policy"
-	"github.com/David2024patton/Mimir/internal/relay"
 	"github.com/David2024patton/Mimir/internal/runengine"
 	"github.com/David2024patton/Mimir/internal/server"
 	"github.com/David2024patton/Mimir/internal/swarm"
@@ -40,7 +43,7 @@ Usage:
   mimir ship [draft] [ctx]    run the Tier-2 Production Ship Gate and advance SDLC to Deployment
   mimir audit <draft> [ctx]   run the Epistemic Critic & Verification Node against a draft report
   mimir audit-web [dir]       run Impeccable anti-slop UI + 4-Layer SEO/GEO & Conversion detectors
-  mimir swarm [list|add|run]  manage Level 3 Multi-Agent Software Factory queue in isolated worktrees
+  mimir swarm [list|add|run|approve] manage Level 3 Multi-Agent Software Factory queue in isolated worktrees
   mimir engines               show Alpha Flux LLC engine binaries, versions, and integrity
   mimir engines run <id> ...  run an engine binary (attribution handshake added automatically)
   mimir engines publish       (maintainers) rehash engines/bin/* and rewrite manifest.json
@@ -150,17 +153,17 @@ func buildCortex(home string) (cortex.Store, cortex.SessionStore, *cortex.AuthSt
 			}
 			return nil, nil, nil, "", noop, fmt.Errorf("auth tables: %w", err)
 		}
-		adminEmail := os.Getenv("MIMIR_ADMIN_EMAIL")
-		if adminEmail == "" {
-			adminEmail = "david@itak.live"
-		}
-		if err := authStore.SeedAdmin(ctx, adminEmail); err != nil {
-			if sc != nil {
-				sc.Stop()
+		// F23: there is no compiled-in default admin. A super admin is seeded
+		// only when the operator explicitly configures MIMIR_ADMIN_EMAIL.
+		if adminEmail := os.Getenv("MIMIR_ADMIN_EMAIL"); adminEmail != "" {
+			if err := authStore.SeedAdmin(ctx, adminEmail); err != nil {
+				if sc != nil {
+					sc.Stop()
+				}
+				return nil, nil, nil, "", noop, fmt.Errorf("seed admin: %w", err)
 			}
-			return nil, nil, nil, "", noop, fmt.Errorf("seed admin: %w", err)
+			fmt.Fprintf(os.Stderr, "auth: super admin %s seeded\n", adminEmail)
 		}
-		fmt.Fprintf(os.Stderr, "auth: super admin %s seeded\n", adminEmail)
 		stop := noop
 		if sc != nil {
 			stop = sc.Stop
@@ -191,6 +194,78 @@ func isInteractiveStdin() bool {
 	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
+var (
+	approvalMu     sync.Mutex
+	approvalReader *bufio.Reader
+)
+
+// terminalApprover is the interactive ApprovalFunc wired when stdin is a
+// terminal (F2/N1): it prompts on stderr with the tool name and truncated
+// args and approves only on an explicit y/yes line read from stdin. A read
+// error or any other answer denies, keeping the gate fail-closed. Prompts
+// are serialized because several runs can share the one terminal.
+func terminalApprover(toolName, rawArgs string) bool {
+	approvalMu.Lock()
+	defer approvalMu.Unlock()
+	if approvalReader == nil {
+		approvalReader = bufio.NewReader(os.Stdin)
+	}
+	args := rawArgs
+	if len(args) > 200 {
+		args = args[:200] + "..."
+	}
+	fmt.Fprintf(os.Stderr, "\nMimir wants to run tool %q with args: %s\nApprove? [y/N] ", toolName, args)
+	line, err := approvalReader.ReadString('\n')
+	if err != nil && strings.TrimSpace(line) == "" {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(line)) {
+	case "y", "yes":
+		return true
+	}
+	return false
+}
+
+// pairingPayload mirrors the JSON returned by the server's /api/pair endpoint.
+type pairingPayload struct {
+	Session struct {
+		ID string `json:"id"`
+	} `json:"session"`
+	PairURI string `json:"pair_uri"`
+	ASCIIQR string `json:"ascii_qr"`
+}
+
+// pairServerBase converts the configured listen address into the base URL of
+// the already-running local server.
+func pairServerBase(addr string) string {
+	if strings.HasPrefix(addr, ":") {
+		addr = "127.0.0.1" + addr
+	}
+	return "http://" + addr
+}
+
+// fetchPairingPayload asks the running server to create a pairing session and
+// returns the QR payload it responds with (N4).
+func fetchPairingPayload(base string) (*pairingPayload, error) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(base + "/api/pair")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("server returned %s", resp.Status)
+	}
+	var payload pairingPayload
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, err
+	}
+	if payload.PairURI == "" {
+		return nil, fmt.Errorf("server returned an empty pairing payload")
+	}
+	return &payload, nil
+}
+
 func main() {
 	rawArgs := os.Args[1:]
 	if len(rawArgs) > 0 {
@@ -205,7 +280,7 @@ func main() {
 	}
 
 	// Parse flags across any position
-	addr := ":8420"
+	addr := "127.0.0.1:8420"
 	webFlag := false
 	tuiFlag := false
 	statusFlag := false
@@ -288,16 +363,25 @@ func main() {
 	}
 	tracker := llm.NewTracker()
 
+	// F2/N1: interactive terminal runs get a real approver. Non-terminal runs
+	// (scripts, CI, detached processes) get none, and the gate fails closed.
+	var approver func(toolName, rawArgs string) bool
+	if isInteractiveStdin() {
+		approver = terminalApprover
+	}
+
 	a := agent.New(agent.Config{
-		Provider: provider,
-		Tools:    toolReg,
-		Cortex:   store,
-		Model:    model,
-		Usage:    tracker,
-		Local:    local,
-		Mode:     permMode,
-		Effort:   effort,
-		Gate:     policy.DefaultDevGate(),
+		Provider:     provider,
+		Tools:        toolReg,
+		Cortex:       store,
+		Model:        model,
+		Usage:        tracker,
+		Local:        local,
+		Mode:         permMode,
+		Effort:       effort,
+		Gate:         policy.DefaultDevGate(),
+		ApprovalFunc: approver,
+		AutoVerify:   true,
 	})
 
 	if len(positional) > 0 && (positional[0] == "setup" || positional[0] == "init") {
@@ -482,6 +566,24 @@ func main() {
 			RootDir:      cwd,
 			MaxWorkers:   4,
 			TargetBranch: "main",
+			// Thor (the builder persona) runs a real agent built from this
+			// config; without a provider the factory now honestly blocks
+			// tasks with ErrNoAgentConfigured instead of fabricating work.
+			// Mode is deliberately left unset: the factory's worker default
+			// is autonomous bypass with the policy gate still applied, and
+			// the human control point is `mimir swarm approve`, not a
+			// terminal prompt nobody is watching.
+			AgentConfig: agent.Config{
+				Provider:   provider,
+				Tools:      toolReg,
+				Cortex:     store,
+				Model:      model,
+				Usage:      tracker,
+				Local:      local,
+				Effort:     effort,
+				Gate:       policy.DefaultDevGate(),
+				AutoVerify: true,
+			},
 		})
 		sub := ""
 		if len(positional) > 1 {
@@ -517,9 +619,27 @@ func main() {
 				fmt.Fprintf(os.Stderr, "swarm run failed: %v\n", err)
 				os.Exit(1)
 			}
-			fmt.Printf("✓ Task %s passed Odin -> Thor -> Loki -> Heimdall pipeline and merged to main!\n", taskID)
+			// ExecuteTask stops at the merge gate: passing every persona gate
+			// leaves the task awaiting human approval, never auto-merged.
+			if t, ok := f.GetTask(taskID); ok && t.State != swarm.StateMerged {
+				fmt.Printf("✓ Task %s passed Odin -> Thor -> Loki -> Heimdall pipeline (state: %s). Nothing was merged.\n", taskID, t.State)
+				fmt.Printf("  Review the task branch, then merge it with: mimir swarm approve %s\n", taskID)
+			} else {
+				fmt.Printf("✓ Task %s passed Odin -> Thor -> Loki -> Heimdall pipeline and merged to main!\n", taskID)
+			}
+		case "approve":
+			if len(positional) < 3 {
+				fmt.Fprintln(os.Stderr, "usage: mimir swarm approve <task-id>")
+				os.Exit(2)
+			}
+			taskID := positional[2]
+			if err := f.ApproveMerge(context.Background(), taskID); err != nil {
+				fmt.Fprintf(os.Stderr, "swarm approve failed: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("✓ Task %s approved and merged to main.\n", taskID)
 		default:
-			fmt.Fprintf(os.Stderr, "unknown swarm subcommand %q (list, add, run)\n", sub)
+			fmt.Fprintf(os.Stderr, "unknown swarm subcommand %q (list, add, run, approve)\n", sub)
 			os.Exit(2)
 		}
 		return
@@ -620,28 +740,20 @@ func main() {
 	}
 
 	if len(positional) > 0 && positional[0] == "pair" {
-		mgr := relay.NewManager()
-		host := "127.0.0.1:8420"
-		if addr != "" {
-			host = strings.TrimPrefix(addr, ":")
-			if !strings.Contains(host, ":") {
-				host = "127.0.0.1" + addr
-			}
-		}
-		sess, err := mgr.CreateSession(host)
+		// N4: the pairing session lives in the RUNNING server's relay manager.
+		// Creating one inside this short-lived process produced a QR that could
+		// never complete pairing, so request the session from the local server.
+		base := pairServerBase(addr)
+		payload, err := fetchPairingPayload(base)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "pairing error:", err)
-			os.Exit(1)
-		}
-		asciiQR, err := sess.GenerateQRCodeASCII()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "qr generation error:", err)
+			fmt.Fprintf(os.Stderr, "pair: cannot reach the Mimir server at %s (%v)\n", base, err)
+			fmt.Fprintln(os.Stderr, "start the server first with: mimir serve")
 			os.Exit(1)
 		}
 		fmt.Println("=== Mímir Mobile Companion Pairing (Happy E2EE) ===")
-		fmt.Printf("Session ID: %s\n", sess.ID)
-		fmt.Printf("Pairing URI: %s\n\n", sess.PairURI())
-		fmt.Println(asciiQR)
+		fmt.Printf("Session ID: %s\n", payload.Session.ID)
+		fmt.Printf("Pairing URI: %s\n\n", payload.PairURI)
+		fmt.Println(payload.ASCIIQR)
 		fmt.Println("Scan this QR code with the Mímir Flutter Mobile App to pair.")
 		return
 	}

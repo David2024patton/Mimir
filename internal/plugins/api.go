@@ -1,3 +1,11 @@
+// Package plugins holds a draft Go-native plugin API contract.
+//
+// Status: this package is an unwired draft. Nothing in the Mimir binary
+// imports it, no loader reads it at runtime, and no plugin can register
+// with the shipped agent through it today. It is kept as a design sketch
+// only. The planned plugin system is the Wasm plugin host (capability
+// granted, sandboxed, hot swappable), which supersedes this contract;
+// see the design-law notes in the project blueprint.
 package plugins
 
 // Manifest declares a plugin's identity + contracts.
@@ -13,7 +21,7 @@ type Plugin interface {
 	Register(api API) error
 }
 
-// API is the only surface plugins use to extend Mimir (the frozen contract - C2/ADR-005).
+// API is the only surface plugins use to extend Mimir (draft contract, see package status above).
 // Plugins import this package only; never core internals.
 type API interface {
 	RegisterProvider(def ProviderDef) error

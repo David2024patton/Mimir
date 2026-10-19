@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -18,6 +19,10 @@ import (
 // maxToolSteps caps the infer->act loop so a misbehaving model can't spin forever
 // (doom-loop protection, F4.3).
 const maxToolSteps = 20
+
+// maxStopGateContinuations caps how many times a failing OnStop gate can force
+// the loop to continue for a verification pass in a single run (F25).
+const maxStopGateContinuations = 2
 
 // Permission modes (inspired by smolcoder ro / edit / bypass).
 const (
@@ -42,6 +47,7 @@ type Config struct {
 	ApprovalFunc  func(toolName, rawArgs string) bool
 	Gate          *policy.Gate // Fail-closed execution policy gate (F2/ADR-009)
 	Hooks         *HookRunner  // Level 1 Lifecycle Hooks
+	AutoVerify    bool         // When true, a failing OnStop gate forces a verification pass instead of only annotating the reply (F25)
 	ContextBudget int          // Max context token budget (defaults to 8192 in SmolMode, 32768 standard)
 }
 
@@ -96,7 +102,7 @@ func New(cfg Config) *Agent {
 		cfg.SmolPolicy = SmolAuto
 	}
 	if cfg.Decider == nil {
-		cfg.Decider = decision.New("", "", decision.PrimaryDecisionModel)
+		cfg.Decider = defaultDecider(cfg.Provider)
 	}
 	if cfg.SDLC == nil {
 		if cfg.Tools != nil {
@@ -117,6 +123,25 @@ func New(cfg Config) *Agent {
 		cfg:     cfg,
 		steerCh: make(chan string, 16),
 	}
+}
+
+// defaultDecider builds the System-One decider with a real endpoint when one
+// is configured (F26b): MIMIR_DECISION_BASE_URL wins, then the main provider's
+// base URL. With neither, the base URL stays empty and the decider falls back
+// to its deterministic heuristics, as before. The model name comes from
+// MIMIR_DECISION_MODEL, else the primary decision model.
+func defaultDecider(provider llm.Provider) *decision.Decider {
+	baseURL := os.Getenv("MIMIR_DECISION_BASE_URL")
+	if baseURL == "" {
+		if p, ok := provider.(*llm.OpenAIProvider); ok {
+			baseURL = p.BaseURL
+		}
+	}
+	model := os.Getenv("MIMIR_DECISION_MODEL")
+	if model == "" {
+		model = decision.PrimaryDecisionModel
+	}
+	return decision.New(baseURL, "", model)
 }
 
 // Hooks returns Mímir's Level 1 lifecycle hook runner.
@@ -277,21 +302,40 @@ func (a *Agent) drainSteer() []string {
 	}
 }
 
+// phaseToolFilter returns the active SDLC phase's allowed tool set when a
+// methodology with phase-scoped tools is active (waterfall), or nil when no
+// phase restriction applies. It is the single source of the computation used
+// both to filter advertised schemas and to enforce the set at execution time.
+func (a *Agent) phaseToolFilter() map[string]bool {
+	a.mu.RLock()
+	sdlcMgr := a.cfg.SDLC
+	a.mu.RUnlock()
+	if sdlcMgr != nil && sdlcMgr.Methodology() == sdlc.MethodWaterfall {
+		return sdlcMgr.AllowedToolSet()
+	}
+	return nil
+}
+
 // schemas converts the registered tools visible in the current mode into model-facing tool schemas.
 // When SDLC Waterfall methodology is active, it also enforces the active phase's AllowedToolSet.
 func (a *Agent) schemas() []llm.ToolSchema {
+	return a.schemasForMode("")
+}
+
+// schemasForMode is schemas() under a per-request mode override ("" = the
+// agent's configured mode). The mode decides which tools ForMode exposes.
+func (a *Agent) schemasForMode(modeOverride string) []llm.ToolSchema {
 	a.mu.RLock()
 	reg := a.cfg.Tools
 	mode := a.cfg.Mode
-	sdlcMgr := a.cfg.SDLC
 	a.mu.RUnlock()
+	if m, ok := validMode(modeOverride); ok {
+		mode = m
+	}
 	if reg == nil {
 		return nil
 	}
-	var phaseFilter map[string]bool
-	if sdlcMgr != nil && sdlcMgr.Methodology() == sdlc.MethodWaterfall {
-		phaseFilter = sdlcMgr.AllowedToolSet()
-	}
+	phaseFilter := a.phaseToolFilter()
 	var out []llm.ToolSchema
 	for _, t := range reg.ForMode(mode) {
 		if phaseFilter != nil && !phaseFilter[t.Name()] {
@@ -302,6 +346,30 @@ func (a *Agent) schemas() []llm.ToolSchema {
 		})
 	}
 	return out
+}
+
+// runStopGate executes the OnStop lifecycle hooks for a finished turn and
+// returns the evaluated stop gate status plus any advisory the hooks injected.
+func (a *Agent) runStopGate(ctx context.Context, trace []Step) (StopGateStatus, string) {
+	a.mu.RLock()
+	hooks := a.cfg.Hooks
+	a.mu.RUnlock()
+	if hooks == nil {
+		return StopGateStatus{}, ""
+	}
+	hCtx := &HookContext{
+		Type:      HookOnStop,
+		Trace:     trace,
+		TodoLines: a.todoLines(),
+	}
+	_ = hooks.Execute(ctx, hCtx)
+	return hCtx.StopStatus, hCtx.InjectedMsg
+}
+
+// stopGateReminder builds the system feedback injected into the conversation
+// when AutoVerify forces another pass after a failing stop gate (F25).
+func stopGateReminder(advisory string) string {
+	return "[Harness OnStop Gate]: " + advisory + ". Before finishing, run the appropriate verification (build, tests, lint, or an audit tool) and complete or update the pending todos, then give your final summary."
 }
 
 func (a *Agent) todoLines() []string {
@@ -326,7 +394,24 @@ func (a *Agent) todoLines() []string {
 	return lines
 }
 
+// validMode reports whether mode is a canonical permission mode and returns
+// it. Used to validate per-request mode overrides (N2).
+func validMode(mode string) (string, bool) {
+	switch mode {
+	case ModeReadOnly, ModeEdit, ModeBypass:
+		return mode, true
+	}
+	return "", false
+}
+
 func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
+	return a.executeToolCallMode(ctx, tc, "")
+}
+
+// executeToolCallMode runs one tool call under the given per-request mode
+// override ("" means the agent's configured mode). The override is local to
+// this invocation and never mutates the agent's stored mode (N2).
+func (a *Agent) executeToolCallMode(ctx context.Context, tc llm.ToolCall, modeOverride string) Step {
 	repairedArgs := llm.RepairJSON(tc.Arguments)
 	st := Step{Name: tc.Name, Args: repairedArgs}
 
@@ -336,13 +421,27 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 	approve := a.cfg.ApprovalFunc
 	gate := a.cfg.Gate
 	a.mu.RUnlock()
+	if m, ok := validMode(modeOverride); ok {
+		mode = m
+	}
 
 	var args map[string]any
 	if repairedArgs != "" {
 		_ = json.Unmarshal([]byte(repairedArgs), &args)
 	}
 
+	// 0. SDLC phase enforcement at execution time (F5): schemas() only filters
+	// which tools are advertised, so a model that emits a call anyway (or a
+	// direct caller) must still be rejected when the active phase's allowed
+	// tool set does not include the tool.
+	if phaseFilter := a.phaseToolFilter(); phaseFilter != nil && !phaseFilter[tc.Name] {
+		st.Err = fmt.Sprintf("blocked by SDLC phase policy: tool %q is not in the active phase's allowed tool set", tc.Name)
+		st.Result = st.Err
+		return st
+	}
+
 	// 1. Fail-closed policy gate check (F2/F3/ADR-009)
+	approved := false
 	if gate != nil {
 		dec := gate.Evaluate(policy.Request{Tool: tc.Name, Args: args})
 		switch dec {
@@ -351,10 +450,19 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 			st.Result = st.Err
 			return st
 		case policy.RequireApproval:
-			if approve != nil && !approve(tc.Name, repairedArgs) {
-				st.Err = fmt.Sprintf("execution of tool %q rejected: user approval required by policy gate", tc.Name)
+			// Bypass mode is the user's explicit opt-out of approval prompts:
+			// RequireApproval verdicts are waived in bypass mode. Deny verdicts
+			// are NOT waived (handled above) and still block execution.
+			if mode == ModeBypass {
+				// Waived by explicit user opt-out; proceed without approval.
+			} else if approve == nil || !approve(tc.Name, repairedArgs) {
+				// Fail closed (N1): a RequireApproval verdict with no approver
+				// configured denies the call instead of silently passing.
+				st.Err = fmt.Sprintf("execution of tool %q denied: policy gate requires approval but no approver approved it", tc.Name)
 				st.Result = st.Err
 				return st
+			} else {
+				approved = true
 			}
 		case policy.Allow:
 			// Allowed to proceed
@@ -366,9 +474,11 @@ func (a *Agent) executeToolCall(ctx context.Context, tc llm.ToolCall) Step {
 		st.Result = st.Err
 		return st
 	}
-	if mode == ModeEdit && approve != nil && tools.IsWriteTool(tc.Name) {
-		if !approve(tc.Name, repairedArgs) {
-			st.Err = "tool execution rejected by user"
+	if mode == ModeEdit && !approved && tools.IsWriteTool(tc.Name) {
+		// Fail closed (N1): edit mode requires approval for write tools; with
+		// no approver configured the call is denied, not silently passed.
+		if approve == nil || !approve(tc.Name, repairedArgs) {
+			st.Err = "tool execution rejected: edit mode requires user approval for write tools and no approver approved it"
 			st.Result = st.Err
 			return st
 		}
@@ -436,11 +546,17 @@ func (a *Agent) buildPromptForInput(input string, memories []cortex.Neuron, sche
 
 // runLoop drives the infer -> act cycle until the model returns text or the step
 // cap is hit. It returns the final text reply and a trace of tool executions.
-func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step, error) {
-	schemas := a.schemas()
+// modeOverride is the per-request permission mode ("" = agent default); it is
+// local to this run and never written back to the agent (N2).
+func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message, modeOverride string) (string, []Step, error) {
+	schemas := a.schemasForMode(modeOverride)
 	var trace []Step
 	var last string
 	smol := a.SmolMode()
+	a.mu.RLock()
+	autoVerify := a.cfg.AutoVerify
+	a.mu.RUnlock()
+	stopContinuations := 0
 	keepRecent := 4
 	if smol {
 		keepRecent = 2
@@ -474,24 +590,22 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step
 		last = StripEmDashes(resp.Content)
 		msgs = append(msgs, llm.Message{Role: "assistant", Content: last, ToolCalls: resp.ToolCalls})
 		if len(resp.ToolCalls) == 0 {
-			a.mu.RLock()
-			hooks := a.cfg.Hooks
-			a.mu.RUnlock()
-			if hooks != nil {
-				hCtx := &HookContext{
-					Type:      HookOnStop,
-					Trace:     trace,
-					TodoLines: a.todoLines(),
-				}
-				_ = hooks.Execute(ctx, hCtx)
-				if hCtx.InjectedMsg != "" {
-					last += "\n\n[" + hCtx.InjectedMsg + "]"
-				}
+			_, advisory := a.runStopGate(ctx, trace)
+			// F25: with AutoVerify on, a failing stop gate enforces instead of
+			// only annotating: feed the gate's reminder back and continue the
+			// loop for a verification pass, capped per run.
+			if autoVerify && advisory != "" && stopContinuations < maxStopGateContinuations {
+				stopContinuations++
+				msgs = append(msgs, llm.Message{Role: "user", Content: stopGateReminder(advisory)})
+				continue
+			}
+			if advisory != "" {
+				last += "\n\n[" + advisory + "]"
 			}
 			return last, trace, nil
 		}
 		for _, tc := range resp.ToolCalls {
-			st := a.executeToolCall(ctx, tc)
+			st := a.executeToolCallMode(ctx, tc, modeOverride)
 			trace = append(trace, st)
 			msgs = append(msgs, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: st.Result})
 		}
@@ -500,19 +614,8 @@ func (a *Agent) runLoop(ctx context.Context, msgs []llm.Message) (string, []Step
 			msgs = append(msgs, llm.Message{Role: "user", Content: "[User steering instruction]: " + sm})
 		}
 	}
-	a.mu.RLock()
-	hooks := a.cfg.Hooks
-	a.mu.RUnlock()
-	if hooks != nil {
-		hCtx := &HookContext{
-			Type:      HookOnStop,
-			Trace:     trace,
-			TodoLines: a.todoLines(),
-		}
-		_ = hooks.Execute(ctx, hCtx)
-		if hCtx.InjectedMsg != "" {
-			last += "\n\n[" + hCtx.InjectedMsg + "]"
-		}
+	if _, advisory := a.runStopGate(ctx, trace); advisory != "" {
+		last += "\n\n[" + advisory + "]"
 	}
 	return last, trace, nil
 }
@@ -535,10 +638,34 @@ func (a *Agent) RunFull(ctx context.Context, input string, history []llm.Message
 	return a.runTurn(ctx, input, history)
 }
 
+// RunWithMode is Run under a per-request permission mode override (N2): the
+// mode applies to this invocation only and never changes the agent's stored
+// mode, so concurrent or sequential requests cannot leak modes into each other.
+func (a *Agent) RunWithMode(ctx context.Context, mode, input string, history []llm.Message) (string, error) {
+	r, err := a.runTurnMode(ctx, mode, input, history)
+	return r.Reply, err
+}
+
+// RunFullWithMode is RunFull under a per-request permission mode override (N2).
+func (a *Agent) RunFullWithMode(ctx context.Context, mode, input string, history []llm.Message) (Result, error) {
+	return a.runTurnMode(ctx, mode, input, history)
+}
+
 // RunStream runs one conversational turn while streaming updates to emit as they
 // happen: recalled memories, token deltas of the model's reply, tool executions, and
 // a final done event carrying the full reply (F2.1 streaming + tool calling).
 func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Message, emit func(Event)) error {
+	return a.runStreamMode(ctx, "", input, history, emit)
+}
+
+// RunStreamWithMode is RunStream under a per-request permission mode override
+// (N2): the mode applies to this invocation only and never changes the agent's
+// stored mode.
+func (a *Agent) RunStreamWithMode(ctx context.Context, mode, input string, history []llm.Message, emit func(Event)) error {
+	return a.runStreamMode(ctx, mode, input, history, emit)
+}
+
+func (a *Agent) runStreamMode(ctx context.Context, modeOverride, input string, history []llm.Message, emit func(Event)) error {
 	memories, err := a.cfg.Cortex.Search(ctx, input, 5)
 	if err != nil {
 		emit(Event{Type: EventError, Err: err.Error()})
@@ -547,13 +674,18 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 	for _, m := range memories {
 		emit(Event{Type: EventMemory, Text: m.Content})
 	}
-	schemas := a.schemas()
+	schemas := a.schemasForMode(modeOverride)
 	msgs := []llm.Message{
 		{Role: "system", Content: a.buildPromptForInput(input, memories, schemas)},
 	}
 	msgs = append(msgs, history...)
 	msgs = append(msgs, llm.Message{Role: "user", Content: input})
 	var finalReply string
+	var trace []Step
+	a.mu.RLock()
+	autoVerify := a.cfg.AutoVerify
+	a.mu.RUnlock()
+	stopContinuations := 0
 	smol := a.SmolMode()
 	keepRecent := 4
 	if smol {
@@ -606,24 +738,23 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 		finalReply = text
 		msgs = append(msgs, llm.Message{Role: "assistant", Content: text, ToolCalls: toolCalls})
 		if len(toolCalls) == 0 {
-			a.mu.RLock()
-			hooks := a.cfg.Hooks
-			a.mu.RUnlock()
-			if hooks != nil {
-				hCtx := &HookContext{
-					Type:      HookOnStop,
-					TodoLines: a.todoLines(),
-				}
-				_ = hooks.Execute(ctx, hCtx)
-				if hCtx.InjectedMsg != "" {
-					finalReply += "\n\n[" + hCtx.InjectedMsg + "]"
-				}
+			_, advisory := a.runStopGate(ctx, trace)
+			// F25: same enforcement as runLoop; a failing gate under AutoVerify
+			// continues the stream for a verification pass, capped per run.
+			if autoVerify && advisory != "" && stopContinuations < maxStopGateContinuations {
+				stopContinuations++
+				msgs = append(msgs, llm.Message{Role: "user", Content: stopGateReminder(advisory)})
+				continue
+			}
+			if advisory != "" {
+				finalReply += "\n\n[" + advisory + "]"
 			}
 			emit(Event{Type: EventDone, Reply: finalReply})
 			return nil
 		}
 		for _, tc := range toolCalls {
-			st := a.executeToolCall(ctx, tc)
+			st := a.executeToolCallMode(ctx, tc, modeOverride)
+			trace = append(trace, st)
 			emit(Event{Type: EventTool, Step: &st})
 			msgs = append(msgs, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: st.Result})
 		}
@@ -632,24 +763,19 @@ func (a *Agent) RunStream(ctx context.Context, input string, history []llm.Messa
 			msgs = append(msgs, llm.Message{Role: "user", Content: "[User steering instruction]: " + sm})
 		}
 	}
-	a.mu.RLock()
-	hooks := a.cfg.Hooks
-	a.mu.RUnlock()
-	if hooks != nil {
-		hCtx := &HookContext{
-			Type:      HookOnStop,
-			TodoLines: a.todoLines(),
-		}
-		_ = hooks.Execute(ctx, hCtx)
-		if hCtx.InjectedMsg != "" {
-			finalReply += "\n\n[" + hCtx.InjectedMsg + "]"
-		}
+	if _, advisory := a.runStopGate(ctx, trace); advisory != "" {
+		finalReply += "\n\n[" + advisory + "]"
 	}
 	emit(Event{Type: EventDone, Reply: finalReply})
 	return nil
 }
 
 func (a *Agent) runTurn(ctx context.Context, input string, history []llm.Message) (Result, error) {
+	return a.runTurnMode(ctx, "", input, history)
+}
+
+// runTurnMode is runTurn under a per-request mode override ("" = agent default).
+func (a *Agent) runTurnMode(ctx context.Context, modeOverride, input string, history []llm.Message) (Result, error) {
 	memories, err := a.cfg.Cortex.Search(ctx, input, 5)
 	if err != nil {
 		return Result{}, err
@@ -658,13 +784,13 @@ func (a *Agent) runTurn(ctx context.Context, input string, history []llm.Message
 	for i, m := range memories {
 		recalled[i] = m.Content
 	}
-	schemas := a.schemas()
+	schemas := a.schemasForMode(modeOverride)
 	msgs := []llm.Message{
 		{Role: "system", Content: a.buildPromptForInput(input, memories, schemas)},
 	}
 	msgs = append(msgs, history...)
 	msgs = append(msgs, llm.Message{Role: "user", Content: input})
-	reply, trace, err := a.runLoop(ctx, msgs)
+	reply, trace, err := a.runLoop(ctx, msgs, modeOverride)
 	if err != nil {
 		return Result{Trace: trace, Recalled: recalled}, err
 	}
