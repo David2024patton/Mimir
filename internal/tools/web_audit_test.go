@@ -117,3 +117,25 @@ func TestAuditWebDirectory_PassesCleanSemanticSiteWithDurableContext(t *testing.
 		t.Fatalf("WebAuditTool.Run failed: out=%s err=%v", out, err)
 	}
 }
+
+// N9: the web audit tool confines its model-supplied path to the tool's
+// workspace, like the file tools.
+func TestWebAuditTool_RejectsPathOutsideWorkspace(t *testing.T) {
+	wsDir := t.TempDir()
+	outsideDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outsideDir, "index.html"), []byte("<html></html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	tool := &WebAuditTool{WorkDir: wsDir}
+	if _, err := tool.Run(context.Background(), map[string]any{"path": outsideDir}); err == nil {
+		t.Fatal("expected security error auditing a directory outside the workspace")
+	}
+	if _, err := tool.Run(context.Background(), map[string]any{"path": ".."}); err == nil {
+		t.Fatal("expected security error for relative escape")
+	}
+	// The workspace itself audits fine.
+	if _, err := tool.Run(context.Background(), map[string]any{"path": "."}); err != nil {
+		t.Fatalf("expected in-workspace audit to succeed: %v", err)
+	}
+}
