@@ -249,6 +249,14 @@ func hasLocalVersion(v string) bool {
 	return v != "" && v != "none" && v != "unknown"
 }
 
+// parseableVersion reports whether v is a dotted numeric version string
+// that compareVersions can order. "none", "unknown", empty, and free
+// form strings are not parseable.
+func parseableVersion(v string) bool {
+	_, ok := compareVersions(v, v)
+	return ok
+}
+
 // probeVersion runs `<binary> --attribution=... version` and reads the "version" field.
 func probeVersion(ctx context.Context, binPath string) string {
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -347,7 +355,7 @@ type EngineDiff struct {
 	ID            string `json:"id"`
 	LocalVersion  string `json:"local_version"`
 	RemoteVersion string `json:"remote_version"`
-	Reason        string `json:"reason"` // "new", "changed", "missing_local"
+	Reason        string `json:"reason"` // "new", "new_unverifiable", "changed", "missing_local"
 	Remote        EngineEntry
 }
 
@@ -420,7 +428,16 @@ func CheckForUpdates(ctx context.Context, rootDir, base string) (UpdatePlan, err
 			plan.Changes = append(plan.Changes, EngineDiff{ID: re.ID, LocalVersion: "none", RemoteVersion: re.Version, Reason: "missing_local", Remote: re})
 		case !known:
 			if !strings.EqualFold(sum, wantSHA) {
-				plan.Changes = append(plan.Changes, EngineDiff{ID: re.ID, LocalVersion: "unknown", RemoteVersion: re.Version, Reason: "new", Remote: re})
+				reason := "new"
+				if !parseableVersion(re.Version) {
+					// A binary is present but untracked and the remote
+					// version cannot be parsed, so ApplyUpdates will
+					// refuse this change (ErrUnverifiableVersion)
+					// unless forced. Flag it in the plan so the
+					// refusal is visible before apply time.
+					reason = "new_unverifiable"
+				}
+				plan.Changes = append(plan.Changes, EngineDiff{ID: re.ID, LocalVersion: "unknown", RemoteVersion: re.Version, Reason: reason, Remote: re})
 			}
 		case !strings.EqualFold(sum, wantSHA):
 			plan.Changes = append(plan.Changes, EngineDiff{ID: re.ID, LocalVersion: le.Version, RemoteVersion: re.Version, Reason: "changed", Remote: re})
@@ -459,9 +476,13 @@ func ApplyUpdates(ctx context.Context, rootDir string, plan UpdatePlan) ([]strin
 	// The check fails closed for engines that are already installed
 	// (audit FIX 2): when a local version is on record but either
 	// version string is unparseable, no ordering can be proven, so the
-	// update is refused rather than silently waved through. Engines
-	// with no recorded local version (new installs and untracked
-	// binaries) keep the permissive path.
+	// update is refused rather than silently waved through. A binary
+	// that is present on disk but untracked ("unknown") also counts as
+	// installed when the remote version is unparseable: nothing about
+	// the replacement can be verified at all. Only a genuinely absent
+	// engine ("none") and an untracked binary facing a parseable remote
+	// version (a real, orderable version, hash-diffed by
+	// CheckForUpdates) keep the permissive path.
 	if os.Getenv("MIMIR_ENGINE_ALLOW_DOWNGRADE") != "1" {
 		for _, c := range plan.Changes {
 			cmp, ok := compareVersions(c.RemoteVersion, c.LocalVersion)
@@ -469,6 +490,8 @@ func ApplyUpdates(ctx context.Context, rootDir string, plan UpdatePlan) ([]strin
 			case ok && cmp < 0:
 				return nil, fmt.Errorf("%w: %s %s -> %s", ErrDowngradeRefused, c.ID, c.LocalVersion, c.RemoteVersion)
 			case !ok && hasLocalVersion(c.LocalVersion):
+				return nil, fmt.Errorf("%w: %s local=%q remote=%q", ErrUnverifiableVersion, c.ID, c.LocalVersion, c.RemoteVersion)
+			case !ok && c.LocalVersion == "unknown" && !parseableVersion(c.RemoteVersion):
 				return nil, fmt.Errorf("%w: %s local=%q remote=%q", ErrUnverifiableVersion, c.ID, c.LocalVersion, c.RemoteVersion)
 			}
 		}

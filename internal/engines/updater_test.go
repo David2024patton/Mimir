@@ -536,3 +536,93 @@ func TestApplyUpdates_NewEngineUnparseableVersionAllowed(t *testing.T) {
 		t.Fatalf("expected installed binary, got %q", got)
 	}
 }
+
+// writeUntrackedBinary creates a local tree holding a tyr-core binary
+// that no local manifest tracks: engines/bin has the binary and nothing
+// else. CheckForUpdates reports such an engine with LocalVersion
+// "unknown" and Reason "new".
+func writeUntrackedBinary(t *testing.T, payload string) string {
+	t.Helper()
+	local := t.TempDir()
+	localBin := filepath.Join(local, "engines", "bin")
+	if err := os.MkdirAll(localBin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(localBin, "mimir_tyr_engine.exe"), []byte(payload), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return local
+}
+
+// An on-disk binary the local manifest does not track is still an
+// installed binary: something is already there and would be replaced.
+// When the remote version is unparseable there is nothing verifiable
+// about the replacement at all, so the apply must refuse with
+// ErrUnverifiableVersion, the same as for a tracked install. The plan
+// flags the change up front with Reason "new_unverifiable" so the
+// refusal does not surprise the operator at apply time.
+func TestApplyUpdates_RefusesUnparseableRemoteForUntrackedBinary(t *testing.T) {
+	pub, _ := publishTree(t, "engine-banana", RequiredOwner)
+	setRemoteVersion(t, pub, "banana")
+	srv := httptest.NewServer(http.FileServer(http.Dir(pub)))
+	defer srv.Close()
+
+	local := writeUntrackedBinary(t, "untracked-binary")
+	plan, err := CheckForUpdates(context.Background(), local, srv.URL)
+	if err != nil {
+		t.Fatalf("CheckForUpdates: %v", err)
+	}
+	if len(plan.Changes) != 1 || plan.Changes[0].LocalVersion != "unknown" {
+		t.Fatalf("expected one untracked change, got %+v", plan.Changes)
+	}
+	if plan.Changes[0].Reason != "new_unverifiable" {
+		t.Fatalf("plan must flag the coming refusal with Reason new_unverifiable, got %q", plan.Changes[0].Reason)
+	}
+	if _, err := ApplyUpdates(context.Background(), local, plan); !errors.Is(err, ErrUnverifiableVersion) {
+		t.Fatalf("expected ErrUnverifiableVersion for untracked binary with unparseable remote version, got %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(local, "engines", "bin", "mimir_tyr_engine.exe"))
+	if string(got) != "untracked-binary" {
+		t.Fatalf("binary must be untouched after refusal, got %q", got)
+	}
+
+	// The downgrade override forces it through.
+	t.Setenv("MIMIR_ENGINE_ALLOW_DOWNGRADE", "1")
+	if _, err := ApplyUpdates(context.Background(), local, plan); err != nil {
+		t.Fatalf("forced update should apply, got %v", err)
+	}
+	got, _ = os.ReadFile(filepath.Join(local, "engines", "bin", "mimir_tyr_engine.exe"))
+	if string(got) != "engine-banana" {
+		t.Fatalf("expected remote binary after forced update, got %q", got)
+	}
+}
+
+// The mirror image for an untracked binary: a parseable remote version
+// keeps the permissive path. There is no local version to order the
+// update against, but the incoming version is a real, orderable one,
+// and CheckForUpdates diffs binaries by hash, so a changed binary is a
+// normal update. Reason stays "new".
+func TestApplyUpdates_UntrackedBinaryParseableRemoteAllowed(t *testing.T) {
+	pub, _ := publishTree(t, "engine-v0.3.0", RequiredOwner) // remote version 0.3.0
+	srv := httptest.NewServer(http.FileServer(http.Dir(pub)))
+	defer srv.Close()
+
+	local := writeUntrackedBinary(t, "untracked-binary")
+	plan, err := CheckForUpdates(context.Background(), local, srv.URL)
+	if err != nil {
+		t.Fatalf("CheckForUpdates: %v", err)
+	}
+	if len(plan.Changes) != 1 || plan.Changes[0].LocalVersion != "unknown" {
+		t.Fatalf("expected one untracked change, got %+v", plan.Changes)
+	}
+	if plan.Changes[0].Reason != "new" {
+		t.Fatalf("parseable remote version must keep Reason new, got %q", plan.Changes[0].Reason)
+	}
+	if _, err := ApplyUpdates(context.Background(), local, plan); err != nil {
+		t.Fatalf("untracked binary update with parseable remote version should apply, got %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(local, "engines", "bin", "mimir_tyr_engine.exe"))
+	if string(got) != "engine-v0.3.0" {
+		t.Fatalf("expected remote binary after update, got %q", got)
+	}
+}
