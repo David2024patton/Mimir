@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -121,7 +122,7 @@ func (s *Sidecar) Start(ctx context.Context) error {
 		// SurrealDB v3 dropped the file:// scheme; SurrealKV is the embedded store.
 		data = "surrealkv://" + s.DataPath
 	}
-	s.cmd = exec.Command(s.BinPath, "start", "--user", s.User, "--pass", s.Pass, "--bind", s.Addr, data)
+	s.cmd = s.startCommand(data)
 	if err := s.cmd.Start(); err != nil {
 		return fmt.Errorf("surreal: start: %w", err)
 	}
@@ -140,6 +141,25 @@ func (s *Sidecar) Start(ctx context.Context) error {
 	}
 	s.Stop()
 	return fmt.Errorf("surreal: timed out waiting for health on %s", s.Addr)
+}
+
+// startCommand builds the surreal server process command. Credentials are
+// passed through the SURREAL_USER and SURREAL_PASS environment variables,
+// never as --user / --pass flags: argv is world-readable for the life of
+// the process via /proc/<pid>/cmdline, the environment is not. Inherited
+// SURREAL_USER / SURREAL_PASS entries are stripped first so the sidecar's
+// own credentials are the single, unambiguous pair.
+func (s *Sidecar) startCommand(data string) *exec.Cmd {
+	cmd := exec.Command(s.BinPath, "start", "--bind", s.Addr, data)
+	env := make([]string, 0, len(os.Environ())+2)
+	for _, kv := range os.Environ() {
+		if strings.HasPrefix(kv, "SURREAL_USER=") || strings.HasPrefix(kv, "SURREAL_PASS=") {
+			continue
+		}
+		env = append(env, kv)
+	}
+	cmd.Env = append(env, "SURREAL_USER="+s.User, "SURREAL_PASS="+s.Pass)
+	return cmd
 }
 
 // Stop terminates the sidecar if this Sidecar started it.
