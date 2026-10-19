@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -37,6 +38,10 @@ func Serve(d Deps) error {
 	// unauthenticated server to the network. Refuse to start unless the
 	// operator explicitly accepts that with MIMIR_ALLOW_UNAUTHENTICATED=1.
 	if d.Auth == nil && os.Getenv("MIMIR_ALLOW_UNAUTHENTICATED") != "1" && !isLoopbackAddr(addr) {
+		// Trust-boundary record (FIX 6): a refused unauthenticated bind is a
+		// security event the operator should be able to find in the logs.
+		slog.Default().Error("refusing unauthenticated non-loopback bind",
+			"addr", addr, "opt_in_env", "MIMIR_ALLOW_UNAUTHENTICATED")
 		return fmt.Errorf("refusing to serve on non-loopback address %s without authentication: use the surreal backend for auth, or set MIMIR_ALLOW_UNAUTHENTICATED=1 to accept the risk", addr)
 	}
 	return http.ListenAndServe(addr, Handler(d.Agent, d.Store, d.Sessions, d.Auth, d.Usage))
@@ -86,6 +91,35 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		return ""
 	}
 
+	// checkMobileSession enforces the F12 ownership rule for the mobile
+	// endpoints (FIX 1): the target session must exist and belong to the
+	// caller, using the same caller/owner test as the session item routes
+	// and /chat. In local mode the caller is "local" and passes; with no
+	// session store wired there is nothing to check against. On rejection
+	// it writes the response plus a trust-boundary log record (FIX 6) and
+	// returns false.
+	checkMobileSession := func(w http.ResponseWriter, r *http.Request, action, sessionID string) bool {
+		log := slog.Default()
+		if sessions == nil {
+			return true
+		}
+		sess, err := sessions.GetSession(r.Context(), sessionID)
+		if err != nil {
+			log.Warn("mobile request rejected: unknown session",
+				"action", action, "session_id", sessionID, "caller", userIDFromContext(r.Context()))
+			http.Error(w, "forbidden: session does not belong to you", http.StatusForbidden)
+			return false
+		}
+		callerID := userIDFromContext(r.Context())
+		if callerID != "" && callerID != "local" && sess.UserID != "" && sess.UserID != callerID {
+			log.Warn("mobile request rejected: foreign session",
+				"action", action, "session_id", sessionID, "caller", callerID)
+			http.Error(w, "forbidden: session does not belong to you", http.StatusForbidden)
+			return false
+		}
+		return true
+	}
+
 	// Public
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"status": "ok"})
@@ -124,13 +158,16 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		}
 		sess, ok := relayMgr.GetSession(req.SessionID)
 		if !ok {
+			slog.Default().Warn("pairing complete rejected: unknown session", "session_id", req.SessionID)
 			http.Error(w, "session not found", http.StatusNotFound)
 			return
 		}
 		if err := sess.CompletePairing(req.PairingToken, req.ClientPub); err != nil {
+			slog.Default().Warn("pairing complete failed", "session_id", req.SessionID, "err", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		slog.Default().Info("pairing complete", "session_id", sess.ID)
 		writeJSON(w, map[string]any{"status": "paired", "session_id": sess.ID})
 	})
 	mux.HandleFunc("/api/mobile/stream", func(w http.ResponseWriter, r *http.Request) {
@@ -142,7 +179,11 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		}
 		sess.StreamHandler()(w, r)
 	})
-	mux.HandleFunc("/api/mobile/steer", func(w http.ResponseWriter, r *http.Request) {
+	// The mobile steer and mode endpoints sit behind the same auth
+	// middleware as /chat (FIX 1): steer injects text into the agent's next
+	// run and mode can arm bypass for a session, so neither may be public.
+	// Each also binds to the caller's own session via checkMobileSession.
+	mux.Handle("/api/mobile/steer", authMiddleware(auth)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST only", http.StatusMethodNotAllowed)
 			return
@@ -155,10 +196,22 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		if req.SessionID == "" {
+			slog.Default().Warn("mobile steer rejected: missing session", "caller", userIDFromContext(r.Context()))
+			http.Error(w, "session_id is required: steers are bound to a session", http.StatusBadRequest)
+			return
+		}
+		if !checkMobileSession(w, r, "steer", req.SessionID) {
+			return
+		}
 		ag.Steer(req.Message)
+		// FIX 6: log the acceptance with the message LENGTH only; steer
+		// text is user content and never goes in the logs.
+		slog.Default().Info("mobile steer accepted",
+			"session_id", req.SessionID, "caller", userIDFromContext(r.Context()), "message_len", len(req.Message))
 		writeJSON(w, map[string]any{"status": "steered", "message": req.Message})
-	})
-	mux.HandleFunc("/api/mobile/mode", func(w http.ResponseWriter, r *http.Request) {
+	})))
+	mux.Handle("/api/mobile/mode", authMiddleware(auth)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST only", http.StatusMethodNotAllowed)
 			return
@@ -182,9 +235,14 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 			http.Error(w, "session_id is required: modes are stored per session", http.StatusBadRequest)
 			return
 		}
+		if !checkMobileSession(w, r, "mode", req.SessionID) {
+			return
+		}
 		setSessionMode(req.SessionID, mode)
+		slog.Default().Info("mobile mode set",
+			"session_id", req.SessionID, "caller", userIDFromContext(r.Context()), "mode", mode)
 		writeJSON(w, map[string]any{"status": "ok", "mode": mode, "session_id": req.SessionID})
-	})
+	})))
 	// /api/status discloses provider, model, mode, and SDLC phase (N10): when
 	// an auth store is configured it requires authentication like every other
 	// API route; in local mode the middleware passes through (loopback-only
