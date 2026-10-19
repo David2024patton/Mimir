@@ -73,8 +73,12 @@ func TestFactory_StateTransitionsAndArtifacts(t *testing.T) {
 		t.Fatalf("Submit failed: %v", err)
 	}
 
-	f.updateState(task.ID, StateSpec, "odin")
-	f.recordArtifact(task.ID, ".mimir/sdlc/01-SPEC-task-1.md")
+	if err := f.updateState(task.ID, StateSpec, "odin"); err != nil {
+		t.Fatalf("updateState: %v", err)
+	}
+	if err := f.recordArtifact(task.ID, ".mimir/sdlc/01-SPEC-task-1.md"); err != nil {
+		t.Fatalf("recordArtifact: %v", err)
+	}
 
 	got, ok := f.GetTask(task.ID)
 	if !ok {
@@ -88,7 +92,9 @@ func TestFactory_StateTransitionsAndArtifacts(t *testing.T) {
 	}
 
 	// Test failure state transition
-	f.failTask(task.ID, "simulated test failure")
+	if err := f.failTask(task.ID, "simulated test failure"); err != nil {
+		t.Fatalf("failTask: %v", err)
+	}
 	failed, _ := f.GetTask(task.ID)
 	if failed.State != StateFailed || !strings.Contains(failed.Error, "simulated test failure") {
 		t.Errorf("expected failed state with error message, got %+v", failed)
@@ -219,7 +225,9 @@ func TestApproveMerge_GatesAndTargetsBranch(t *testing.T) {
 	gitCmd(t, wtDir, "add", ".")
 	gitCmd(t, wtDir, "commit", "-m", "feat: feature z")
 	f.teardownWorktree(wtDir)
-	f.updateState(task.ID, StateAwaitingMerge, "none")
+	if err := f.updateState(task.ID, StateAwaitingMerge, "none"); err != nil {
+		t.Fatalf("updateState: %v", err)
+	}
 
 	// Approving from the wrong checked-out branch is refused and the task
 	// stays awaiting merge (retryable).

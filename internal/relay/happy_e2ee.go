@@ -474,7 +474,9 @@ func (s *Session) StreamHandler() http.HandlerFunc {
 		defer s.UnregisterListener(ch)
 
 		// Initial connection frame
-		fmt.Fprintf(w, "event: connected\ndata: %s\n\n", s.ID)
+		if _, err := fmt.Fprintf(w, "event: connected\ndata: %s\n\n", s.ID); err != nil {
+			return
+		}
 		flusher.Flush()
 
 		ctx := r.Context()
@@ -487,7 +489,9 @@ func (s *Session) StreamHandler() http.HandlerFunc {
 					return
 				}
 				b64 := base64.StdEncoding.EncodeToString(msg)
-				fmt.Fprintf(w, "data: %s\n\n", b64)
+				if _, err := fmt.Fprintf(w, "data: %s\n\n", b64); err != nil {
+					return
+				}
 				flusher.Flush()
 			}
 		}

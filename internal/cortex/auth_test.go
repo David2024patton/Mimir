@@ -35,7 +35,7 @@ func (f *fakeTokenDB) handler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.Contains(sql, "CREATE auth_token"):
 		f.createSQL = append(f.createSQL, sql)
-		fmt.Fprint(w, `[{"result":[],"status":"OK"}]`)
+		_, _ = fmt.Fprint(w, `[{"result":[],"status":"OK"}]`)
 	case strings.Contains(sql, "SELECT * FROM auth_token"):
 		var rows []map[string]any
 		for _, m := range tokenEqRe.FindAllStringSubmatch(sql, -1) {
@@ -56,9 +56,9 @@ func (f *fakeTokenDB) handler(w http.ResponseWriter, r *http.Request) {
 			rows = []map[string]any{}
 		}
 		out, _ := json.Marshal([]map[string]any{{"result": rows, "status": "OK"}})
-		w.Write(out)
+		_, _ = w.Write(out)
 	default:
-		fmt.Fprint(w, `[{"result":[],"status":"OK"}]`)
+		_, _ = fmt.Fprint(w, `[{"result":[],"status":"OK"}]`)
 	}
 }
 

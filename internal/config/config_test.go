@@ -6,8 +6,7 @@ import (
 )
 
 func TestInterpolateEnv(t *testing.T) {
-	os.Setenv("MIMIR_TEST_KEY", "secret123")
-	defer os.Unsetenv("MIMIR_TEST_KEY")
+	t.Setenv("MIMIR_TEST_KEY", "secret123")
 	if got, want := Interpolate("key={env:MIMIR_TEST_KEY}"), "key=secret123"; got != want {
 		t.Errorf("Interpolate env = %q, want %q", got, want)
 	}
@@ -27,7 +26,9 @@ func TestInterpolateFile(t *testing.T) {
 	if _, err := f.WriteString("file-secret\n"); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
 	if got, want := Interpolate("{file:"+f.Name()+"}"), "file-secret"; got != want {
 		t.Errorf("Interpolate file = %q, want %q", got, want)
 	}
