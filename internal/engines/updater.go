@@ -58,7 +58,44 @@ var (
 	// ErrDowngradeRefused is returned when an update would install an older
 	// engine version than the one already present.
 	ErrDowngradeRefused = errors.New("engines: refusing to downgrade an engine (set MIMIR_ENGINE_ALLOW_DOWNGRADE=1 to force)")
+	// ErrInsecureRedirect is returned when an update download is redirected
+	// to a non-https URL and the operator has not opted into an insecure
+	// channel. Validating the initial URL is not enough: a redirect must
+	// not be able to downgrade the transport after the check.
+	ErrInsecureRedirect = errors.New("engines: update download redirected to a non-https URL (set MIMIR_UPDATE_ALLOW_INSECURE=1 to override)")
+	// ErrTooManyRedirects is returned when an update download exceeds the
+	// redirect cap.
+	ErrTooManyRedirects = errors.New("engines: update download exceeded the maximum number of redirects")
+	// ErrUnverifiableVersion is returned when an update targets an engine
+	// that is already installed but either version string is unparseable,
+	// so the updater cannot prove the update is not a downgrade.
+	ErrUnverifiableVersion = errors.New("engines: cannot verify update direction for an installed engine with an unparseable version (set MIMIR_ENGINE_ALLOW_DOWNGRADE=1 to force)")
 )
+
+// maxUpdateRedirects caps how many redirects an update download follows.
+const maxUpdateRedirects = 5
+
+// updateRedirectPolicy is the redirect policy for every update download.
+// A redirect target must stay on https unless the operator explicitly
+// opted into an insecure channel, and the chain is capped so a hostile or
+// broken host cannot bounce the client forever. req is the redirect
+// target about to be fetched; via holds the requests already made, so
+// len(via) is the number of the redirect being attempted.
+func updateRedirectPolicy(req *http.Request, via []*http.Request) error {
+	if len(via) > maxUpdateRedirects {
+		return fmt.Errorf("%w: stopped after %d redirects", ErrTooManyRedirects, maxUpdateRedirects)
+	}
+	if req.URL.Scheme != "https" && os.Getenv("MIMIR_UPDATE_ALLOW_INSECURE") != "1" {
+		return fmt.Errorf("%w: %s", ErrInsecureRedirect, req.URL.Redacted())
+	}
+	return nil
+}
+
+// updateHTTPClient builds the client used for all update downloads, with
+// the redirect policy attached.
+func updateHTTPClient() *http.Client {
+	return &http.Client{Timeout: 2 * time.Minute, CheckRedirect: updateRedirectPolicy}
+}
 
 // validateUpdateBase enforces transport security for the update channel
 // (N7): the base serves executable code, so plain http is refused unless
@@ -203,6 +240,15 @@ func compareVersions(a, b string) (cmp int, ok bool) {
 	return 0, true
 }
 
+// hasLocalVersion reports whether a plan change carries an actual local
+// version record. CheckForUpdates marks engines that are not installed
+// yet with LocalVersion "none" (no binary on disk) or "unknown" (a binary
+// is present but the local manifest does not track the engine); neither
+// is a local version.
+func hasLocalVersion(v string) bool {
+	return v != "" && v != "none" && v != "unknown"
+}
+
 // probeVersion runs `<binary> --attribution=... version` and reads the "version" field.
 func probeVersion(ctx context.Context, binPath string) string {
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -318,7 +364,7 @@ func httpGet(ctx context.Context, url string, limit int64) ([]byte, error) {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "mimir-updater")
-	resp, err := (&http.Client{Timeout: 2 * time.Minute}).Do(req)
+	resp, err := updateHTTPClient().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -410,10 +456,20 @@ func ApplyUpdates(ctx context.Context, rootDir string, plan UpdatePlan) ([]strin
 	}
 	// Downgrade protection (N7): a manifest that would move an engine
 	// backwards is refused unless the operator explicitly forces it.
+	// The check fails closed for engines that are already installed
+	// (audit FIX 2): when a local version is on record but either
+	// version string is unparseable, no ordering can be proven, so the
+	// update is refused rather than silently waved through. Engines
+	// with no recorded local version (new installs and untracked
+	// binaries) keep the permissive path.
 	if os.Getenv("MIMIR_ENGINE_ALLOW_DOWNGRADE") != "1" {
 		for _, c := range plan.Changes {
-			if cmp, ok := compareVersions(c.RemoteVersion, c.LocalVersion); ok && cmp < 0 {
+			cmp, ok := compareVersions(c.RemoteVersion, c.LocalVersion)
+			switch {
+			case ok && cmp < 0:
 				return nil, fmt.Errorf("%w: %s %s -> %s", ErrDowngradeRefused, c.ID, c.LocalVersion, c.RemoteVersion)
+			case !ok && hasLocalVersion(c.LocalVersion):
+				return nil, fmt.Errorf("%w: %s local=%q remote=%q", ErrUnverifiableVersion, c.ID, c.LocalVersion, c.RemoteVersion)
 			}
 		}
 	}

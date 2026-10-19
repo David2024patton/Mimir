@@ -3,8 +3,10 @@ package tui
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -15,7 +17,6 @@ import (
 	"github.com/David2024patton/Mimir/internal/cortex"
 	"github.com/David2024patton/Mimir/internal/ingest"
 	"github.com/David2024patton/Mimir/internal/llm"
-	"github.com/David2024patton/Mimir/internal/relay"
 	"github.com/David2024patton/Mimir/internal/runengine"
 	"github.com/David2024patton/Mimir/internal/swarm"
 	"github.com/David2024patton/Mimir/internal/tools"
@@ -622,25 +623,25 @@ func handleSlashCommand(
 		return false, nil
 
 	case "/pair":
-		mgr := relay.NewManager()
-		host := "127.0.0.1:8420"
+		// The pairing session must live in the RUNNING server's relay
+		// manager, exactly like the CLI pair flow (FIX 5): the old code
+		// minted one in a throwaway in-process relay.Manager, so the QR
+		// it printed could never complete pairing against the server.
+		base := "http://127.0.0.1:8420"
 		if opts.WebURL != "" {
-			host = strings.TrimPrefix(opts.WebURL, "http://")
-			host = strings.TrimPrefix(host, "https://")
-			host = strings.TrimRight(host, "/")
+			base = strings.TrimSuffix(opts.WebURL, "/app")
+			base = strings.TrimRight(base, "/")
 		}
-		sess, err := mgr.CreateSession(host)
+		payload, err := fetchPairingPayload(base)
 		if err != nil {
-			return false, err
-		}
-		asciiQR, err := sess.GenerateQRCodeASCII()
-		if err != nil {
-			return false, err
+			fmt.Fprintf(out, "  %sPairing needs the Mimir server: could not reach %s (%v).%s\n", ansiRed, base, err, ansiReset)
+			fmt.Fprintf(out, "  %sStart it with /web (or run `mimir serve` in another terminal), then try /pair again.%s\n\n", ansiDim, ansiReset)
+			return false, nil
 		}
 		fmt.Fprintf(out, "\n%s  === Mímir Mobile Companion Pairing (Happy E2EE) ===%s\n", ansiGold+ansiBold, ansiReset)
-		fmt.Fprintf(out, "  %sSession ID:%s %s\n", ansiCyan, ansiReset, sess.ID)
-		fmt.Fprintf(out, "  %sPairing URI:%s %s\n\n", ansiCyan, ansiReset, sess.PairURI())
-		fmt.Fprintln(out, asciiQR)
+		fmt.Fprintf(out, "  %sSession ID:%s %s\n", ansiCyan, ansiReset, payload.Session.ID)
+		fmt.Fprintf(out, "  %sPairing URI:%s %s\n\n", ansiCyan, ansiReset, payload.PairURI)
+		fmt.Fprintln(out, payload.ASCIIQR)
 		fmt.Fprintf(out, "  %sScan this QR code with the Mímir Flutter Mobile App to pair.%s\n\n", ansiDim, ansiReset)
 		return false, nil
 
@@ -715,4 +716,39 @@ func handleSlashCommand(
 	default:
 		return false, fmt.Errorf("unknown command %q (type /help for commands)", cmd)
 	}
+}
+
+// pairingPayload mirrors the JSON returned by the server's /api/pair
+// endpoint (same shape the CLI pair flow consumes).
+type pairingPayload struct {
+	Session struct {
+		ID string `json:"id"`
+	} `json:"session"`
+	PairURI string `json:"pair_uri"`
+	ASCIIQR string `json:"ascii_qr"`
+}
+
+// fetchPairingPayload asks the running server to create a pairing session
+// in its own relay manager and returns the QR payload it responds with.
+// The session has to live server-side: the phone completes pairing
+// against the server, so a session minted in this process could never
+// be paired with.
+func fetchPairingPayload(base string) (*pairingPayload, error) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(base + "/api/pair")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("server returned %s", resp.Status)
+	}
+	var payload pairingPayload
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, err
+	}
+	if payload.PairURI == "" {
+		return nil, fmt.Errorf("server returned an empty pairing payload")
+	}
+	return &payload, nil
 }
