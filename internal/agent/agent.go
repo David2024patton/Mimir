@@ -375,14 +375,10 @@ func (a *Agent) phaseToolFilter() map[string]bool {
 	return nil
 }
 
-// schemas converts the registered tools visible in the current mode into model-facing tool schemas.
-// When SDLC Waterfall methodology is active, it also enforces the active phase's AllowedToolSet.
-func (a *Agent) schemas() []llm.ToolSchema {
-	return a.schemasForMode("")
-}
-
-// schemasForMode is schemas() under a per-request mode override ("" = the
-// agent's configured mode). The mode decides which tools ForMode exposes.
+// schemasForMode converts the registered tools visible in the given mode
+// ("" = the agent's configured mode) into model-facing tool schemas. The
+// mode decides which tools ForMode exposes. When SDLC Waterfall
+// methodology is active, it also enforces the active phase's AllowedToolSet.
 func (a *Agent) schemasForMode(modeOverride string) []llm.ToolSchema {
 	a.mu.RLock()
 	reg := a.cfg.Tools
@@ -489,7 +485,7 @@ func (a *Agent) executeToolCallMode(ctx context.Context, tc llm.ToolCall, modeOv
 		_ = json.Unmarshal([]byte(repairedArgs), &args)
 	}
 
-	// 0. SDLC phase enforcement at execution time (F5): schemas() only filters
+	// 0. SDLC phase enforcement at execution time (F5): schemasForMode only filters
 	// which tools are advertised, so a model that emits a call anyway (or a
 	// direct caller) must still be rejected when the active phase's allowed
 	// tool set does not include the tool.
@@ -588,12 +584,9 @@ func (a *Agent) executeToolCallMode(ctx context.Context, tc llm.ToolCall, modeOv
 	return st
 }
 
-// buildPrompt selects smolSystemPrompt when SmolMode is active, or the standard
-// systemPrompt otherwise, and appends the persistent harness-owned Todo checklist.
-func (a *Agent) buildPrompt(memories []cortex.Neuron, schemas []llm.ToolSchema) string {
-	return a.buildPromptForInput("", memories, schemas)
-}
-
+// buildPromptForInput selects smolSystemPrompt when SmolMode is active, or
+// the standard systemPrompt otherwise, and appends the persistent
+// harness-owned Todo checklist.
 func (a *Agent) buildPromptForInput(input string, memories []cortex.Neuron, schemas []llm.ToolSchema) string {
 	smol := a.SmolMode()
 	base := systemPrompt(memories, schemas)
