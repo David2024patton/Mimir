@@ -42,18 +42,18 @@ func (r WebAuditReport) FormatMarkdown() string {
 	if !r.PassAudit {
 		verdict = "FAIL"
 	}
-	b.WriteString(fmt.Sprintf("## Mimir Web, SEO/GEO & Impeccable Design Audit: `%s`\n", verdict))
-	b.WriteString(fmt.Sprintf("- **Scanned Files**: `%d`\n", r.ScannedFiles))
-	b.WriteString(fmt.Sprintf("- **Durable Context (`PRODUCT.md` / `DESIGN.md`)**: `product=%v`, `design=%v`\n", r.HasProductDoc, r.HasDesignDoc))
-	b.WriteString(fmt.Sprintf("- **Discovery Files**: `robots.txt=%v`, `sitemap.xml=%v`, `llms.txt=%v`\n", r.HasRobotsTxt, r.HasSitemapXML, r.HasLLMsTxt))
-	b.WriteString(fmt.Sprintf("- **Valid Schema.org JSON-LD Blocks**: `%d`\n", r.ValidJSONLDCount))
-	b.WriteString(fmt.Sprintf("- **Total Findings**: `%d`\n", len(r.Findings)))
+	fmt.Fprintf(&b, "## Mimir Web, SEO/GEO & Impeccable Design Audit: `%s`\n", verdict)
+	fmt.Fprintf(&b, "- **Scanned Files**: `%d`\n", r.ScannedFiles)
+	fmt.Fprintf(&b, "- **Durable Context (`PRODUCT.md` / `DESIGN.md`)**: `product=%v`, `design=%v`\n", r.HasProductDoc, r.HasDesignDoc)
+	fmt.Fprintf(&b, "- **Discovery Files**: `robots.txt=%v`, `sitemap.xml=%v`, `llms.txt=%v`\n", r.HasRobotsTxt, r.HasSitemapXML, r.HasLLMsTxt)
+	fmt.Fprintf(&b, "- **Valid Schema.org JSON-LD Blocks**: `%d`\n", r.ValidJSONLDCount)
+	fmt.Fprintf(&b, "- **Total Findings**: `%d`\n", len(r.Findings))
 
 	if len(r.Findings) > 0 {
 		b.WriteString("\n### Findings\n")
 		for _, f := range r.Findings {
-			b.WriteString(fmt.Sprintf("- **[%s | %s]** `%s` (%s): %s -- *Fix: %s*\n",
-				f.Severity, f.RuleID, f.File, f.Layer, f.Description, f.Remediation))
+			fmt.Fprintf(&b, "- **[%s | %s]** `%s` (%s): %s -- *Fix: %s*\n",
+				f.Severity, f.RuleID, f.File, f.Layer, f.Description, f.Remediation)
 		}
 	}
 	return strings.TrimRight(b.String(), "\n")

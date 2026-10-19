@@ -64,9 +64,10 @@ func RenderBanner(version, providerID, model, mode, effort, storeDesc, webURL st
 // RenderStatusBar renders the 1-line status bar shown before each prompt.
 func RenderStatusBar(providerID, model, mode, effort string, estTokens, totalTokens int, local, smol bool) string {
 	modeBadge := ansiGreen + "[" + mode + "]" + ansiReset
-	if mode == "ro" {
+	switch mode {
+	case "ro":
 		modeBadge = ansiCyan + "[ro (read-only)]" + ansiReset
-	} else if mode == "bypass" {
+	case "bypass":
 		modeBadge = ansiGold + "[bypass]" + ansiReset
 	}
 	smolBadge := ""

@@ -384,9 +384,10 @@ func handleSlashCommand(
 		fmt.Fprintf(out, "  %s├────────────────────────────────────────────────────────────────────┤%s\n", ansiGold, ansiReset)
 		for _, p := range config.BuiltinProviders() {
 			badge := ansiDim + "[BYOK]" + ansiReset
-			if p.BillingMode == "subscription" {
+			switch p.BillingMode {
+			case "subscription":
 				badge = ansiGold + "[SUB]" + ansiReset
-			} else if p.BillingMode == "local_free" {
+			case "local_free":
 				badge = ansiGreen + "[LOCAL]" + ansiReset
 			}
 			status := ansiDim + "unset" + ansiReset
