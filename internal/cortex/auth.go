@@ -302,11 +302,14 @@ func hashToken(token string) string {
 }
 
 func (a *AuthStore) ValidateToken(ctx context.Context, token string) (string, error) {
-	// Look up by token hash (F17: prevent plaintext bearer tokens at rest)
+	// Look up by token hash only (F17: prevent plaintext bearer tokens at rest).
+	// Legacy tokens stored in plaintext before hashing was introduced are
+	// intentionally no longer accepted: their owners must sign in again to
+	// receive a hashed token.
 	tokenHash := hashToken(token)
 	rows, err := a.Query(ctx, fmt.Sprintf(
-		`SELECT * FROM auth_token WHERE (token = %s OR token = %s) AND expires_at > time::now()`,
-		escapeStringForSurreal(tokenHash), escapeStringForSurreal(token),
+		`SELECT * FROM auth_token WHERE token = %s AND expires_at > time::now()`,
+		escapeStringForSurreal(tokenHash),
 	))
 	if err != nil {
 		return "", fmt.Errorf("query token: %w", err)
