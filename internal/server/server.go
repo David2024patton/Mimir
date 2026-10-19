@@ -204,9 +204,25 @@ func Handler(ag *agent.Agent, st cortex.Store, sessions cortex.SessionStore, aut
 		if !checkMobileSession(w, r, "steer", req.SessionID) {
 			return
 		}
+		if strings.TrimSpace(req.Message) == "" {
+			slog.Default().Warn("mobile steer rejected: empty message",
+				"session_id", req.SessionID, "caller", userIDFromContext(r.Context()))
+			http.Error(w, "message is required", http.StatusBadRequest)
+			return
+		}
 		// The steer is queued under the caller's own session (validated
 		// above); delivery is bound to that session inside the agent.
-		ag.Steer(req.SessionID, req.Message)
+		// Steer reports whether the instruction was actually queued: a
+		// full queue is a per-session rate limit (429, not 503: the
+		// service is up, and the limit clears as soon as the session's
+		// next run drains the queue). The acceptance log line is written
+		// only on real acceptance (FIX 2).
+		if !ag.Steer(req.SessionID, req.Message) {
+			slog.Default().Warn("mobile steer rejected: session steer queue full",
+				"session_id", req.SessionID, "caller", userIDFromContext(r.Context()))
+			writeErrorJSON(w, http.StatusTooManyRequests, "steer queue full for this session: run the session to consume queued steering, then retry")
+			return
+		}
 		// FIX 6: log the acceptance with the message LENGTH only; steer
 		// text is user content and never goes in the logs.
 		slog.Default().Info("mobile steer accepted",

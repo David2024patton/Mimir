@@ -34,6 +34,42 @@ func TestSteerQueuesArePerSession(t *testing.T) {
 	}
 }
 
+// TestSteerReportsRejection proves Steer never silently drops: empty session
+// IDs and empty messages are rejected, a full per-session queue rejects, and
+// the queue accepts again after a drain. (Pre-fix, Steer returned nothing
+// and a non-blocking channel send dropped overflow without a trace.)
+func TestSteerReportsRejection(t *testing.T) {
+	a := New(Config{Provider: &fakeProvider{}, Tools: tools.NewRegistry(), Cortex: cortex.NewMemoryStore(), Model: "m"})
+
+	if a.Steer("", "no session") {
+		t.Error("Steer with empty session ID reported success")
+	}
+	if a.Steer("sess", "") {
+		t.Error("Steer with empty message reported success")
+	}
+	if a.Steer("sess", "   ") {
+		t.Error("Steer with whitespace-only message reported success")
+	}
+	for i := 0; i < maxSteersPerSession; i++ {
+		if !a.Steer("sess", "queued") {
+			t.Fatalf("Steer %d of %d reported failure below the cap", i+1, maxSteersPerSession)
+		}
+	}
+	if a.Steer("sess", "one too many") {
+		t.Error("Steer beyond the per-session cap reported success")
+	}
+	// A different session has its own queue and is unaffected by the full one.
+	if !a.Steer("other", "still fine") {
+		t.Error("Steer for a different session was rejected by another session's full queue")
+	}
+	if got := a.drainSteer("sess"); len(got) != maxSteersPerSession {
+		t.Fatalf("drainSteer(sess) returned %d messages, want %d", len(got), maxSteersPerSession)
+	}
+	if !a.Steer("sess", "after drain") {
+		t.Error("Steer after drain reported failure")
+	}
+}
+
 // steerLoopProvider is run-aware like the server probe: it returns one tool
 // call when the request does not yet end with a tool result, then final text,
 // and records every message across all runs.

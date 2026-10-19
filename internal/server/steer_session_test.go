@@ -136,3 +136,25 @@ func TestMobileSteerStaysInOwnSession(t *testing.T) {
 		t.Fatal("Bob's steer was never delivered into Bob's own run")
 	}
 }
+
+// TestMobileSteerQueueFullReturns429 is the FIX 2 proof: a session's steer
+// queue has a cap; once it is full the endpoint must say so (429) instead of
+// answering 200 while silently dropping the instruction. (On the pre-fix
+// code every request returns 200 and the overflow is dropped by a
+// non-blocking channel send.)
+func TestMobileSteerQueueFullReturns429(t *testing.T) {
+	f := newMobileFixture(t)
+	body := `{"session_id":"` + f.bob + `","message":"queued steer"}`
+	// The per-session cap is 16 (agent.maxSteersPerSession); keep this in
+	// sync if the cap changes.
+	for i := 1; i <= 16; i++ {
+		w := postAs(f.handler, "/api/mobile/steer", body, "user_bob")
+		if w.Code != http.StatusOK {
+			t.Fatalf("steer %d of 16: status = %d, want 200 (body: %s)", i, w.Code, w.Body.String())
+		}
+	}
+	w := postAs(f.handler, "/api/mobile/steer", body, "user_bob")
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("steer beyond the queue cap: status = %d, want 429 (body: %s)", w.Code, w.Body.String())
+	}
+}
