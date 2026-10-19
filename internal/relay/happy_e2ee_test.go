@@ -210,3 +210,21 @@ func TestDecryptRejectsReplay(t *testing.T) {
 		t.Fatal("expected replayed frame to be rejected")
 	}
 }
+
+// FIX 3: a low-order client public key must be rejected. The all-zero point
+// forces an all-zero shared secret, which would hand anyone a known session
+// key. Pairing with it must fail.
+func TestCompletePairingRejectsLowOrderKey(t *testing.T) {
+	mgr := NewManager()
+	sess, err := mgr.CreateSession("127.0.0.1:8420")
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	zeroPub := base64.StdEncoding.EncodeToString(make([]byte, 32))
+	if err := sess.CompletePairing(sess.Nonce, zeroPub); err == nil {
+		t.Fatal("expected pairing with the all-zero (low-order) public key to fail")
+	}
+	if sess.IsPaired() {
+		t.Fatal("session must not be paired after a low-order key attempt")
+	}
+}

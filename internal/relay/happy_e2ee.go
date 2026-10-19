@@ -194,18 +194,23 @@ func (s *Session) CompletePairing(pairingToken, clientPubKeyB64 string) error {
 		return errors.New("invalid client public key: must be 32 bytes base64")
 	}
 
-	var clientPubKey [32]byte
-	copy(clientPubKey[:], clientPubBytes)
+	// X25519 (unlike ScalarMult) rejects low-order client public keys: it
+	// errors when the resulting shared secret is all zeros, which is what
+	// a low-order point forces. Without this, an attacker could pair with
+	// a known, all-zero session key.
+	shared, err := curve25519.X25519(s.privateKey[:], clientPubBytes)
+	if err != nil {
+		return errors.New("invalid client public key: key agreement failed")
+	}
+	var sharedKey [32]byte
+	copy(sharedKey[:], shared)
 
-	var shared [32]byte
-	curve25519.ScalarMult(&shared, &s.privateKey, &clientPubKey)
-
-	aead, err := chacha20poly1305.New(shared[:])
+	aead, err := chacha20poly1305.New(sharedKey[:])
 	if err != nil {
 		return fmt.Errorf("failed to initialize chacha20poly1305 aead: %w", err)
 	}
 
-	s.sharedKey = shared
+	s.sharedKey = sharedKey
 	s.aead = aead
 	s.paired = true
 	return nil
