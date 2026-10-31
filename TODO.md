@@ -168,6 +168,33 @@ are built in the main tree today.
   repo, research, architecture, build, verify, review, ship,
   handover) as an inspectable graph with typed done gates (design
   delivered 2026-10-07; open decisions in PLAN.md) (PLAN S9)
+- [ ] T-6.5 Connect the knowledge stage to the standalone Cortex
+  (cortex.alphaflux.net, live since 2026-10-29) as the shared brain:
+  plan and research stages read through its hybrid search, and run
+  knowledge is written back through a scoped cx_ agent key under
+  Mimir's own owner scope (cross-owner writes are refused by the
+  server). Decide the embedded internal/cortex brain's fate in
+  DECISIONS.md (offline cache or retired), and land the T-6.3
+  ingestion pipeline against the shared Cortex rather than only the
+  embedded store (proof: a live run whose plan cites nodes retrieved
+  from cortex.alphaflux.net, with its promote recorded under Mimir's
+  owner in the Cortex access ledger) (PLAN S9)
+- [ ] T-6.6 Gate the verify stage on the Critic panel: build output
+  passes the five identical full-spectrum critics through the Critic
+  Workbench (critic.alphaflux.net, agent access as provisioned), with
+  the built-in Epistemic Critic (internal/critic) kept as a fast
+  pre-filter, not the only gate; a run cannot reach the ship gate on
+  an epistemic pass alone (proof: a run report carrying all five
+  critic verdicts plus the merge result, archived with the run)
+  (PLAN S9)
+- [ ] T-6.7 Adopt the Critic-Research-Build loop as the verify loop:
+  every critic finding is deep-researched, fixed, and rerun through
+  the panel until a full pass reports zero findings, using the filed
+  loop skill (Commonplace B-0007) installed and run as written, not
+  improvised; run learnings are promoted to the shared Cortex only
+  through the same critic gate, never unvetted (proof: a run whose
+  loop log shows findings researched, fixed, and a final zero-finding
+  pass, plus its gated promotion receipt in Cortex) (PLAN S9)
 
 ## Parked (waiting on a decision, hardware, or hands)
 - T-P.1 F1 posture: the interactive bash tool runs through a shell behind
