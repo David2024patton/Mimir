@@ -12,6 +12,8 @@ COPY --from=builder /mimir /usr/local/bin/mimir
 USER mimir
 EXPOSE 8420
 ENV MIMIR_CORTEX_BACKEND=surreal
+# Pinned release key (public, N7): engine updates must carry a manifest signed by this key.
+ENV MIMIR_ENGINE_PUBKEY=uJQqyXeyx49sJYWeVttFPX9JnHuyIWCh/fk3CLqvuf4=
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8420/health || exit 1
 ENTRYPOINT ["mimir", "serve", "--addr=:8420"]

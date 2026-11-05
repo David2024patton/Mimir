@@ -129,9 +129,15 @@ proves memory survives a restart on the file-backed Cortex.
   - SurrealDB credentials for a persistent install: the
     MIMIR_SURREAL_USER and MIMIR_SURREAL_PASS environment variables in
     that deployment's environment.
-  - Engine signing: the ed25519 release key is generated and held
-    offline by David; installs pin it by the MIMIR_ENGINE_PUBKEY
-    environment variable name.
+  - Engine signing: the ed25519 release key exists and is held
+    offline (private half outside this repo, never committed);
+    installs pin its public half via the MIMIR_ENGINE_PUBKEY
+    environment variable. The pinned value of record is
+    uJQqyXeyx49sJYWeVttFPX9JnHuyIWCh/fk3CLqvuf4= and it is already
+    set in .env.example, both docker-compose files, and the
+    Dockerfile. The shipped engines/bin/manifest.json is signed with
+    this key; TestShippedManifestSignatureVerifies in
+    internal/engines fails if that ever stops being true.
   - Forge OAuth apps (GitHub, GitLab, Bitbucket, Gitea/Forgejo):
     registration is stalled until David submits current passwords
     through the secure card flow; no app credentials exist in this
@@ -154,9 +160,13 @@ proves memory survives a restart on the file-backed Cortex.
   MIMIR_ALLOW_UNAUTHENTICATED=1 is set explicitly (fix: configure an
   auth backend, or set the variable only where that exposure is
   intended).
-- Engine signing is implemented but NOT active: updates verify
-  signatures only once a release key exists and MIMIR_ENGINE_PUBKEY
-  is pinned (fix: TODO Phase 3, David generates the key offline).
+- Engine signing is ACTIVE: the release key exists, the shipped
+  manifest is signed, and MIMIR_ENGINE_PUBKEY is pinned in the
+  compose files, the Dockerfile, and .env.example. Installs with the
+  pin refuse unsigned or badly signed manifests. Bare-binary installs
+  that set their environment by hand must set MIMIR_ENGINE_PUBKEY to
+  the pinned value in the credential pointers above, or their engine
+  updates run unauthenticated with only a warning.
 - RunUnattended has no production caller yet: the unattended path is
   the scaffold on branch run-engine-scaffold, not a main-branch
   command (fix: TODO T-2.1 and T-2.2).

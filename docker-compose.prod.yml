@@ -26,6 +26,8 @@ services:
       MIMIR_SMTP_PORT: ${MIMIR_SMTP_PORT:-465}
       MIMIR_SMTP_USER: ${MIMIR_SMTP_USER}
       MIMIR_SMTP_PASS: ${MIMIR_SMTP_PASS}
+      # Pinned release key (public, N7): engine updates must carry a manifest signed by this key.
+      MIMIR_ENGINE_PUBKEY: uJQqyXeyx49sJYWeVttFPX9JnHuyIWCh/fk3CLqvuf4=
     volumes:
       - mimir_data:/data
     restart: unless-stopped
