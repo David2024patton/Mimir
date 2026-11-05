@@ -3,6 +3,7 @@ version: "3.9"
 # Production deployment for mimir.itak.live
 # Usage: docker compose -f docker-compose.prod.yml up -d
 # Requires .env file with MIMIR_SMTP_USER, MIMIR_SMTP_PASS, MIMIR_API_KEY
+# and MIMIR_SURREAL_PASS (the SurrealDB store is persistent; see .env.example)
 
 services:
   mimir:
@@ -13,6 +14,8 @@ services:
     environment:
       MIMIR_CORTEX_BACKEND: surreal
       MIMIR_SURREAL_DATA: /data/surreal
+      MIMIR_SURREAL_USER: ${MIMIR_SURREAL_USER:-root}
+      MIMIR_SURREAL_PASS: ${MIMIR_SURREAL_PASS:?MIMIR_SURREAL_PASS must be set in .env for the persistent SurrealDB store (see .env.example)}
       MIMIR_BASE_URL: ${MIMIR_BASE_URL:-http://host.docker.internal:11434/v1}
       MIMIR_API_KEY: ${MIMIR_API_KEY}
       MIMIR_MODEL: ${MIMIR_MODEL:-qwen3:8b}

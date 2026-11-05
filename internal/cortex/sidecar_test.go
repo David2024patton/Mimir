@@ -1,6 +1,8 @@
 package cortex
 
 import (
+	"bytes"
+	"log/slog"
 	"strings"
 	"testing"
 )
@@ -75,5 +77,39 @@ func TestSidecarStartCommandOverridesInheritedCreds(t *testing.T) {
 	}
 	if len(passes) != 1 || passes[0] != "sidecar-pass" {
 		t.Fatalf("SURREAL_PASS entries = %v, want exactly [sidecar-pass]", passes)
+	}
+}
+
+// F19: a generated per-run password on a persistent data path locks the
+// next restart out of the data directory. The startup warning must fire
+// for exactly that combination and stay silent otherwise (fixed
+// credentials configured, or an ephemeral store).
+func TestWarnEphemeralCredsOnPersistentStore(t *testing.T) {
+	cases := []struct {
+		name      string
+		generated bool
+		dataPath  string
+		want      bool
+	}{
+		{"persistent path with generated password warns", true, "/data/surreal", true},
+		{"persistent path with fixed credentials is silent", false, "/data/surreal", false},
+		{"memory store with generated password is silent", true, "memory", false},
+		{"empty path with generated password is silent", true, "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			old := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+			defer slog.SetDefault(old)
+
+			if got := warnEphemeralCredsOnPersistentStore(tc.generated, tc.dataPath); got != tc.want {
+				t.Fatalf("warnEphemeralCredsOnPersistentStore(%v, %q) = %v, want %v", tc.generated, tc.dataPath, got, tc.want)
+			}
+			logged := strings.Contains(buf.String(), "MIMIR_SURREAL_PASS")
+			if logged != tc.want {
+				t.Fatalf("warning logged = %v, want %v (log: %q)", logged, tc.want, buf.String())
+			}
+		})
 	}
 }

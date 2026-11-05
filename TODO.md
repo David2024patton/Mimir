@@ -123,6 +123,12 @@ the audit reports.
   SurrealDB deployment environment before the next restart (without
   them a restart generates a new sidecar password and locks the
   existing database; source: fix report 2026-10-19, open item 3) (PLAN S7)
+  (progress 2026-11-04: repo side landed: both compose files now refuse
+  to start without MIMIR_SURREAL_PASS, .env.example documents the
+  requirement, and the sidecar logs a startup warning when a generated
+  password protects a persistent path. No Mimir deployment exists in
+  Dokploy (checked 2026-11-04), so the remaining action is per local
+  install: put the two vars in that install's .env)
 - [ ] T-4.2 Verify the GitHub CI workflow green on GitHub itself (the
   workflow was added 2026-10-19 and rehearsed locally; a server-side
   run is still unverified; source: audit_code report #2, residual

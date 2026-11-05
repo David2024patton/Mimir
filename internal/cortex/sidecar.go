@@ -3,6 +3,7 @@ package cortex
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -109,6 +110,7 @@ func (s *Sidecar) Start(ctx context.Context) error {
 			return fmt.Errorf("surreal: %w", err)
 		}
 		s.Pass = pass
+		warnEphemeralCredsOnPersistentStore(true, s.DataPath)
 	}
 	registerSidecarCreds(s.HTTPAddr(), s.User, s.Pass)
 	if s.BinPath == "" {
@@ -141,6 +143,24 @@ func (s *Sidecar) Start(ctx context.Context) error {
 	}
 	s.Stop()
 	return fmt.Errorf("surreal: timed out waiting for health on %s", s.Addr)
+}
+
+// warnEphemeralCredsOnPersistentStore emits the F19 lockout warning and
+// reports whether it fired. generated must be true only when Start invented
+// a per-run password (no password configured in the Sidecar fields or via
+// MIMIR_SURREAL_PASS). A generated password is safe for an ephemeral store,
+// but on a persistent data path the directory is initialized under a
+// password no later run can know: the next restart generates a different
+// one and is locked out of its own database. Only fixed credentials from
+// MIMIR_SURREAL_USER / MIMIR_SURREAL_PASS make a persistent install
+// restart-safe.
+func warnEphemeralCredsOnPersistentStore(generated bool, dataPath string) bool {
+	if !generated || dataPath == "" || dataPath == "memory" {
+		return false
+	}
+	slog.Default().Warn("surreal: generated a per-run password for a persistent data path; the next restart generates a different password and cannot open this data directory. Set MIMIR_SURREAL_USER and MIMIR_SURREAL_PASS to fixed values for persistent installs",
+		"data_path", dataPath)
+	return true
 }
 
 // startCommand builds the surreal server process command. Credentials are
