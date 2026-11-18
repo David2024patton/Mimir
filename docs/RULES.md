@@ -65,6 +65,23 @@ Patton and apply to every module, every language, every time.
 - Never blindly trust delegated work; re-run the gates before merging.
 - Emulation-proven is not bench-proven; label which one a claim is.
 
+## Relational diagram
+- This project always has a relational diagram: nodes and wires
+  showing every feature and module and how they connect, modeled on
+  the AlphaFlux relational map.
+- The diagram lives in this repo under docs/relational-map/, as
+  readable markdown documents (never raw JSON): nodes.md and wires.md
+  are canonical, diagram.md draws them, README.md explains the set.
+  docs/MAP.md is the entry point and points at the set, together with
+  these rules, so any agent who opens the repo can read both.
+- Update rule: after every feature build, or any change to any part of
+  the project, the diagram is updated in the same push cycle. A
+  feature is not fully landed until the diagram matches it.
+- The diagram is built from the code. Code beats paper: every node
+  carries a state (LIVE, PLANNED, or ABSENT) and its source file, and
+  where the paper and the code disagree, the disagreement is named on
+  the map, never silently smoothed over.
+
 ## Writing
 - Plain, direct, technical. No em dashes in prose, docs, or code.
 - Brand casing is exact: AlphaVision, AlphaFlux, iTaK, Mimir,
